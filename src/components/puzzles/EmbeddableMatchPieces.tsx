@@ -38,6 +38,14 @@ type ExitType = "completed" | "time_up" | null;
 
 const SOLVE_TIME = 180;
 
+const getResponsivePieceSize = () => {
+  if (typeof window === "undefined") return 52;
+  if (window.innerWidth < 400) return 42;
+  if (window.innerWidth < 640) return 48;
+  if (window.innerWidth < 1024) return 56;
+  return 64;
+};
+
 /* ---- Image pool (same as standalone) ---- */
 const ALL_PUZZLE_IMAGES: ImageData[] = [
   { src: "/images/memory_1.png",  label: "चित्र 1",  description: "यह एक रंगीन चित्र है — टुकड़ों को सही जगह रखें।" },
@@ -154,6 +162,7 @@ const EmbeddableMatchPieces: React.FC<EmbeddableMatchPiecesProps> = ({ onComplet
   const [dragOverPos, setDragOverPos] = useState<number | null>(null);
   const [selectedPiece, setSelectedPiece] = useState<{ piece: PieceType; from: "scattered" | number } | null>(null);
   const [gameStarted, setGameStarted] = useState(false);
+  const [pieceSize, setPieceSize] = useState<number>(getResponsivePieceSize());
 
   /* ---- Setup on mount ---- */
   const setupPiecesForImage = useCallback((imgIdx: number) => {
@@ -191,6 +200,12 @@ const EmbeddableMatchPieces: React.FC<EmbeddableMatchPiecesProps> = ({ onComplet
     }
     setScatteredPieces(shuffle(pieces));
     setGrid(Array(9).fill(null));
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => setPieceSize(getResponsivePieceSize());
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   /* ---- Timer ---- */
@@ -410,10 +425,8 @@ const EmbeddableMatchPieces: React.FC<EmbeddableMatchPiecesProps> = ({ onComplet
     return <div className="text-center py-8 text-gray-500">लोड हो रहा है...</div>;
   }
 
-  const pieceSize = 64;
-
   return (
-    <div className="w-full bg-gradient-to-br from-cyan-50 via-white to-teal-50 rounded-xl p-3 relative">
+    <div className="w-full bg-gradient-to-br from-cyan-50 via-white to-teal-50 rounded-xl p-2 sm:p-3 relative">
       {/* Completion Overlay */}
       {submitted && (
         <div className="absolute inset-0 bg-white/95 backdrop-blur-sm rounded-xl z-50 flex items-center justify-center">
@@ -423,24 +436,24 @@ const EmbeddableMatchPieces: React.FC<EmbeddableMatchPiecesProps> = ({ onComplet
                 <Trophy className="h-10 w-10 text-white" />
               </div>
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">पहेली पूर्ण! 🎉</h3>
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">पहेली पूर्ण! 🎉</h3>
             <p className="text-gray-600 text-sm">आपका स्कोर क्विज़ परिणाम में दिखाया जाएगा</p>
           </div>
         </div>
       )}
 
       {/* Top bar */}
-      <div className="flex items-center gap-3 mb-2">
+      <div className="flex flex-col lg:flex-row lg:items-center gap-2 mb-2">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-cyan-500 to-teal-500 text-white">
           <ImageIcon className="h-3.5 w-3.5" />
           चित्र {currentImageIdx + 1} / 3
         </div>
-        <div className="flex-1 text-xs text-gray-600 flex items-center gap-1.5">
+        <div className="w-full lg:flex-1 text-xs text-gray-600 flex items-start sm:items-center gap-1.5">
           <Info className="h-3.5 w-3.5 text-cyan-500 flex-shrink-0" />
           {images[currentImageIdx]?.description}
         </div>
         {/* Image dots */}
-        <div className="flex gap-1">
+        <div className="flex gap-1 self-start lg:self-auto">
           {[0, 1, 2].map(i => (
             <div key={i} className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all
               ${completedImages[i] ? "bg-green-500 text-white" : i === currentImageIdx ? "bg-cyan-500 text-white animate-pulse" : "bg-gray-200 text-gray-500"}`}>
@@ -449,7 +462,7 @@ const EmbeddableMatchPieces: React.FC<EmbeddableMatchPiecesProps> = ({ onComplet
           ))}
         </div>
         {/* Timer */}
-        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white ${
+        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white self-start lg:self-auto ${
           solveTimer <= 30 ? "bg-red-500 animate-pulse" : "bg-cyan-600"
         }`}>
           <Clock className="h-3.5 w-3.5" />
@@ -458,10 +471,10 @@ const EmbeddableMatchPieces: React.FC<EmbeddableMatchPiecesProps> = ({ onComplet
       </div>
 
       {/* Game area */}
-      <div className="flex gap-3 min-h-0" style={{ maxHeight: "420px" }}>
+      <div className="flex flex-col lg:flex-row gap-3 min-h-0 lg:max-h-[420px]">
         {/* LEFT: Scattered pieces */}
         <div
-          className="w-56 bg-white/80 rounded-xl shadow p-2 flex flex-col overflow-hidden"
+          className="w-full lg:w-56 bg-white/80 rounded-xl shadow p-2 flex flex-col overflow-hidden min-h-[180px] lg:min-h-0"
           onDragOver={handleDragOver}
           onDrop={handleDropOnScattered}
         >
@@ -477,7 +490,7 @@ const EmbeddableMatchPieces: React.FC<EmbeddableMatchPiecesProps> = ({ onComplet
                 <p className="text-xs text-center">सभी टुकड़े रख दिए!</p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-1.5 p-0.5">
+              <div className="grid grid-cols-3 gap-1.5 p-0.5 puzzle-fixed-3">
                 {scatteredPieces.map(piece => (
                   <div
                     key={piece.id}
@@ -497,8 +510,8 @@ const EmbeddableMatchPieces: React.FC<EmbeddableMatchPiecesProps> = ({ onComplet
         </div>
 
         {/* CENTER: 3x3 Grid */}
-        <div className="flex-1 bg-white/80 rounded-xl shadow p-2 flex flex-col overflow-hidden relative">
-          <div className="flex items-center justify-between mb-1">
+        <div className="lg:flex-1 bg-white/80 rounded-xl shadow p-2 flex flex-col overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 mb-1">
             <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gradient-to-r from-cyan-500 to-teal-500 text-white">
               <Grid3X3 className="h-3 w-3" /> पहेली ग्रिड
             </div>
@@ -506,7 +519,7 @@ const EmbeddableMatchPieces: React.FC<EmbeddableMatchPiecesProps> = ({ onComplet
           </div>
 
           {/* Reference image */}
-          <div className="absolute top-2 right-2 z-20 w-24">
+          <div className="self-end w-20 sm:w-24 mb-1.5">
             <div className="bg-white/95 rounded-lg shadow-lg border border-cyan-200 p-1">
               <p className="text-[8px] font-bold text-gray-600 flex items-center gap-0.5 mb-0.5 px-0.5">
                 <Eye className="h-2.5 w-2.5 text-cyan-600" /> मूल चित्र
@@ -518,8 +531,8 @@ const EmbeddableMatchPieces: React.FC<EmbeddableMatchPiecesProps> = ({ onComplet
             </div>
           </div>
 
-          <div className="flex-1 flex items-center justify-center">
-            <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1.5 rounded-lg">
+          <div className="flex-1 flex items-center justify-center overflow-auto">
+            <div className="grid grid-cols-3 gap-1 bg-gray-100 p-1.5 rounded-lg puzzle-fixed-3">
               {Array.from({ length: 9 }).map((_, pos) => {
                 const piece = grid[pos];
                 const isCorrectPos = piece ? piece.correctPosition === pos : false;

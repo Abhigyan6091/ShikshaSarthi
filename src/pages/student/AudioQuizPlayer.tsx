@@ -766,7 +766,7 @@ const AudioQuizPlayer: React.FC = () => {
             {attemptSaved && (
               <Card className="mb-4 border-green-200 bg-green-50">
                 <CardContent className="py-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <CheckCircle className="h-5 w-5 text-green-600" />
                       <span className="text-sm font-medium text-green-700">
@@ -857,7 +857,7 @@ const AudioQuizPlayer: React.FC = () => {
             </Card>
 
             {/* Action Buttons */}
-            <div className="flex gap-4 mt-8">
+            <div className="flex flex-col sm:flex-row gap-4 mt-8">
               <Button
                 onClick={() => navigate('/student/multimedia/audio-questions')}
                 variant="outline"
@@ -889,16 +889,16 @@ const AudioQuizPlayer: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <Header />
-      <main className="flex-1 py-8">
+      <main className="flex-1 py-6 md:py-8">
         <div className="edu-container max-w-7xl">
           {/* Main Layout with Sidebar */}
-          <div className="flex gap-6">
+          <div className="flex flex-col lg:flex-row gap-6">
             {/* Main Content Area */}
             <div className="flex-1">
               {/* Progress Bar */}
               <Card className="mb-6">
                 <CardContent className="pt-6">
-                  <div className="flex justify-between items-center mb-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                     <span className="text-sm font-medium text-gray-700">
                       Question {currentQuestion + 1} of {questions.length}
                     </span>
@@ -919,7 +919,7 @@ const AudioQuizPlayer: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-4">
-                  <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
                     {questions.map((_, index) => {
                       const analytics = questionAnalytics[index];
                       const isAnswered = answers[index] !== undefined;
@@ -965,11 +965,11 @@ const AudioQuizPlayer: React.FC = () => {
               {/* Question Card */}
           <Card className="mb-6 border-2 border-edu-blue/20">
             <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50">
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <CardTitle className="text-xl flex-1">
                   Question {currentQuestion + 1}
                 </CardTitle>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2 self-start sm:self-auto">
                   {currentQ.hint && (
                     <Button
                       variant="outline"
@@ -987,8 +987,8 @@ const AudioQuizPlayer: React.FC = () => {
             <CardContent className="pt-6">
               {/* Audio Player */}
               <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border-2 border-purple-200">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-2">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2">
                     <Volume2 className="h-5 w-5 text-purple-600" />
                     <span className="font-medium text-gray-700">Listen to Question</span>
                   </div>
@@ -1119,7 +1119,7 @@ const AudioQuizPlayer: React.FC = () => {
                     : "border-red-500 bg-red-50"
                 }`}>
                   <CardContent className="pt-6">
-                    <div className="flex items-start space-x-3">
+                    <div className="flex items-start gap-3">
                       {selectedAnswer === currentQ.correctAnswer ? (
                         <>
                           <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0 mt-1" />
@@ -1149,17 +1149,18 @@ const AudioQuizPlayer: React.FC = () => {
           </Card>
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <Button
               onClick={previousQuestion}
               disabled={currentQuestion === 0}
               variant="outline"
+              className="w-full sm:w-auto"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Previous
             </Button>
 
-            <div className="flex space-x-3">
+            <div className="flex flex-wrap gap-3 w-full sm:w-auto sm:justify-end">
               {!showFeedback ? (
                 <>
                   <Button
@@ -1202,7 +1203,7 @@ const AudioQuizPlayer: React.FC = () => {
           {/* Question Stats */}
           <Card className="mt-6">
             <CardContent className="pt-6">
-              <div className="flex justify-between text-sm text-gray-600">
+              <div className="flex flex-col sm:flex-row gap-2 sm:justify-between text-sm text-gray-600">
                 <span>Attempted: {attemptedQuestions.size}/{questions.length}</span>
                 <span>Time on question: {formatTime(questionAnalytics[currentQuestion]?.timeSpent || 0)}</span>
               </div>

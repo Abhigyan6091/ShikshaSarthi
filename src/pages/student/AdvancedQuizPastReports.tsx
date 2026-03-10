@@ -161,7 +161,7 @@ const AdvancedQuizPastReports: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 max-w-6xl">
+      <div className="container mx-auto p-3 sm:p-6 max-w-6xl">
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading past reports...</p>
@@ -171,18 +171,18 @@ const AdvancedQuizPastReports: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <div className="container mx-auto p-3 sm:p-6 max-w-6xl">
       <div className="mb-6">
         <Button 
           variant="outline" 
           onClick={() => navigate('/student/take-advanced-quiz')}
-          className="mb-4"
+          className="mb-4 w-full sm:w-auto"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Take Quiz
         </Button>
         
-        <h1 className="text-3xl font-bold mb-2">Past Quiz Reports</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold mb-2">Past Quiz Reports</h1>
         <p className="text-gray-600">View detailed reports of all your previously attempted quizzes</p>
       </div>
 
@@ -208,7 +208,7 @@ const AdvancedQuizPastReports: React.FC = () => {
             return (
               <Card key={report._id} className="hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                     <div>
                       <CardTitle className="text-xl mb-1">Quiz: {report.quizId}</CardTitle>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -223,7 +223,7 @@ const AdvancedQuizPastReports: React.FC = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-4">
                     <div className="text-center p-3 bg-green-50 rounded-lg">
                       <div className="text-2xl font-bold text-green-600">{report.correct}</div>
                       <p className="text-xs text-gray-600">Correct</p>
@@ -259,7 +259,7 @@ const AdvancedQuizPastReports: React.FC = () => {
                   </div>
 
                   <div className="flex justify-end">
-                    <Button onClick={() => viewReport(report)}>
+                    <Button onClick={() => viewReport(report)} className="w-full sm:w-auto">
                       <Trophy className="mr-2 h-4 w-4" />
                       View Detailed Report
                     </Button>

@@ -144,10 +144,10 @@ const SuperAdminDashboard: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      <main className="flex-1 py-8 bg-gray-50">
+      <main className="flex-1 py-6 md:py-8 bg-gray-50">
         <div className="edu-container">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Super Admin Dashboard</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Super Admin Dashboard</h1>
             <p className="text-gray-600">Manage all schools, admins, teachers, and students</p>
           </div>
 
@@ -285,7 +285,7 @@ const SuperAdminDashboard: React.FC = () => {
                         <div className="flex justify-between items-center mb-3">
                           <h3 className="font-semibold text-lg">Students ({filteredStudents.length})</h3>
                           <Select value={selectedClass} onValueChange={setSelectedClass}>
-                            <SelectTrigger className="w-40">
+                            <SelectTrigger className="w-full sm:w-40">
                               <SelectValue placeholder="Filter by class" />
                             </SelectTrigger>
                             <SelectContent>
@@ -344,7 +344,7 @@ const SuperAdminDashboard: React.FC = () => {
           {selectedTeacher && (
             <div className="space-y-6">
               {/* Header Section */}
-              <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
                 <div className="bg-blue-600 p-4 rounded-full">
                   <User className="h-12 w-12 text-white" />
                 </div>
@@ -442,7 +442,7 @@ const SuperAdminDashboard: React.FC = () => {
           {selectedStudent && (
             <div className="space-y-6">
               {/* Header Section */}
-              <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg">
                 <div className="bg-green-600 p-4 rounded-full">
                   <GraduationCap className="h-12 w-12 text-white" />
                 </div>
@@ -539,7 +539,7 @@ const SuperAdminDashboard: React.FC = () => {
           {selectedAdmin && (
             <div className="space-y-6">
               {/* Header Section */}
-              <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg">
                 <div className="bg-purple-600 p-4 rounded-full">
                   <UserCog className="h-12 w-12 text-white" />
                 </div>

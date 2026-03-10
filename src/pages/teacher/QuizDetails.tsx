@@ -130,12 +130,12 @@ const QuizDetails = () => {
                     Error Loading Quiz Details
                   </h3>
                   <p className="text-muted-foreground mb-6">{error}</p>
-                  <div className="space-x-4">
-                    <Button onClick={() => window.location.reload()}>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+                    <Button onClick={() => window.location.reload()} className="w-full sm:w-auto">
                       Try Again
                     </Button>
                     <Link to="/teacher/dashboard">
-                      <Button variant="outline">Back to Dashboard</Button>
+                      <Button variant="outline" className="w-full sm:w-auto">Back to Dashboard</Button>
                     </Link>
                   </div>
                 </div>
@@ -216,7 +216,7 @@ const QuizDetails = () => {
           {/* Back Button */}
           <div className="mb-6">
             <Link to="/teacher">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
               </Button>
@@ -226,8 +226,8 @@ const QuizDetails = () => {
           {/* Quiz Header */}
           <Card className="mb-8 border-l-4 border-l-edu-blue">
             <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-3">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                <div className="flex items-start sm:items-center space-x-3">
                   <SubjectIcon subject={quiz.questions?.[0]?.subject || 'general'} size={32} />
                   <div>
                     <CardTitle className="text-2xl mb-2">
@@ -238,12 +238,12 @@ const QuizDetails = () => {
                     </CardDescription>
                   </div>
                 </div>
-                <div className="flex space-x-2">
-                  <Button variant="outline" size="sm" onClick={copyQuizId}>
+                <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
+                  <Button variant="outline" size="sm" onClick={copyQuizId} className="w-full sm:w-auto">
                     <Share2 className="h-4 w-4 mr-2" />
                     Share Quiz ID
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="w-full sm:w-auto">
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Quiz
                   </Button>
@@ -341,7 +341,7 @@ const QuizDetails = () => {
                     return (
                       <Card key={qId || index} className="border-l-4 border-l-gray-200">
                         <CardHeader>
-                          <div className="flex items-center space-x-2 mb-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
                             <Badge className={`${qTypeColor} border-0`}>
                               {qType}
                             </Badge>
@@ -366,7 +366,7 @@ const QuizDetails = () => {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-3">
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
                             <Badge className={`${getSubjectColor(question.subject)} border-0`}>
                               {question.subject || 'General'}
                             </Badge>
@@ -431,7 +431,7 @@ const QuizDetails = () => {
                                   : 'bg-gray-50 border-gray-200'
                               }`}
                             >
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-start gap-2">
                                 <span className="font-medium">
                                   {String.fromCharCode(65 + optionIndex)}.
                                 </span>

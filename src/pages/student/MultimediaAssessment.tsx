@@ -110,7 +110,7 @@ const MultimediaAssessment: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-orange-50 via-white to-purple-50">
       <Header />
 
-      <main className="flex-1 py-8">
+      <main className="flex-1 py-6 md:py-8">
         <div className="edu-container">
           {/* Header Section */}
           <div className="mb-8">
@@ -123,12 +123,12 @@ const MultimediaAssessment: React.FC = () => {
               Back to Dashboard
             </Button>
 
-            <div className="flex items-center space-x-4 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
               <div className="h-16 w-16 bg-gradient-to-br from-orange-500 to-pink-500 rounded-full flex items-center justify-center text-white">
                 <Sparkles className="h-8 w-8" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                   Multimedia Assessment 🎯
                 </h1>
                 <p className="text-gray-600">
@@ -163,7 +163,7 @@ const MultimediaAssessment: React.FC = () => {
                     <p className="text-sm text-gray-700">
                       {assessment.details}
                     </p>
-                    <div className="flex items-center space-x-4 text-sm">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
                       <div className="flex items-center text-gray-600">
                         <Star className="h-4 w-4 mr-1" />
                         {assessment.count}
@@ -176,7 +176,7 @@ const MultimediaAssessment: React.FC = () => {
                   </CardContent>
                   <CardFooter>
                     {assessment.id === "audio" ? (
-                      <div className="w-full flex items-center gap-3">
+                      <div className="w-full flex flex-col sm:flex-row sm:items-center gap-3">
                         <Link to={assessment.route} className="flex-1">
                           <Button
                             className={`w-full ${assessment.iconColor} hover:opacity-90`}
@@ -187,7 +187,7 @@ const MultimediaAssessment: React.FC = () => {
                           </Button>
                         </Link>
 
-                        <Link to="/student/audio-quiz-history" className="w-40">
+                        <Link to="/student/audio-quiz-history" className="w-full sm:w-40">
                           <Button
                             className={`w-full ${assessment.iconColor} hover:opacity-90`}
                             variant="outline"
@@ -197,7 +197,7 @@ const MultimediaAssessment: React.FC = () => {
                         </Link>
                       </div>
                     ) : assessment.id === "puzzles" ? (
-                      <div className="w-full flex items-center gap-3">
+                      <div className="w-full flex flex-col sm:flex-row sm:items-center gap-3">
                         <Link to={assessment.route} className="flex-1">
                           <Button
                             className={`w-full ${assessment.iconColor} hover:opacity-90`}
@@ -208,7 +208,7 @@ const MultimediaAssessment: React.FC = () => {
                           </Button>
                         </Link>
 
-                        <Link to="/student/puzzle-history" className="w-40">
+                        <Link to="/student/puzzle-history" className="w-full sm:w-40">
                           <Button
                             className={`w-full ${assessment.iconColor} hover:opacity-90`}
                             variant="outline"

@@ -333,6 +333,50 @@ const AdvancedQuizPlayer: React.FC = () => {
     }
   };
 
+  const normalizeHintText = (hint: any): string | null => {
+    if (typeof hint === 'string') {
+      const trimmedHint = hint.trim();
+      return trimmedHint.length > 0 ? trimmedHint : null;
+    }
+
+    if (hint && typeof hint === 'object' && typeof hint.text === 'string') {
+      const trimmedHintText = hint.text.trim();
+      return trimmedHintText.length > 0 ? trimmedHintText : null;
+    }
+
+    return null;
+  };
+
+  const normalizeSolutionText = (solution: any): string | null => {
+    if (typeof solution === 'string') {
+      const trimmedSolution = solution.trim();
+      return trimmedSolution.length > 0 ? trimmedSolution : null;
+    }
+
+    if (!solution || typeof solution !== 'object') {
+      return null;
+    }
+
+    if (typeof solution.text === 'string') {
+      const trimmedSolutionText = solution.text.trim();
+      if (trimmedSolutionText.length > 0) {
+        return trimmedSolutionText;
+      }
+    }
+
+    if (Array.isArray(solution.steps)) {
+      const stepsText = solution.steps
+        .filter((step: unknown): step is string => typeof step === 'string' && step.trim().length > 0)
+        .join('\n');
+
+      if (stepsText.length > 0) {
+        return stepsText;
+      }
+    }
+
+    return null;
+  };
+
   const handleSubmitQuiz = async (timeUp: boolean = false) => {
     // Use refs to get the latest state values, especially important for auto-submit on timeout
     const currentAnswers = answersRef.current;
@@ -394,8 +438,8 @@ const AdvancedQuizPlayer: React.FC = () => {
             ...(q.type === 'video' && q.data && {
               questionText: q.data.question,
               options: q.data.options,
-              hint: q.data.hint?.text || q.data.hint || null,
-              solution: q.data.solution?.text || q.data.solution || null,
+              hint: normalizeHintText(q.data.hint),
+              solution: normalizeSolutionText(q.data.solution),
               parentVideoId: q.data.parentVideoId,
               questionIndex: q.data.questionIndex
             }),
@@ -455,8 +499,8 @@ const AdvancedQuizPlayer: React.FC = () => {
           ...(q.type === 'video' && q.data && {
             questionText: q.data.question,
             options: q.data.options,
-            hint: q.data.hint?.text || q.data.hint || null,
-            solution: q.data.solution?.text || q.data.solution || null,
+            hint: normalizeHintText(q.data.hint),
+            solution: normalizeSolutionText(q.data.solution),
             parentVideoId: q.data.parentVideoId,
             questionIndex: q.data.questionIndex
           }),
@@ -1138,17 +1182,17 @@ const AdvancedQuizPlayer: React.FC = () => {
     const canStartNow = countdownToStart === 0;
 
     return (
-      <div className="container mx-auto p-6 max-w-4xl">
+      <div className="container mx-auto p-3 sm:p-6 max-w-4xl">
         <Card>
           <CardHeader>
-            <CardTitle className="text-3xl font-bold text-center">Quiz Instructions</CardTitle>
+            <CardTitle className="text-2xl sm:text-3xl font-bold text-center">Quiz Instructions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Quiz Info */}
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg border-2 border-blue-200">
               <h3 className="text-2xl font-bold mb-4">{quizInfo.quizId}</h3>
               
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-blue-600" />
                   <span className="font-semibold">Time Limit:</span>
@@ -1164,7 +1208,7 @@ const AdvancedQuizPlayer: React.FC = () => {
               {/* Question Types Breakdown */}
               <div className="space-y-2">
                 <h4 className="font-semibold text-lg mb-2">Question Types:</h4>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {quizInfo.questionTypes.mcq > 0 && (
                     <div className="flex items-center gap-2 bg-blue-100 p-2 rounded">
                       <BookOpen className="h-5 w-5" />
@@ -1251,7 +1295,7 @@ const AdvancedQuizPlayer: React.FC = () => {
             )}
 
             {/* Start Button */}
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <Button 
                 onClick={handleStartQuiz} 
                 disabled={!canStartNow || loading}
@@ -1282,22 +1326,22 @@ const AdvancedQuizPlayer: React.FC = () => {
     }).length;
 
     return (
-      <div className="container mx-auto p-6 max-w-4xl">
+      <div className="container mx-auto p-3 sm:p-6 max-w-4xl">
         <Card>
           <CardHeader>
-            <CardTitle className="text-3xl font-bold text-center">Quiz Results</CardTitle>
+            <CardTitle className="text-2xl sm:text-3xl font-bold text-center">Quiz Results</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="text-center">
-              <div className="text-6xl font-bold text-blue-600 mb-2">
+              <div className="text-4xl sm:text-6xl font-bold text-blue-600 mb-2">
                 {correctCount}/{questions.length}
               </div>
-              <p className="text-xl text-gray-600">
+              <p className="text-lg sm:text-xl text-gray-600">
                 Score: {Math.round((correctCount / questions.length) * 100)}%
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="p-4 bg-green-50 rounded-lg text-center">
                 <div className="text-2xl font-bold text-green-600">{correctCount}</div>
                 <div className="text-sm text-gray-600">Correct</div>
@@ -1316,7 +1360,7 @@ const AdvancedQuizPlayer: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <Button onClick={() => navigate('/student/dashboard')} className="flex-1">
                 Back to Dashboard
               </Button>
@@ -1335,11 +1379,11 @@ const AdvancedQuizPlayer: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <div className="container mx-auto p-3 sm:p-6 max-w-6xl">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Question Palette Sidebar */}
         <div className="lg:col-span-1">
-          <Card className="sticky top-6">
+          <Card className="lg:sticky lg:top-6">
             <CardHeader>
               <CardTitle className="text-sm">Question Palette</CardTitle>
             </CardHeader>
@@ -1374,7 +1418,7 @@ const AdvancedQuizPlayer: React.FC = () => {
                     <BookOpen className="h-4 w-4 text-blue-600" />
                     <span className="text-xs font-semibold text-gray-700">MCQ ({quizInfo.questionTypes.mcq})</span>
                   </div>
-                  <div className="grid grid-cols-5 gap-1">
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-1">
                     {questions.slice(0, quizInfo.questionTypes.mcq).map((q, idx) => {
                       const isAnswered = answers.some(a => a.questionId === q._id);
                       const isCurrent = currentIndex === idx;
@@ -1405,7 +1449,7 @@ const AdvancedQuizPlayer: React.FC = () => {
                     <Volume2 className="h-4 w-4 text-green-600" />
                     <span className="text-xs font-semibold text-gray-700">Audio ({quizInfo.questionTypes.audio})</span>
                   </div>
-                  <div className="grid grid-cols-5 gap-1">
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-1">
                     {questions.slice(quizInfo.questionTypes.mcq, quizInfo.questionTypes.mcq + quizInfo.questionTypes.audio).map((q, idx) => {
                       const actualIndex = quizInfo.questionTypes.mcq + idx;
                       const isAnswered = answers.some(a => a.questionId === q._id);
@@ -1437,7 +1481,7 @@ const AdvancedQuizPlayer: React.FC = () => {
                     <Video className="h-4 w-4 text-purple-600" />
                     <span className="text-xs font-semibold text-gray-700">Video ({quizInfo.questionTypes.video})</span>
                   </div>
-                  <div className="grid grid-cols-5 gap-1">
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-1">
                     {questions.slice(
                       quizInfo.questionTypes.mcq + quizInfo.questionTypes.audio,
                       quizInfo.questionTypes.mcq + quizInfo.questionTypes.audio + quizInfo.questionTypes.video
@@ -1472,7 +1516,7 @@ const AdvancedQuizPlayer: React.FC = () => {
                     <Puzzle className="h-4 w-4 text-orange-600" />
                     <span className="text-xs font-semibold text-gray-700">Puzzle ({quizInfo.questionTypes.puzzle})</span>
                   </div>
-                  <div className="grid grid-cols-5 gap-1">
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-1">
                     {questions.slice(
                       quizInfo.questionTypes.mcq + quizInfo.questionTypes.audio + quizInfo.questionTypes.video
                     ).map((q, idx) => {
@@ -1522,13 +1566,13 @@ const AdvancedQuizPlayer: React.FC = () => {
         <div className="lg:col-span-3">
           <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <CardTitle className="flex items-center gap-2">
               {getQuestionIcon(questions[currentIndex]?.type)}
-              <span>Question {currentIndex + 1} of {questions.length}</span>
+              <span className="text-base sm:text-xl">Question {currentIndex + 1} of {questions.length}</span>
             </CardTitle>
-            <div className="flex items-center gap-4">
-              <Badge variant={timeRemaining < 60 ? 'destructive' : 'default'} className="text-lg px-4 py-2">
+            <div className="flex items-center gap-3 self-start sm:self-auto">
+              <Badge variant={timeRemaining < 60 ? 'destructive' : 'default'} className="text-base sm:text-lg px-3 sm:px-4 py-2">
                 <Clock className="h-4 w-4 mr-2" />
                 {formatTime(timeRemaining)}
               </Badge>
@@ -1540,27 +1584,28 @@ const AdvancedQuizPlayer: React.FC = () => {
         <CardContent className="space-y-6">
           {renderQuestion()}
 
-          <div className="flex justify-between items-center pt-4 border-t">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t">
             <Button
               onClick={handlePrevious}
               disabled={currentIndex === 0}
               variant="outline"
+              className="w-full sm:w-auto"
             >
               <ChevronLeft className="h-4 w-4 mr-2" />
               Previous
             </Button>
 
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 order-last sm:order-none">
               Answered: {answers.length}/{questions.length}
             </div>
 
             {currentIndex === questions.length - 1 ? (
-              <Button onClick={() => handleSubmitQuiz(false)} className="bg-green-600 hover:bg-green-700">
+              <Button onClick={() => handleSubmitQuiz(false)} className="bg-green-600 hover:bg-green-700 w-full sm:w-auto">
                 <Flag className="h-4 w-4 mr-2" />
                 Submit Quiz
               </Button>
             ) : (
-              <Button onClick={handleNext}>
+              <Button onClick={handleNext} className="w-full sm:w-auto">
                 Next
                 <ChevronRight className="h-4 w-4 ml-2" />
               </Button>

@@ -231,7 +231,7 @@ const ManageClasses: React.FC = () => {
                         key={cls.classId}
                         className="p-3 rounded border bg-gray-50 border-gray-200 hover:bg-gray-100 transition-colors"
                       >
-                        <div className="flex justify-between items-center">
+                        <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
                           <div>
                             <p className="font-medium">Class {cls.className} - {cls.subject}</p>
                             <p className="text-sm text-gray-600">
@@ -240,6 +240,7 @@ const ManageClasses: React.FC = () => {
                           </div>
                           <Button
                             size="sm"
+                            className="w-full sm:w-auto"
                             onClick={() => handleManageStudents(cls.classId)}
                           >
                             <Users className="h-4 w-4 mr-2" />

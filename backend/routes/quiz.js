@@ -616,6 +616,50 @@ router.post("/submit-advanced", async (req, res) => {
     if (!student) {
       console.warn(`Student with ID ${studentId} not found in database`);
     }
+
+    const normalizeHintText = (hint) => {
+      if (typeof hint === "string") {
+        const trimmedHint = hint.trim();
+        return trimmedHint.length > 0 ? trimmedHint : null;
+      }
+
+      if (hint && typeof hint === "object" && typeof hint.text === "string") {
+        const trimmedHintText = hint.text.trim();
+        return trimmedHintText.length > 0 ? trimmedHintText : null;
+      }
+
+      return null;
+    };
+
+    const normalizeSolutionText = (solution) => {
+      if (typeof solution === "string") {
+        const trimmedSolution = solution.trim();
+        return trimmedSolution.length > 0 ? trimmedSolution : null;
+      }
+
+      if (!solution || typeof solution !== "object") {
+        return null;
+      }
+
+      if (typeof solution.text === "string") {
+        const trimmedSolutionText = solution.text.trim();
+        if (trimmedSolutionText.length > 0) {
+          return trimmedSolutionText;
+        }
+      }
+
+      if (Array.isArray(solution.steps)) {
+        const stepsText = solution.steps
+          .filter((step) => typeof step === "string" && step.trim().length > 0)
+          .join("\n");
+
+        if (stepsText.length > 0) {
+          return stepsText;
+        }
+      }
+
+      return null;
+    };
     
     const report = new StudentReport({
       quizId,
@@ -638,8 +682,8 @@ router.post("/submit-advanced", async (req, res) => {
         if (ans.questionType === 'video') {
           answerObj.questionText = ans.questionText;
           answerObj.options = ans.options;
-          answerObj.hint = ans.hint;
-          answerObj.solution = ans.solution;
+          answerObj.hint = normalizeHintText(ans.hint);
+          answerObj.solution = normalizeSolutionText(ans.solution);
           answerObj.parentVideoId = ans.parentVideoId;
           answerObj.questionIndex = ans.questionIndex;
           
@@ -754,4 +798,3 @@ router.post("/submit-advanced", async (req, res) => {
 });
 
 module.exports = router;
-

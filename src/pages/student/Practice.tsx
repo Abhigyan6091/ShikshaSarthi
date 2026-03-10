@@ -69,7 +69,7 @@ const StudentPractice: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-indigo-50 via-white to-pink-50">
       <Header />
       
-      <main className="flex-1 py-8">
+      <main className="flex-1 py-6 md:py-8">
         <div className="edu-container">
           
           {/* Hero Section */}
@@ -79,11 +79,11 @@ const StudentPractice: React.FC = () => {
               Practice Makes Perfect
             </div>
 
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">
               प्रश्न <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">अभ्यास</span>
             </h1>
 
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
               अपना विषय चुनें और हमारे व्यापक प्रश्न बैंक से अभ्यास शुरू करें
             </p>
           </div>

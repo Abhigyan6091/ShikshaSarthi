@@ -566,10 +566,10 @@ const VideoQuizPlayer: React.FC = () => {
     return (
       <div className="flex flex-col min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
         <Header />
-        <main className="flex-1 py-8">
+        <main className="flex-1 py-6 md:py-8">
           <div className="edu-container max-w-7xl">
             {/* Back Button */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
               <Button
                 variant="ghost"
                 onClick={() => navigate(`/student/video-questions/${subject}`)}
@@ -605,7 +605,7 @@ const VideoQuizPlayer: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
       <Header />
-      <main className="flex-1 py-8">
+      <main className="flex-1 py-6 md:py-8">
         <div className="edu-container max-w-6xl">
           <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -660,8 +660,8 @@ const VideoQuizPlayer: React.FC = () => {
                           onChange={handleSeek}
                           className="w-full mb-2"
                         />
-                        <div className="flex items-center justify-between text-white">
-                          <div className="flex items-center gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-white">
+                          <div className="flex items-center gap-4 flex-wrap">
                             <button onClick={togglePlay} className="hover:scale-110 transition">
                               {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
                             </button>
@@ -699,7 +699,7 @@ const VideoQuizPlayer: React.FC = () => {
               {/* Progress Card */}
               <Card className="border-2 border-purple-200">
                 <CardContent className="pt-6">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-gray-600">Progress:</span>
                       <span className="text-sm font-bold text-purple-600">
@@ -719,7 +719,7 @@ const VideoQuizPlayer: React.FC = () => {
               {/* Question Card */}
               <Card className="border-2 border-purple-200">
                 <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <CardTitle className="text-lg">
                       प्रश्न {currentQuestion + 1}
                     </CardTitle>
@@ -822,18 +822,18 @@ const VideoQuizPlayer: React.FC = () => {
                   )}
 
                   {/* Navigation Buttons */}
-                  <div className="flex items-center justify-between gap-4 pt-4 border-t-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t-2">
                     <Button 
                       onClick={handlePrevious} 
                       disabled={currentQuestion === 0} 
                       variant="outline"
-                      className="min-w-[120px]"
+                      className="w-full sm:w-auto"
                     >
                       <ArrowLeft className="h-4 w-4 mr-2" />
                       Previous
                     </Button>
 
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto sm:justify-end">
                       {!showFeedback && (
                         <Button 
                           onClick={handleSkip} 
@@ -846,7 +846,7 @@ const VideoQuizPlayer: React.FC = () => {
                       
                       <Button
                         onClick={handleNext}
-                        className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 min-w-[120px]"
+                        className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 w-full sm:w-auto"
                       >
                         {currentQuestion === totalQuestions - 1 ? "Finish Quiz" : "Next"}
                         {currentQuestion !== totalQuestions - 1 && <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />}
@@ -889,7 +889,7 @@ const VideoQuizPlayer: React.FC = () => {
                         );
                       })}
                     </div>
-                    <div className="flex gap-4 mt-3 text-xs text-gray-600">
+                    <div className="flex flex-wrap gap-4 mt-3 text-xs text-gray-600">
                       <div className="flex items-center gap-1">
                         <div className="w-4 h-4 rounded-full bg-purple-500"></div>
                         <span>Current</span>

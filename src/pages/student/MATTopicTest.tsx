@@ -368,7 +368,7 @@ const MATTopicTest: React.FC = () => {
     return (
       <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <Header />
-        <main className="flex-1 py-8">
+        <main className="flex-1 py-6 md:py-8">
           <div className="edu-container max-w-3xl">
             <Button
               variant="ghost"
@@ -381,7 +381,7 @@ const MATTopicTest: React.FC = () => {
 
             <Card className="border-2 border-blue-200">
               <CardHeader className="bg-gradient-to-r from-blue-100 to-purple-100">
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
                     <Brain className="h-8 w-8 text-white" />
                   </div>
@@ -476,8 +476,8 @@ const MATTopicTest: React.FC = () => {
       <main className="flex-1 py-6">
         <div className="edu-container max-w-7xl">
           {/* Top Bar */}
-          <div className="mb-6 flex items-center justify-between bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-            <div className="flex items-center gap-4">
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+            <div className="flex flex-wrap items-center gap-3">
               <Badge variant="outline" className="text-sm font-semibold">
                 प्रश्न {currentQuestion + 1}/{questions.length}
               </Badge>
@@ -488,10 +488,10 @@ const MATTopicTest: React.FC = () => {
               </Badge>
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <Badge 
                 variant={totalTimeRemaining < 120 ? "destructive" : "default"}
-                className="text-lg px-4 py-2"
+                className="text-base sm:text-lg px-3 sm:px-4 py-2"
               >
                 <Clock className="h-4 w-4 mr-2" />
                 {formatTime(totalTimeRemaining)}
@@ -583,12 +583,12 @@ const MATTopicTest: React.FC = () => {
               </Card>
 
               {/* Navigation Buttons */}
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                   variant="outline"
                   onClick={() => handleNavigateQuestion(Math.max(0, currentQuestion - 1))}
                   disabled={currentQuestion === 0}
-                  className="flex-1"
+                  className="flex-1 w-full"
                 >
                   <ChevronLeft className="h-4 w-4 mr-2" />
                   पिछला
@@ -598,7 +598,7 @@ const MATTopicTest: React.FC = () => {
                   variant="outline"
                   onClick={handleSkipQuestion}
                   disabled={currentQuestion === questions.length - 1}
-                  className="flex-1 border-orange-300 text-orange-600 hover:bg-orange-50"
+                  className="flex-1 w-full border-orange-300 text-orange-600 hover:bg-orange-50"
                 >
                   छोड़ें
                   <ArrowRight className="h-4 w-4 ml-2" />
@@ -608,7 +608,7 @@ const MATTopicTest: React.FC = () => {
                   <Button
                     onClick={handleSubmitTest}
                     disabled={submitting}
-                    className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+                    className="flex-1 w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
                   >
                     {submitting ? 'जमा हो रहा है...' : 'टेस्ट जमा करें'}
                     <Trophy className="h-4 w-4 ml-2" />
@@ -616,7 +616,7 @@ const MATTopicTest: React.FC = () => {
                 ) : (
                   <Button
                     onClick={() => handleNavigateQuestion(Math.min(questions.length - 1, currentQuestion + 1))}
-                    className="flex-1"
+                    className="flex-1 w-full"
                   >
                     अगला
                     <ChevronRight className="h-4 w-4 ml-2" />
@@ -634,7 +634,7 @@ const MATTopicTest: React.FC = () => {
                 <CardContent className="space-y-4">
                   <div>
                     <Progress value={progress} className="h-2 mb-2" />
-                    <div className="flex justify-between text-xs text-gray-600">
+                    <div className="flex flex-col sm:flex-row gap-1 sm:justify-between text-xs text-gray-600">
                       <span>हल किए: {answeredCount}</span>
                       <span>शेष: {unansweredCount}</span>
                     </div>
@@ -666,7 +666,7 @@ const MATTopicTest: React.FC = () => {
                   <CardTitle className="text-sm">प्रश्न नेविगेटर</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
                     {questions.map((_, index) => {
                       const status = getQuestionStatus(index);
                       return (

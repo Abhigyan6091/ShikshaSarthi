@@ -226,7 +226,7 @@ const MemoryMatchGrid: React.FC = () => {
 
   /* ===================== UI ===================== */
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-indigo-50 via-white to-pink-50 overflow-hidden">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-indigo-50 via-white to-pink-50">
       <Header />
 
       {/* EXIT CONFIRMATION ALERT DIALOG */}
@@ -251,21 +251,21 @@ const MemoryMatchGrid: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-y-auto">
 
         {/* =============== INTRO SCREEN =============== */}
         {screen === "intro" && (
-          <div className="h-full flex items-center justify-center px-4">
+          <div className="min-h-[calc(100vh-120px)] flex items-center justify-center px-4 py-6">
             <div className="max-w-3xl w-full">
               <div className="text-center mb-8">
                 <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-medium mb-4">
                   <Sparkles className="h-4 w-4" />
                   याददाश्त का खेल
                 </div>
-                <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">
                   मेमोरी मैच <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">चैलेंज</span>
                 </h1>
-                <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                <p className="text-base sm:text-xl text-gray-600 max-w-2xl mx-auto">
                   कार्ड्स की स्थिति याद करें और समय से पहले सभी जोड़ियाँ ढूँढें!
                 </p>
               </div>
@@ -288,7 +288,7 @@ const MemoryMatchGrid: React.FC = () => {
                     </ul>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-blue-50 rounded-xl p-3 text-center group hover:shadow-md transition-all duration-300 hover:-translate-y-1">
                       <p className="text-sm text-gray-600">व्यक्तिगत मोड</p>
                       <p className="text-2xl font-bold text-blue-600">20 कार्ड</p>
@@ -319,17 +319,17 @@ const MemoryMatchGrid: React.FC = () => {
 
         {/* =============== MODE SELECTION SCREEN =============== */}
         {screen === "mode-select" && (
-          <div className="h-full flex items-center justify-center px-4">
+          <div className="min-h-[calc(100vh-120px)] flex items-center justify-center px-4 py-6">
             <div className="max-w-4xl w-full">
               <div className="text-center mb-8">
                 <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-medium mb-4">
                   <Sparkles className="h-4 w-4" />
                   अपना मोड चुनें
                 </div>
-                <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">
                   मोड <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">चयन</span>
                 </h1>
-                <p className="text-xl text-gray-600">अपनी पसंद का मोड चुनें और खेल शुरू करें</p>
+                <p className="text-base sm:text-xl text-gray-600">अपनी पसंद का मोड चुनें और खेल शुरू करें</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -340,7 +340,7 @@ const MemoryMatchGrid: React.FC = () => {
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 opacity-0 group-hover:opacity-10 transition-opacity duration-500" />
                   <CardHeader className="pb-4 relative z-10">
-                    <div className="flex items-start space-x-4">
+                    <div className="flex items-start gap-4">
                       <div className="bg-blue-100 p-3 rounded-xl group-hover:scale-110 transition-transform duration-300">
                         <Target className="h-8 w-8 text-blue-600" />
                       </div>
@@ -376,7 +376,7 @@ const MemoryMatchGrid: React.FC = () => {
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-500 opacity-0 group-hover:opacity-10 transition-opacity duration-500" />
                   <CardHeader className="pb-4 relative z-10">
-                    <div className="flex items-start space-x-4">
+                    <div className="flex items-start gap-4">
                       <div className="bg-purple-100 p-3 rounded-xl group-hover:scale-110 transition-transform duration-300">
                         <Zap className="h-8 w-8 text-purple-600" />
                       </div>
@@ -421,11 +421,11 @@ const MemoryMatchGrid: React.FC = () => {
 
         {/* =============== GAME SCREEN =============== */}
         {screen === "game" && mode && (
-          <div className="h-full flex items-center justify-center p-3">
-            <div className="flex gap-4 w-full max-w-7xl" style={{ height: 'calc(100vh - 80px)' }}>
+          <div className="py-3 px-2 sm:px-3">
+            <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 w-full max-w-7xl mx-auto lg:h-[calc(100vh-120px)]">
 
               {/* LEFT: Cards Grid */}
-              <div className="flex-1 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-3 flex flex-col overflow-hidden">
+              <div className="order-2 lg:order-1 flex-1 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-2 sm:p-3 flex flex-col overflow-hidden min-h-[380px] sm:min-h-[520px] lg:min-h-0">
                 {/* Phase Banner */}
                 <div className="flex items-center justify-center mb-2">
                   <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 ${
@@ -442,7 +442,7 @@ const MemoryMatchGrid: React.FC = () => {
                 </div>
 
                 {/* Card Grid */}
-                <div className="flex-1 flex items-center justify-center">
+                <div className="flex-1 flex items-center justify-center overflow-auto">
                   <div
                     className="grid gap-2"
                     style={{
@@ -457,8 +457,8 @@ const MemoryMatchGrid: React.FC = () => {
                     {cards.map(card => {
                       const visible = previewPhase || flipped.includes(card) || card.matched;
                       const cardSize = mode === "individual"
-                        ? 'w-[5.5rem] h-[5.5rem] md:w-24 md:h-24'
-                        : 'w-[4.5rem] h-[4.5rem] md:w-20 md:h-20';
+                        ? "w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 lg:w-24 lg:h-24"
+                        : "w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-20 lg:h-20";
 
                       return (
                         <div
@@ -485,14 +485,14 @@ const MemoryMatchGrid: React.FC = () => {
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <span className="text-white text-3xl font-bold drop-shadow-lg">?</span>
+                                <span className="text-white text-lg sm:text-xl lg:text-3xl font-bold drop-shadow-lg">?</span>
                               </div>
                             )}
                           </div>
                           {card.matched && (
                             <div className="absolute inset-0 flex items-center justify-center bg-green-400/40 backdrop-blur-[1px]">
                               <div className="bg-white rounded-full p-1.5 shadow-lg">
-                                <Trophy className="w-5 h-5 text-green-600" />
+                                <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                               </div>
                             </div>
                           )}
@@ -504,7 +504,7 @@ const MemoryMatchGrid: React.FC = () => {
               </div>
 
               {/* RIGHT: Stats Sidebar */}
-              <div className="w-72 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-5 flex flex-col">
+              <div className="order-1 lg:order-2 w-full lg:w-72 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-4 sm:p-5 flex flex-col">
                 <h3 className="text-lg font-bold text-center text-gray-800 mb-3 flex items-center justify-center gap-2">
                   <BarChart3 className="h-5 w-5 text-indigo-600" />
                   गेम स्टेटस
@@ -584,8 +584,8 @@ const MemoryMatchGrid: React.FC = () => {
 
         {/* =============== RESULTS SCREEN =============== */}
         {screen === "results" && analysis && (
-          <div className="h-full flex items-center justify-center px-4 py-4">
-            <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 max-w-5xl w-full max-h-[calc(100vh-100px)] overflow-y-auto">
+          <div className="px-3 sm:px-4 py-4">
+            <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-4 sm:p-8 max-w-5xl w-full mx-auto max-h-[calc(100vh-110px)] overflow-y-auto">
               <div className="flex flex-col md:flex-row gap-8">
 
                 {/* LEFT: Score Display */}
@@ -601,7 +601,7 @@ const MemoryMatchGrid: React.FC = () => {
                   </h2>
 
                   {/* Score Circle */}
-                  <div className="relative w-40 h-40 mb-5">
+                  <div className="relative w-32 h-32 sm:w-40 sm:h-40 mb-5">
                     <svg className="w-full h-full transform -rotate-90">
                       <circle cx="80" cy="80" r="72" stroke="#e5e7eb" strokeWidth="12" fill="none" />
                       <circle
@@ -622,7 +622,7 @@ const MemoryMatchGrid: React.FC = () => {
                       </defs>
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-4xl font-bold text-gray-800">{analysis.score}</span>
+                      <span className="text-3xl sm:text-4xl font-bold text-gray-800">{analysis.score}</span>
                       <span className="text-sm text-gray-500">/ 100</span>
                     </div>
                   </div>
@@ -696,7 +696,7 @@ const MemoryMatchGrid: React.FC = () => {
                   )}
 
                   {/* Action Buttons */}
-                  <div className="grid grid-cols-2 gap-4 mt-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
                     <Button
                       onClick={() => setScreen("mode-select")}
                       className="bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-lg transform hover:scale-105 transition-all duration-300 text-white font-semibold"

@@ -59,7 +59,7 @@ const Puzzles: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
       <Header />
 
-      <main className="flex-1 py-8">
+      <main className="flex-1 py-6 md:py-8">
         <div className="container mx-auto px-4 max-w-5xl">
           {/* Header */}
           <div className="mb-8">
@@ -72,12 +72,12 @@ const Puzzles: React.FC = () => {
               मल्टीमीडिया मूल्यांकन पर वापस जाएं
             </Button>
 
-            <div className="flex items-center space-x-4 mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-2">
               <div className="h-14 w-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg">
                 <Puzzle className="h-7 w-7" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                   पहेली गेम्स
                 </h1>
                 <p className="text-gray-600">

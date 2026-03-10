@@ -118,10 +118,10 @@ const TeacherDashboard: React.FC = () => {
     <div className="flex flex-col min-h-screen">
       <Header />
       
-      <main className="flex-1 py-8 bg-gray-50">
+      <main className="flex-1 py-6 md:py-8 bg-gray-50">
         <div className="edu-container">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
               Welcome, {teacherName || user?.name || 'Teacher'}!
             </h1>
           </div>
@@ -348,7 +348,7 @@ const TeacherDashboard: React.FC = () => {
           
           {/* Recent Quizzes */}
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <h2 className="text-2xl font-bold">Your Quizzes</h2>
               <Link to="/teacher/create-quiz">
                 <Button size="sm">
@@ -389,10 +389,10 @@ const TeacherDashboard: React.FC = () => {
                 {teacherQuizzes.map((quiz, idx) => (
                   <Card key={quiz.id || quiz._id || idx}>
                     <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
                           <SubjectIcon subject={quiz.subject || 'general'} size={20} />
-                          <CardTitle className="text-lg">{quiz.title || quiz.quizId || 'Untitled Quiz'}</CardTitle>
+                          <CardTitle className="text-lg truncate">{quiz.title || quiz.quizId || 'Untitled Quiz'}</CardTitle>
                         </div>
                         <div className="bg-primary/10 text-primary text-xs py-1 px-2 rounded">
                           ID: {quiz.quizId || quiz.id || quiz._id || 'N/A'}
@@ -400,8 +400,8 @@ const TeacherDashboard: React.FC = () => {
                       </div>
                     </CardHeader>
                     <CardContent className="pb-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center space-x-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
+                        <div className="flex items-center gap-2">
                           <Layers className="h-4 w-4 text-muted-foreground" />
                           <span>{quiz.questions?.length || quiz.questionCount || 0} questions</span>
                         </div>
@@ -411,16 +411,16 @@ const TeacherDashboard: React.FC = () => {
                       </div>
                     </CardContent>
                     <CardFooter className="border-t pt-4">
-                      <div className="w-full flex justify-between">
+                      <div className="w-full flex flex-col sm:flex-row gap-2 sm:justify-between">
                         <Link to={`/teacher/quiz-analytics/${quiz.quizId}`}>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" className="w-full sm:w-auto">
                             <BarChart className="h-4 w-4 mr-2" />
                                 Analytics
                            </Button>
                         </Link>
 
                         <Link to={`/teacher/quiz-details/${quiz.quizId || quiz.id || quiz._id}`}>
-                          <Button size="sm">View Details</Button>
+                          <Button size="sm" className="w-full sm:w-auto">View Details</Button>
                         </Link>
                       </div>
                     </CardFooter>

@@ -1019,10 +1019,10 @@ export default function QuizAnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      <div className="container mx-auto p-6 space-y-8">
+      <div className="container mx-auto p-3 sm:p-6 space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
             Quiz Analytics Dashboard
           </h1>
           <p className="text-gray-600">Comprehensive performance insights and statistics</p>
@@ -1116,7 +1116,7 @@ export default function QuizAnalyticsPage() {
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="flex justify-center space-x-6 mt-4">
+              <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-4">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 bg-green-500 rounded-full"></div>
                   <span className="text-sm text-gray-600">Correct ({overallStats.correct})</span>
