@@ -55,8 +55,8 @@ app.use("/classes", classRoutes);
 app.use("/video-questions", videoQuestionRoutes);
 app.use("/audio-questions", audioQuestionRoutes);
 app.use("/puzzles", puzzlesRoutes);
-app.use("/mat", matRoutes);
-app.use("/mat-test", matTestRoutes);
+app.use("/api/mat", matRoutes);
+app.use("/api/mat-test", matTestRoutes);
 // https://shiksha-sarthi-nmms-prep-cn64.vercel.app
 
 

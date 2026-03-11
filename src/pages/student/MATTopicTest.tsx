@@ -113,7 +113,7 @@ const MATTopicTest: React.FC = () => {
       setLoading(true);
       console.log('Creating test with:', { studentId, module: decodeURIComponent(module || '') });
       
-      const response = await axios.post(`${API_URL}/mat-test/create-test`, {
+      const response = await axios.post(`${API_URL}/api/mat-test/create-test`, {
         studentId,
         module: decodeURIComponent(module || ''),
         questionsCount: 10
@@ -292,7 +292,7 @@ const MATTopicTest: React.FC = () => {
           timeSpent: analytics?.timeSpent || 0
         });
 
-        await axios.post(`${API_URL}/mat-test/submit-answer`, {
+        await axios.post(`${API_URL}/api/mat-test/submit-answer`, {
           testId,
           questionId: question.questionId,
           selectedAnswer,
@@ -305,7 +305,7 @@ const MATTopicTest: React.FC = () => {
       console.log('All answers submitted. Completing test...');
       
       // Complete the test
-      const response = await axios.post(`${API_URL}/mat-test/complete-test`, {
+      const response = await axios.post(`${API_URL}/api/mat-test/complete-test`, {
         testId
       });
 

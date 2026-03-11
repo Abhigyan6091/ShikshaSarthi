@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAT Animation Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+        }
+        .question-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        .animation-area {
+            min-height: 400px;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f3e8ff 100%);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 20px 0;
+            border: 2px solid #a78bfa;
+            display: flex;
+            align-items: center;
+            justify-center;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .frame-info {
+            text-align: center;
+            padding: 15px;
+            background: #e0f2fe;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: 600;
+        }
+        .status {
+            padding: 15px;
+            background: #d1fae5;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        #animationContent {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 MAT Animation Test Page</h1>
+        
+        <div id="status" class="status">Loading questions...</div>
+        
+        <div id="questionInfo" class="question-box" style="display:none;">
+            <h2 id="questionTitle"></h2>
+            <p id="questionText"></p>
+        </div>
+
+        <div id="animationSection" style="display:none;">
+            <div class="frame-info" id="frameInfo">Frame 1 / 4</div>
+            
+            <div class="animation-area" id="animationArea">
+                <div id="animationContent"></div>
+            </div>
+            
+            <div class="frame-info" id="frameDescription">Frame description will appear here</div>
+            
+            <div class="controls">
+                <button onclick="resetAnimation()">🔄 Reset</button>
+                <button onclick="previousFrame()" id="prevBtn">← Previous</button>
+                <button onclick="togglePlay()" id="playBtn">▶ Play</button>
+                <button onclick="nextFrame()" id="nextBtn">Next →</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let currentFrame = 0;
+        let isPlaying = false;
+        let playInterval = null;
+
+        // Fetch animated questions
+        async function fetchQuestions() {
+            try {
+                const response = await fetch('http://localhost:5000/api/mat/questions?animated=true');
+                if (!response.ok) throw new Error('Failed to fetch questions');
+                questions = await response.json();
+                
+                document.getElementById('status').textContent = `✅ Loaded ${questions.length} animated questions`;
+                document.getElementById('status').classList.remove('error');
+                
+                if (questions.length > 0) {
+                    displayQuestion(0);
+                } else {
+                    document.getElementById('status').textContent = '❌ No animated questions found';
+                    document.getElementById('status').classList.add('error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('status').textContent = `❌ Error: ${error.message}`;
+                document.getElementById('status').classList.add('error');
+            }
+        }
+
+        function displayQuestion(index) {
+            const question = questions[index];
+            console.log('Displaying question:', question);
+            
+            document.getElementById('questionTitle').textContent = 
+                `${question.module} - ${question.subModule}`;
+            document.getElementById('questionText').textContent = question.question;
+            document.getElementById('questionInfo').style.display = 'block';
+            
+            if (question.animation && question.animation.enabled && question.animation.frames.length > 0) {
+                console.log('Animation found with', question.animation.frames.length, 'frames');
+                document.getElementById('animationSection').style.display = 'block';
+                currentFrame = 0;
+                renderFrame();
+            } else {
+                console.log('No animation found');
+                document.getElementById('animationSection').style.display = 'none';
+            }
+        }
+
+        function renderFrame() {
+            const question = questions[currentQuestionIndex];
+            const frame = question.animation.frames[currentFrame];
+            const totalFrames = question.animation.frames.length;
+            
+            // Update frame info
+            document.getElementById('frameInfo').textContent = 
+                `Frame ${currentFrame + 1} / ${totalFrames}`;
+            document.getElementById('frameDescription').textContent = frame.description;
+            
+            // Render frame content
+            const container = document.getElementById('animationContent');
+            container.innerHTML = '';
+            
+            const frameDiv = document.createElement('div');
+            frameDiv.innerHTML = frame.html;
+            
+            if (frame.css) {
+                const style = document.createElement('style');
+                style.textContent = frame.css;
+                frameDiv.appendChild(style);
+            }
+            
+            container.appendChild(frameDiv);
+            
+            // Update button states
+            document.getElementById('prevBtn').disabled = currentFrame === 0;
+            document.getElementById('nextBtn').disabled = currentFrame === totalFrames - 1;
+        }
+
+        function previousFrame() {
+            if (currentFrame > 0) {
+                stopPlay();
+                currentFrame--;
+                renderFrame();
+            }
+        }
+
+        function nextFrame() {
+            const totalFrames = questions[currentQuestionIndex].animation.frames.length;
+            if (currentFrame < totalFrames - 1) {
+                stopPlay();
+                currentFrame++;
+                renderFrame();
+            }
+        }
+
+        function resetAnimation() {
+            stopPlay();
+            currentFrame = 0;
+            renderFrame();
+        }
+
+        function togglePlay() {
+            if (isPlaying) {
+                stopPlay();
+            } else {
+                startPlay();
+            }
+        }
+
+        function startPlay() {
+            isPlaying = true;
+            document.getElementById('playBtn').textContent = '⏸ Pause';
+            
+            const autoPlaySpeed = questions[currentQuestionIndex].animation.autoPlaySpeed || 2000;
+            playInterval = setInterval(() => {
+                const totalFrames = questions[currentQuestionIndex].animation.frames.length;
+                if (currentFrame < totalFrames - 1) {
+                    currentFrame++;
+                    renderFrame();
+                } else {
+                    stopPlay();
+                }
+            }, autoPlaySpeed);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            document.getElementById('playBtn').textContent = '▶ Play';
+            if (playInterval) {
+                clearInterval(playInterval);
+                playInterval = null;
+            }
+        }
+
+        // Load questions on page load
+        fetchQuestions();
+    </script>
+</body>
+</html>

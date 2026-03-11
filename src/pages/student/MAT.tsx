@@ -46,7 +46,7 @@ const MAT: React.FC = () => {
 
   const fetchModules = async () => {
     try {
-      const response = await axios.get(`${API_URL}/mat/modules`);
+      const response = await axios.get(`${API_URL}/api/mat/modules`);
       setModules(response.data);
       setLoading(false);
     } catch (error) {

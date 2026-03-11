@@ -118,7 +118,7 @@ const MATTestResults: React.FC = () => {
   const fetchResults = async () => {
     try {
       console.log('Fetching results for testId:', testId);
-      const response = await axios.get(`${API_URL}/mat-test/results/${testId}`);
+      const response = await axios.get(`${API_URL}/api/mat-test/results/${testId}`);
       console.log('Results received:', response.data);
       setResults(response.data);
       setLoading(false);

@@ -52,6 +52,20 @@ const MATQuestionViewer: React.FC<MATQuestionViewerProps> = ({
   const frames = question.animation?.frames || [];
   const totalFrames = frames.length;
 
+  // Debug logging
+  useEffect(() => {
+    console.log('========= MATQuestionViewer DEBUG =========');
+    console.log('Question ID:', question.questionId);
+    console.log('Question object keys:', Object.keys(question));
+    console.log('Has animation key:', 'animation' in question);
+    console.log('Animation value:', question.animation);
+    console.log('Animation enabled:', question.animation?.enabled);
+    console.log('Frames array:', question.animation?.frames);
+    console.log('Frames length:', question.animation?.frames?.length);
+    console.log('hasAnimation result:', hasAnimation);
+    console.log('==========================================');
+  }, [question, hasAnimation]);
+
   useEffect(() => {
     if (hasAnimation && animationRef.current && frames[currentFrame]) {
       const frame = frames[currentFrame];

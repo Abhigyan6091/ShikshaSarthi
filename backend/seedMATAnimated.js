@@ -371,7 +371,7 @@ const animatedQuestions = [
     correctAnswer: 0,
     explanation: "राम उत्तर जाकर, फिर पूर्व (दाएं), फिर दक्षिण (दाएं) जाता है। उत्तर और दक्षिण की दूरी समान होने से वह सिर्फ 3 किमी पूर्व में है।",
     hint: "प्रत्येक चरण को एक आरेख पर चिह्नित करें और अंतिम स्थिति देखें।",
-    difficulty: "Medium",
+    difficulty: "Easy",
     points: 2,
     timeLimit: 90,
     tags: ["direction", "distance", "navigation"],

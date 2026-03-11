@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import DatabaseInteractiveDemo from "@/components/DatabaseInteractiveDemo";
+import MATQuestionViewer from "@/components/MATQuestionViewer";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -32,8 +33,11 @@ const API_URL = import.meta.env.VITE_API_URL;
 interface Question {
   _id: string;
   questionId: string;
+  module: string;
+  subModule: string;
   question: string;
   options: string[];
+  correctAnswer: number;
   difficulty: string;
   hint: string;
   explanation: string;
@@ -43,6 +47,17 @@ interface Question {
     css: string;
     javascript: string;
     isInteractive: boolean;
+  };
+  animation?: {
+    enabled: boolean;
+    frames: Array<{
+      html: string;
+      css: string;
+      javascript: string;
+      description: string;
+      duration?: number;
+    }>;
+    autoPlaySpeed: number;
   };
   timeLimit: number;
 }
@@ -99,7 +114,7 @@ const MATPractice: React.FC = () => {
 
   const fetchQuestions = async () => {
     try {
-      const response = await axios.get(`${API_URL}/mat/modules/${module}/questions`);
+      const response = await axios.get(`${API_URL}/api/mat/modules/${module}/questions`);
       setQuestions(response.data);
       setLoading(false);
     } catch (error) {
@@ -115,7 +130,7 @@ const MATPractice: React.FC = () => {
     
     try {
       const response = await axios.post(
-        `${API_URL}/mat/questions/${currentQuestion.questionId}/submit`,
+        `${API_URL}/api/mat/questions/${currentQuestion.questionId}/submit`,
         {
           studentId,
           answer: selectedAnswer,
@@ -229,6 +244,58 @@ const MATPractice: React.FC = () => {
             <Progress value={progress} className="h-2" />
           </div>
 
+          {/* Use MATQuestionViewer for animated questions */}
+          {currentQuestion.animation?.enabled && currentQuestion.animation?.frames?.length > 0 ? (
+            <div className="mb-6">
+              <MATQuestionViewer
+                question={currentQuestion}
+                onAnswer={(optionIndex) => {
+                  if (!submitted) {
+                    setSelectedAnswer(optionIndex);
+                    handleSubmit();
+                  }
+                }}
+                showCorrectAnswer={submitted}
+                selectedAnswer={selectedAnswer}
+              />
+              
+              {/* Navigation buttons for animated questions */}
+              {submitted && (
+                <div className="mt-6 flex justify-between items-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setCurrentIndex(prev => prev - 1);
+                      resetQuestion();
+                    }}
+                    disabled={currentIndex === 0}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    पिछला प्रश्न
+                  </Button>
+                  
+                  <Button
+                    onClick={() => {
+                      if (currentIndex < questions.length - 1) {
+                        setCurrentIndex(prev => prev + 1);
+                        resetQuestion();
+                      } else {
+                        navigate('/student/mat');
+                      }
+                    }}
+                  >
+                    {currentIndex < questions.length - 1 ? (
+                      <>अगला प्रश्न <ArrowRight className="h-4 w-4 ml-2" /></>
+                    ) : (
+                      'समाप्त करें'
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Original question card for non-animated questions */
+            <>
           {/* Question Card */}
           <Card className="mb-6">
             <CardHeader>
@@ -402,6 +469,8 @@ const MATPractice: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+          </>
+          )}
         </div>
       </main>
 
