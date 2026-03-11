@@ -57,7 +57,7 @@ const MATQuestionViewer: React.FC<MATQuestionViewerProps> = ({
       const frame = frames[currentFrame];
       animationRef.current.innerHTML = '';
       const container = document.createElement('div');
-      container.className = 'frame-container';
+      container.className = 'frame-container w-full h-full flex items-center justify-center p-8';
       container.innerHTML = frame.html;
       if (frame.css) {
         const style = document.createElement('style');
@@ -128,6 +128,59 @@ const MATQuestionViewer: React.FC<MATQuestionViewerProps> = ({
 
   return (
     <div className="mat-question-viewer space-y-6">
+      <style>{`
+        .animation-display-area .frame-container {
+          width: 100%;
+          min-height: 350px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .animation-display-area .pattern-box {
+          padding: 1.5rem;
+          background: white;
+          border-radius: 0.75rem;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .animation-display-area .number-item {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 60px;
+          height: 60px;
+          margin: 0.5rem;
+          padding: 1rem;
+          font-size: 1.5rem;
+          font-weight: bold;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          border-radius: 0.75rem;
+          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .animation-display-area .direction-path {
+          min-width: 300px;
+          min-height: 300px;
+        }
+        .animation-display-area svg {
+          max-width: 100%;
+          height: auto;
+        }
+        .animation-display-area .step-label {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #4a5568;
+          margin: 0.5rem 0;
+        }
+        .animation-display-area .formula {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #2d3748;
+          padding: 1rem;
+          background: rgba(255,255,255,0.9);
+          border-radius: 0.5rem;
+          margin: 1rem 0;
+        }
+      `}</style>
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -158,15 +211,18 @@ const MATQuestionViewer: React.FC<MATQuestionViewerProps> = ({
       </Card>
 
       {hasAnimation && (
-        <Card className="border-2 border-purple-200">
-          <CardHeader>
+        <Card className="border-2 border-purple-200 bg-white shadow-lg">
+          <CardHeader className="bg-purple-50">
             <CardTitle className="flex items-center justify-between">
-              <span>📊 एनिमेशन व्याख्या</span>
-              <Badge variant="outline">फ्रेम {currentFrame + 1} / {totalFrames}</Badge>
+              <span className="text-purple-700">📊 एनिमेशन व्याख्या</span>
+              <Badge variant="outline" className="bg-white">फ्रेम {currentFrame + 1} / {totalFrames}</Badge>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div ref={animationRef} className="animation-display-area min-h-[300px] bg-gray-50 rounded-lg overflow-hidden mb-4" />
+          <CardContent className="pt-6">
+            <div 
+              ref={animationRef} 
+              className="animation-display-area min-h-[400px] bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border-2 border-purple-200 overflow-auto mb-6 shadow-inner" 
+            />
             {frames[currentFrame]?.description && (
               <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-400 rounded">
                 <p className="text-sm font-medium text-gray-700">{frames[currentFrame].description}</p>
