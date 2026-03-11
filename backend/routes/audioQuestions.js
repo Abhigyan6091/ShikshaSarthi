@@ -199,6 +199,9 @@ router.get('/audio/:filename', async (req, res) => {
     }
 
     res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=60, must-revalidate');
+    audioCache.scheduleDeleteByFilename(filename);
     res.sendFile(filePath);
   } catch (err) {
     console.error('Error serving cached audio file:', err);
@@ -421,7 +424,8 @@ router.get("/audio/:filename", (req, res) => {
     if (require('fs').existsSync(filePath)) {
       res.setHeader('Content-Type', 'audio/mpeg');
       res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+      res.setHeader('Cache-Control', 'public, max-age=60, must-revalidate');
+      audioCache.scheduleDeleteByFilename(filename);
       res.sendFile(filePath);
     } else {
       res.status(404).json({ message: 'Audio file not found in cache' });
