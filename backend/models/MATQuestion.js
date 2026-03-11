@@ -88,6 +88,25 @@ const MATQuestionSchema = new mongoose.Schema({
       default: 'question'
     }
   }],
+
+  // Animation support (array of frames for step-by-step visualization)
+  animation: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    frames: [{
+      html: String,
+      css: String,
+      javascript: String,
+      description: String,
+      duration: Number
+    }],
+    autoPlaySpeed: {
+      type: Number,
+      default: 2000
+    }
+  },
   
   // Explanation and hints
   explanation: {

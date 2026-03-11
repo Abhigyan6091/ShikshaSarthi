@@ -39,6 +39,7 @@ import MAT from "./pages/student/MAT";
 import MATPractice from "./pages/student/MATPractice";
 import MATTopicTest from "./pages/student/MATTopicTest";
 import MATTestResults from "./pages/student/MATTestResults";
+import MATAnimatedDemo from "./pages/student/MATAnimatedDemo";
 import TakeAdvancedQuiz from "./pages/student/TakeAdvancedQuiz";
 import AdvancedQuizPlayer from "./pages/student/AdvancedQuizPlayer";
 import AdvancedQuizResults from "./pages/student/AdvancedQuizResults";
@@ -121,6 +122,7 @@ const AppRoutes = () => {
       <Route path="/student/mat/:module" element={<MATPractice />} />
       <Route path="/student/mat-test/:module" element={<MATTopicTest />} />
       <Route path="/student/mat-test-results/:testId" element={<MATTestResults />} />
+      <Route path="/student/mat-animated-demo" element={<MATAnimatedDemo />} />
       <Route path="/student/take-advanced-quiz" element={<TakeAdvancedQuiz />} />
       <Route path="/student/advanced-quiz-player" element={<AdvancedQuizPlayer />} />
       <Route path="/student/advanced-quiz-results" element={<AdvancedQuizResults />} />

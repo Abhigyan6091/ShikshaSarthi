@@ -3,6 +3,24 @@ const router = express.Router();
 const MATQuestion = require('../models/MATQuestion');
 const MATProgress = require('../models/MATProgress');
 
+// Get animated questions
+router.get('/questions', async (req, res) => {
+  try {
+    const { animated } = req.query;
+    
+    let query = { isActive: true };
+    if (animated === 'true') {
+      query['animation.enabled'] = true;
+    }
+
+    const questions = await MATQuestion.find(query);
+    res.json(questions);
+  } catch (error) {
+    console.error('Error fetching MAT questions:', error);
+    res.status(500).json({ error: 'Failed to fetch questions' });
+  }
+});
+
 // Get all modules with question counts
 router.get('/modules', async (req, res) => {
   try {
