@@ -112,10 +112,10 @@ const SchoolAdminDashboard: React.FC = () => {
     <div className="flex flex-col min-h-screen">
       <Header />
       
-      <main className="flex-1 py-8 bg-gray-50">
+      <main className="flex-1 py-6 md:py-8 bg-gray-50">
         <div className="edu-container">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">School Admin Dashboard</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">School Admin Dashboard</h1>
             <p className="text-gray-600">School ID: {stats.schoolId}</p>
           </div>
 
@@ -171,10 +171,14 @@ const SchoolAdminDashboard: React.FC = () => {
                   <p className="text-gray-500">No teachers found</p>
                 ) : (
                   teachers.map((teacher) => (
-                    <div key={teacher.teacherId} className="p-3 bg-gray-50 rounded flex justify-between items-center">
+                    <div key={teacher.teacherId} className="p-3 bg-gray-50 rounded">
                       <div>
                         <p className="font-medium">{teacher.name}</p>
-                        <p className="text-sm text-gray-600">ID: {teacher.teacherId} | Phone: {teacher.phone || 'N/A'}</p>
+                        <p className="text-sm text-gray-600">
+                          ID: {teacher.teacherId}
+                          <span className="hidden sm:inline"> | </span>
+                          <span className="block sm:inline">Phone: {teacher.phone || 'N/A'}</span>
+                        </p>
                       </div>
                     </div>
                   ))
@@ -231,7 +235,7 @@ const SchoolAdminDashboard: React.FC = () => {
                         {studentsByClass[className].map((student: any) => (
                           <div 
                             key={student.studentId} 
-                            className="p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors cursor-pointer group ml-7"
+                            className="p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors cursor-pointer group sm:ml-7"
                             onClick={() => navigate(`/student/profile/${student.studentId}`)}
                           >
                             <div className="flex items-center justify-between">
@@ -240,7 +244,9 @@ const SchoolAdminDashboard: React.FC = () => {
                                   {student.name}
                                 </p>
                                 <p className="text-sm text-gray-600">
-                                  ID: {student.studentId} | Phone: {student.phone || 'N/A'}
+                                  ID: {student.studentId}
+                                  <span className="hidden sm:inline"> | </span>
+                                  <span className="block sm:inline">Phone: {student.phone || 'N/A'}</span>
                                 </p>
                               </div>
                               <Eye className="h-5 w-5 text-gray-400 group-hover:text-edu-blue transition-colors" />

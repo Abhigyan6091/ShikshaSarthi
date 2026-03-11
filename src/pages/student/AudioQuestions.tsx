@@ -64,7 +64,7 @@ const AudioQuestions: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
       <Header />
 
-      <main className="flex-1 py-8">
+      <main className="flex-1 py-6 md:py-8">
         <div className="edu-container">
           <Button
             variant="ghost"
@@ -81,11 +81,11 @@ const AudioQuestions: React.FC = () => {
               Learn with Audio
             </div>
 
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">
               ऑडियो <span className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">प्रश्न</span> 🎧
             </h1>
 
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
               ऑडियो सुनें और प्रश्नों के उत्तर दें - श्रवण कौशल विकसित करें
             </p>
           </div>
@@ -128,7 +128,7 @@ const AudioQuestions: React.FC = () => {
                 <div className={`absolute inset-0 bg-gradient-to-br ${subject.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
 
                 <CardHeader className="pb-4 relative z-10">
-                  <div className="flex items-start space-x-4">
+                  <div className="flex items-start gap-4">
                     <div className={`${subject.iconBg} p-3 rounded-xl group-hover:scale-110 transition-transform duration-300`}>
                       <SubjectIcon subject={subject.id} size={32} />
                     </div>

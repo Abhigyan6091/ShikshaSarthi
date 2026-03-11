@@ -168,7 +168,7 @@ const MAT: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <Header />
 
-      <main className="flex-1 py-8">
+      <main className="flex-1 py-6 md:py-8">
         <div className="edu-container">
           {/* Header */}
           <div className="mb-8">
@@ -181,12 +181,12 @@ const MAT: React.FC = () => {
               मल्टीमीडिया आकलन पर वापस जाएं
             </Button>
 
-            <div className="flex items-center space-x-4 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
               <div className="h-16 w-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white">
                 <Brain className="h-8 w-8" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                   मानसिक योग्यता परीक्षा (MAT) 🧠
                 </h1>
                 <p className="text-gray-600">

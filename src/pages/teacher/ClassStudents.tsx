@@ -163,11 +163,12 @@ const ClassStudents: React.FC = () => {
       <main className="flex-1 py-8 bg-gray-50">
         <div className="edu-container">
           {/* Header */}
-          <div className="mb-8 flex items-center gap-4">
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center gap-4">
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate('/teacher/manage-classes')}
+              className="w-full sm:w-auto"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Classes
@@ -268,7 +269,7 @@ const ClassStudents: React.FC = () => {
                     enrolledStudents.map((student) => (
                       <div
                         key={student.studentId}
-                        className="p-2 bg-gray-50 rounded border flex justify-between items-center hover:bg-green-50 transition-colors group"
+                        className="p-2 bg-gray-50 rounded border flex flex-col sm:flex-row gap-2 sm:items-center hover:bg-green-50 transition-colors group"
                       >
                         <div 
                           className="flex-1 cursor-pointer"
@@ -285,6 +286,7 @@ const ClassStudents: React.FC = () => {
                         <Button
                           variant="destructive"
                           size="sm"
+                          className="w-full sm:w-auto"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleRemoveStudent(student.studentId);
@@ -312,7 +314,7 @@ const ClassStudents: React.FC = () => {
           {selectedStudent && (
             <div className="space-y-6">
               {/* Header Section */}
-              <div className="flex items-center space-x-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg">
                 <div className="bg-green-600 p-4 rounded-full">
                   <GraduationCap className="h-12 w-12 text-white" />
                 </div>

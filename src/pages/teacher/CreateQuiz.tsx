@@ -186,25 +186,25 @@ export default function CreateQuiz() {
   };
 
   return (
-    <div className="p-4">
+    <div className="p-3 sm:p-4">
       <h2 className="text-xl font-bold mb-4">Create Quiz</h2>
 
-      <div className="flex gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row gap-4 mb-4">
         <input
           type="text"
           placeholder="Filter by subject"
           value={subjectFilter}
           onChange={(e) => setSubjectFilter(e.target.value)}
-          className="border p-2 rounded"
+          className="border p-2 rounded w-full"
         />
         <input
           type="text"
           placeholder="Filter by topic"
           value={topicFilter}
           onChange={(e) => setTopicFilter(e.target.value)}
-          className="border p-2 rounded"
+          className="border p-2 rounded w-full"
         />
-        <Button onClick={handleFilter}>Filter</Button>
+        <Button onClick={handleFilter} className="w-full sm:w-auto">Filter</Button>
       </div>
 
       <input

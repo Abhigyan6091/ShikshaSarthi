@@ -416,7 +416,7 @@ const AdvancedQuizResults: React.FC = () => {
 
   if (loading || !results) {
     return (
-      <div className="container mx-auto p-6 flex items-center justify-center min-h-screen">
+      <div className="container mx-auto p-3 sm:p-6 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Processing results...</p>
@@ -445,12 +445,35 @@ const AdvancedQuizResults: React.FC = () => {
     }
   };
 
+  const sectionRankingStyles = {
+    mcq: {
+      card: 'border-blue-200 bg-blue-50',
+      icon: 'text-blue-600',
+      score: 'text-blue-600'
+    },
+    audio: {
+      card: 'border-green-200 bg-green-50',
+      icon: 'text-green-600',
+      score: 'text-green-600'
+    },
+    video: {
+      card: 'border-purple-200 bg-purple-50',
+      icon: 'text-purple-600',
+      score: 'text-purple-600'
+    },
+    puzzle: {
+      card: 'border-orange-200 bg-orange-50',
+      icon: 'text-orange-600',
+      score: 'text-orange-600'
+    }
+  } as const;
+
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <div className="container mx-auto p-3 sm:p-6 max-w-6xl">
       <Card className="mb-6">
         <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-          <CardTitle className="text-3xl flex items-center gap-3">
-            <Award className="h-8 w-8" />
+          <CardTitle className="text-2xl sm:text-3xl flex flex-col sm:flex-row sm:items-center gap-3">
+            <Award className="h-7 w-7 sm:h-8 sm:w-8" />
             Quiz Results
           </CardTitle>
           <p className="text-blue-100">Quiz ID: {results.quizId}</p>
@@ -465,7 +488,7 @@ const AdvancedQuizResults: React.FC = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="text-center">
-              <div className="text-5xl font-bold text-blue-600 mb-2">
+              <div className="text-4xl sm:text-5xl font-bold text-blue-600 mb-2">
                 {getPercentage().toFixed(1)}%
               </div>
               <p className="text-gray-600">Score</p>
@@ -474,7 +497,7 @@ const AdvancedQuizResults: React.FC = () => {
             <div className="text-center p-4 bg-green-50 rounded-lg">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <CheckCircle className="h-6 w-6 text-green-600" />
-                <span className="text-3xl font-bold text-green-600">{results.score.correct}</span>
+                <span className="text-2xl sm:text-3xl font-bold text-green-600">{results.score.correct}</span>
               </div>
               <p className="text-gray-600">Correct</p>
             </div>
@@ -482,7 +505,7 @@ const AdvancedQuizResults: React.FC = () => {
             <div className="text-center p-4 bg-red-50 rounded-lg">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <XCircle className="h-6 w-6 text-red-600" />
-                <span className="text-3xl font-bold text-red-600">{results.score.incorrect}</span>
+                <span className="text-2xl sm:text-3xl font-bold text-red-600">{results.score.incorrect}</span>
               </div>
               <p className="text-gray-600">Incorrect</p>
             </div>
@@ -490,7 +513,7 @@ const AdvancedQuizResults: React.FC = () => {
             <div className="text-center p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <MinusCircle className="h-6 w-6 text-gray-600" />
-                <span className="text-3xl font-bold text-gray-600">{results.score.unattempted}</span>
+                <span className="text-2xl sm:text-3xl font-bold text-gray-600">{results.score.unattempted}</span>
               </div>
               <p className="text-gray-600">Unattempted</p>
             </div>
@@ -514,8 +537,8 @@ const AdvancedQuizResults: React.FC = () => {
             
             return (
               <div key={type} className="border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
+                  <div className="flex items-start sm:items-center gap-3">
                     <div className={`p-2 rounded-lg bg-gradient-to-r ${getSectionColor(type)} text-white`}>
                       {getSectionIcon(type)}
                     </div>
@@ -524,14 +547,14 @@ const AdvancedQuizResults: React.FC = () => {
                       <p className="text-sm text-gray-600">{stats.total} questions</p>
                     </div>
                   </div>
-                  <Badge className="text-lg px-4 py-2">
+                  <Badge className="text-base sm:text-lg px-3 sm:px-4 py-1.5 sm:py-2 self-start sm:self-auto">
                     {percentage.toFixed(0)}%
                   </Badge>
                 </div>
 
                 <Progress value={percentage} className="mb-3" />
 
-                <div className="grid grid-cols-3 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-600" />
                     <span className="font-semibold">{stats.correct}</span>
@@ -563,13 +586,13 @@ const AdvancedQuizResults: React.FC = () => {
                       <AccordionContent className="pb-3">
                         <div className="space-y-4 mt-2">
                           {/* Score Cards - Only 2 metrics */}
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="border-2 border-purple-100 bg-purple-50/50 rounded-lg p-4">
                               <div className="flex items-center gap-2 mb-2">
                                 <Target className="h-5 w-5 text-purple-600" />
                                 <span className="text-sm font-semibold text-gray-600">सटीकता (Accuracy)</span>
                               </div>
-                              <div className="text-3xl font-bold text-purple-600">
+                              <div className="text-2xl sm:text-3xl font-bold text-purple-600">
                                 {videoAnalytics.accuracy.toFixed(0)}%
                               </div>
                               <p className="text-xs text-gray-600 mt-2">
@@ -582,7 +605,7 @@ const AdvancedQuizResults: React.FC = () => {
                                 <Clock className="h-5 w-5 text-green-600" />
                                 <span className="text-sm font-semibold text-gray-600">औसत समय (Avg Time)</span>
                               </div>
-                              <div className="text-3xl font-bold text-green-600">
+                              <div className="text-2xl sm:text-3xl font-bold text-green-600">
                                 {!isNaN(videoAnalytics.avgTimeSpent) && isFinite(videoAnalytics.avgTimeSpent) 
                                   ? videoAnalytics.avgTimeSpent.toFixed(0) 
                                   : '0'}s
@@ -593,8 +616,8 @@ const AdvancedQuizResults: React.FC = () => {
 
                           {/* Overall Analysis */}
                           <div className="p-4 rounded-lg border-2 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-300">
-                            <div className="flex items-start gap-3">
-                              <div className="text-3xl">{videoAnalytics.behaviorIcon}</div>
+                            <div className="flex flex-col sm:flex-row items-start gap-3">
+                              <div className="text-2xl sm:text-3xl">{videoAnalytics.behaviorIcon}</div>
                               <div className="flex-1">
                                 <h4 className="font-bold text-gray-900 mb-2 text-base">
                                   {videoAnalytics.behaviorCategory}
@@ -646,14 +669,14 @@ const AdvancedQuizResults: React.FC = () => {
                               className="border-2 border-purple-200 rounded-lg overflow-hidden bg-white"
                             >
                               {/* Question Header with Purple Background */}
-                              <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-3 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
+                              <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-semibold">प्रश्न {index + 1}</span>
                                   <Badge className="bg-white/20 text-white border-white/30">
                                     {answer.isCorrect ? 'Answered' : answer.selectedAnswer === null ? 'Skipped' : 'Answered'}
                                   </Badge>
                                 </div>
-                                <div className="flex items-center gap-1 text-sm">
+                                <div className="flex items-center gap-1 text-sm self-start sm:self-auto">
                                   <Clock className="h-3.5 w-3.5" />
                                   <span>{answer.timeSpent}s</span>
                                 </div>
@@ -676,7 +699,7 @@ const AdvancedQuizResults: React.FC = () => {
                                       return (
                                         <div
                                           key={optIndex}
-                                          className={`flex items-center gap-3 p-3 rounded-lg border-2 ${
+                                          className={`flex items-start sm:items-center gap-3 p-3 rounded-lg border-2 ${
                                             isCorrect
                                               ? 'bg-green-50 border-green-300'
                                               : isSelected && !answer.isCorrect
@@ -699,10 +722,10 @@ const AdvancedQuizResults: React.FC = () => {
                                             {option}
                                           </div>
                                           {isCorrect && (
-                                            <CheckCircle className="h-5 w-5 text-green-600" />
+                                            <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
                                           )}
                                           {isSelected && !answer.isCorrect && (
-                                            <XCircle className="h-5 w-5 text-red-600" />
+                                            <XCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
                                           )}
                                         </div>
                                       );
@@ -925,15 +948,15 @@ const AdvancedQuizResults: React.FC = () => {
           <CardContent className="pt-6">
             <div className="text-center">
               <Clock className="h-12 w-12 text-orange-600 mx-auto mb-3" />
-              <h3 className="text-xl font-bold text-orange-900 mb-2">
+              <h3 className="text-lg sm:text-xl font-bold text-orange-900 mb-2">
                 Quiz Still In Progress
               </h3>
               <p className="text-gray-700 mb-3">
                 Comparative analytics will be available after the quiz ends.
               </p>
-              <div className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-lg border border-orange-300">
+              <div className="flex flex-col sm:inline-flex sm:flex-row sm:items-center gap-2 bg-white px-4 py-2 rounded-lg border border-orange-300">
                 <Clock className="h-5 w-5 text-orange-600" />
-                <span className="text-lg font-semibold text-orange-900">
+                <span className="text-base sm:text-lg font-semibold text-orange-900 text-center">
                   Time until quiz ends: {timeUntilEnd}
                 </span>
               </div>
@@ -951,13 +974,13 @@ const AdvancedQuizResults: React.FC = () => {
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mx-auto mb-3"></div>
-              <h3 className="text-xl font-bold text-blue-900 mb-2">
+              <h3 className="text-lg sm:text-xl font-bold text-blue-900 mb-2">
                 Preparing Comparative Analytics
               </h3>
               <p className="text-gray-700 mb-3">
                 Waiting for all students to submit their answers for accurate rankings...
               </p>
-              <div className="inline-flex items-center gap-2 bg-white px-6 py-3 rounded-lg border border-blue-300 shadow-sm">
+              <div className="flex flex-col sm:inline-flex sm:flex-row sm:items-center gap-2 bg-white px-6 py-3 rounded-lg border border-blue-300 shadow-sm">
                 <Clock className="h-6 w-6 text-blue-600 animate-pulse" />
                 <div>
                   <div className="text-2xl font-bold text-blue-900">
@@ -987,7 +1010,7 @@ const AdvancedQuizResults: React.FC = () => {
             <p className="text-sm text-gray-600">How you performed compared to other students</p>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
               <div className="text-center p-4 bg-purple-50 rounded-lg">
                 <div className="text-2xl font-bold text-purple-600 mb-1">
                   #{results.allStudentsStats.yourRank}
@@ -1048,23 +1071,24 @@ const AdvancedQuizResults: React.FC = () => {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { key: 'mcq', icon: BookOpen, label: 'MCQ', color: 'blue' },
-                { key: 'audio', icon: Volume2, label: 'Audio', color: 'green' },
-                { key: 'video', icon: Video, label: 'Video', color: 'purple' },
-                { key: 'puzzle', icon: Puzzle, label: 'Puzzle', color: 'orange' }
+                { key: 'mcq', icon: BookOpen, label: 'MCQ' },
+                { key: 'audio', icon: Volume2, label: 'Audio' },
+                { key: 'video', icon: Video, label: 'Video' },
+                { key: 'puzzle', icon: Puzzle, label: 'Puzzle' }
               ].map(section => {
                 const ranking = results.sectionRankings?.[section.key as keyof typeof results.sectionRankings];
                 const sectionData = results.sectionWise[section.key as keyof typeof results.sectionWise];
                 const sectionPercentage = sectionData.total > 0 
                   ? ((sectionData.correct / sectionData.total) * 100).toFixed(1)
                   : '0';
+                const sectionStyle = sectionRankingStyles[section.key as keyof typeof sectionRankingStyles];
                 
                 if (!ranking || ranking.total === 0) return null;
 
                 return (
-                  <div key={section.key} className={`p-4 rounded-lg border-2 border-${section.color}-200 bg-${section.color}-50`}>
+                  <div key={section.key} className={`p-4 rounded-lg border-2 ${sectionStyle.card}`}>
                     <div className="flex items-center gap-2 mb-2">
-                      <section.icon className={`h-5 w-5 text-${section.color}-600`} />
+                      <section.icon className={`h-5 w-5 ${sectionStyle.icon}`} />
                       <h3 className="font-semibold text-gray-900">{section.label}</h3>
                     </div>
                     <div className="space-y-2">
@@ -1080,7 +1104,7 @@ const AdvancedQuizResults: React.FC = () => {
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-gray-600">Score:</span>
-                        <span className={`font-bold text-${section.color}-600`}>{sectionPercentage}%</span>
+                        <span className={`font-bold ${sectionStyle.score}`}>{sectionPercentage}%</span>
                       </div>
                       <div className="text-xs text-gray-500 text-center pt-2 border-t border-gray-200">
                         {sectionData.correct}/{sectionData.total} correct
@@ -1110,13 +1134,13 @@ const AdvancedQuizResults: React.FC = () => {
                 return (
                   <div 
                     key={student.studentId}
-                    className={`flex items-center gap-4 p-3 rounded-lg ${
+                    className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 rounded-lg ${
                       isCurrentStudent 
                         ? 'bg-blue-100 border-2 border-blue-400' 
                         : 'bg-gray-50 border border-gray-200'
                     }`}
                   >
-                    <div className="flex items-center justify-center w-12">
+                    <div className="flex items-center justify-center w-10 sm:w-12 self-start sm:self-auto">
                       {index === 0 && <Crown className="h-6 w-6 text-yellow-500" />}
                       {index === 1 && <Medal className="h-6 w-6 text-gray-400" />}
                       {index === 2 && <Medal className="h-6 w-6 text-orange-400" />}
@@ -1125,7 +1149,7 @@ const AdvancedQuizResults: React.FC = () => {
                       )}
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className={`font-semibold ${isCurrentStudent ? 'text-blue-700' : 'text-gray-900'}`}>
                           {isCurrentStudent ? 'You' : student.studentId}
                         </span>
@@ -1134,9 +1158,9 @@ const AdvancedQuizResults: React.FC = () => {
                         )}
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right w-full sm:w-auto">
                       <div className="font-bold text-lg">{student.percentage}%</div>
-                      <div className="flex gap-2 text-xs text-gray-500 mt-1">
+                      <div className="flex flex-wrap gap-2 text-xs text-gray-500 mt-1">
                         {student.sectionWise && (
                           <>
                             <span title="MCQ">📝 {((student.sectionWise.mcq.correct / (student.sectionWise.mcq.total || 1)) * 100).toFixed(0)}%</span>
@@ -1155,8 +1179,8 @@ const AdvancedQuizResults: React.FC = () => {
             {/* Show current student if not in top 10 */}
             {results.allStudentsStats && results.allStudentsStats.yourRank > 10 && (
               <div className="mt-4 pt-4 border-t border-gray-300">
-                <div className="flex items-center gap-4 p-3 rounded-lg bg-blue-100 border-2 border-blue-400">
-                  <div className="flex items-center justify-center w-12">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 rounded-lg bg-blue-100 border-2 border-blue-400">
+                  <div className="flex items-center justify-center w-10 sm:w-12 self-start sm:self-auto">
                     <span className="text-lg font-bold text-blue-700">
                       #{results.allStudentsStats.yourRank}
                     </span>
@@ -1165,7 +1189,7 @@ const AdvancedQuizResults: React.FC = () => {
                     <span className="font-semibold text-blue-700">You</span>
                     <Badge variant="default" className="ml-2 bg-blue-500">Your Rank</Badge>
                   </div>
-                  <div className="text-right">
+                  <div className="text-left sm:text-right w-full sm:w-auto">
                     <div className="font-bold text-lg text-blue-700">{getPercentage().toFixed(1)}%</div>
                   </div>
                 </div>
@@ -1232,10 +1256,10 @@ const AdvancedQuizResults: React.FC = () => {
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-4">
         <Button 
           onClick={() => navigate('/student/dashboard')} 
-          className="flex-1"
+          className="flex-1 w-full"
           size="lg"
         >
           Back to Dashboard
@@ -1243,7 +1267,7 @@ const AdvancedQuizResults: React.FC = () => {
         <Button 
           onClick={() => navigate('/student/take-advanced-quiz')} 
           variant="outline"
-          className="flex-1"
+          className="flex-1 w-full"
           size="lg"
         >
           Take Another Quiz

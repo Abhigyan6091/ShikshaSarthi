@@ -142,12 +142,12 @@ export default function QuizAnalytics() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <h1 className="text-3xl font-bold mb-6">Quiz Analytics & Student Performance</h1>
+    <div className="container mx-auto p-3 sm:p-6 max-w-7xl">
+      <h1 className="text-2xl sm:text-3xl font-bold mb-6">Quiz Analytics & Student Performance</h1>
 
       <Card className="mb-6">
         <CardContent className="pt-6">
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <Input
               placeholder="Enter Quiz ID"
               value={quizId}
@@ -155,7 +155,7 @@ export default function QuizAnalytics() {
               onKeyPress={(e) => e.key === 'Enter' && loadAnalytics()}
               className="flex-1"
             />
-            <Button onClick={loadAnalytics} disabled={loading}>
+            <Button onClick={loadAnalytics} disabled={loading} className="w-full sm:w-auto">
               {loading ? "Loading..." : "Load Analytics"}
             </Button>
           </div>
@@ -173,7 +173,7 @@ export default function QuizAnalytics() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <div className="text-sm text-gray-500">Quiz ID</div>
                   <div className="font-bold text-lg">{analytics.quizInfo.quizId}</div>
@@ -192,7 +192,7 @@ export default function QuizAnalytics() {
                 </div>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                 <Badge variant="outline" className="justify-center py-2">
                   📝 MCQ: {analytics.quizInfo.questionTypes.mcq}
                 </Badge>
@@ -207,7 +207,7 @@ export default function QuizAnalytics() {
                 </Badge>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+              <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-500">Start Time:</span>
                   <span className="ml-2 font-medium">{formatDateTime(analytics.quizInfo.startTime)}</span>
@@ -283,57 +283,59 @@ export default function QuizAnalytics() {
               <CardTitle>Student Performance Details</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-16">Rank</TableHead>
-                    <TableHead>Student ID</TableHead>
-                    <TableHead className="text-center">Score</TableHead>
-                    <TableHead className="text-center">Correct</TableHead>
-                    <TableHead className="text-center">Incorrect</TableHead>
-                    <TableHead className="text-center">Unattempted</TableHead>
-                    <TableHead className="text-center">Percentage</TableHead>
-                    <TableHead className="text-center">Time Taken</TableHead>
-                    <TableHead>Submitted At</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {analytics.studentReports.map((student, index) => {
-                    const percentage = parseFloat(student.percentage);
-                    return (
-                      <TableRow key={student.studentId}>
-                        <TableCell className="font-medium">
-                          {index === 0 && <Trophy className="inline h-4 w-4 text-yellow-500 mr-1" />}
-                          {index + 1}{getRankSuffix(index + 1)}
-                        </TableCell>
-                        <TableCell className="font-medium">{student.studentId}</TableCell>
-                        <TableCell className="text-center font-bold">
-                          {student.correct}
-                        </TableCell>
-                        <TableCell className="text-center text-green-600">
-                          {student.correct}
-                        </TableCell>
-                        <TableCell className="text-center text-red-600">
-                          {student.incorrect}
-                        </TableCell>
-                        <TableCell className="text-center text-gray-500">
-                          {student.unattempted}
-                        </TableCell>
-                        <TableCell className={`text-center font-bold ${getPerformanceColor(percentage)}`}>
-                          {student.percentage}%
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Clock className="inline h-4 w-4 mr-1" />
-                          {formatTime(student.timeTaken)}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {formatDateTime(student.submittedAt)}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-16">Rank</TableHead>
+                      <TableHead>Student ID</TableHead>
+                      <TableHead className="text-center">Score</TableHead>
+                      <TableHead className="text-center">Correct</TableHead>
+                      <TableHead className="text-center">Incorrect</TableHead>
+                      <TableHead className="text-center">Unattempted</TableHead>
+                      <TableHead className="text-center">Percentage</TableHead>
+                      <TableHead className="text-center">Time Taken</TableHead>
+                      <TableHead>Submitted At</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {analytics.studentReports.map((student, index) => {
+                      const percentage = parseFloat(student.percentage);
+                      return (
+                        <TableRow key={student.studentId}>
+                          <TableCell className="font-medium">
+                            {index === 0 && <Trophy className="inline h-4 w-4 text-yellow-500 mr-1" />}
+                            {index + 1}{getRankSuffix(index + 1)}
+                          </TableCell>
+                          <TableCell className="font-medium">{student.studentId}</TableCell>
+                          <TableCell className="text-center font-bold">
+                            {student.correct}
+                          </TableCell>
+                          <TableCell className="text-center text-green-600">
+                            {student.correct}
+                          </TableCell>
+                          <TableCell className="text-center text-red-600">
+                            {student.incorrect}
+                          </TableCell>
+                          <TableCell className="text-center text-gray-500">
+                            {student.unattempted}
+                          </TableCell>
+                          <TableCell className={`text-center font-bold ${getPerformanceColor(percentage)}`}>
+                            {student.percentage}%
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Clock className="inline h-4 w-4 mr-1" />
+                            {formatTime(student.timeTaken)}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {formatDateTime(student.submittedAt)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
 
               {analytics.studentReports.length === 0 && (
                 <div className="text-center py-12 text-gray-500">
@@ -417,7 +419,7 @@ export default function QuizAnalytics() {
           {/* Section-wise Leaderboards */}
           {analytics.sectionRankings && (
             <Tabs defaultValue="mcq" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
                 <TabsTrigger value="mcq" className="flex items-center gap-2">
                   <BookOpen className="h-4 w-4" />
                   MCQ
@@ -455,9 +457,9 @@ export default function QuizAnalytics() {
                             return (
                               <div 
                                 key={student.studentId}
-                                className="flex items-center gap-4 p-3 rounded-lg bg-gray-50 border border-gray-200"
+                                className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-3 rounded-lg bg-gray-50 border border-gray-200"
                               >
-                                <div className="flex items-center justify-center w-12">
+                                <div className="flex items-center justify-center w-10 sm:w-12 self-start sm:self-auto">
                                   {index === 0 && <Crown className="h-6 w-6 text-yellow-500" />}
                                   {index === 1 && <Medal className="h-6 w-6 text-gray-400" />}
                                   {index === 2 && <Medal className="h-6 w-6 text-orange-400" />}
@@ -471,7 +473,7 @@ export default function QuizAnalytics() {
                                     {sectionData.correct}/{sectionData.total} correct
                                   </div>
                                 </div>
-                                <div className="text-right">
+                                <div className="text-left sm:text-right w-full sm:w-auto">
                                   <div className="font-bold text-lg">{sectionData.percentage}%</div>
                                 </div>
                               </div>

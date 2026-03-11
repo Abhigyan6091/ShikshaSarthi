@@ -2,14 +2,21 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { 
   Home,
   User,
   BookOpen, 
   LogOut,
   UserPlus,
-  Upload,
-  LayoutDashboard
+  Menu
 } from 'lucide-react';
 
 const Header: React.FC = () => {
@@ -17,6 +24,7 @@ const Header: React.FC = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
   const [studentId, setStudentId] = useState<string>('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // Check for logged in user
@@ -73,6 +81,7 @@ const Header: React.FC = () => {
 
     setUserRole(null);
     setUserName('');
+    setMobileMenuOpen(false);
     navigate('/login');
   };
 
@@ -88,15 +97,15 @@ const Header: React.FC = () => {
 
   return (
     <header className="bg-white shadow">
-      <div className="edu-container py-4 flex items-center justify-between">
+      <div className="edu-container py-3 lg:py-4 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Link to="/" className="flex items-center space-x-2">
             <BookOpen className="h-8 w-8 text-edu-blue" />
-            <span className="text-2xl font-bold text-edu-blue">NMMS Prep</span>
+            <span className="text-xl sm:text-2xl font-bold text-edu-blue">NMMS Prep</span>
           </Link>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="hidden lg:flex items-center space-x-3 xl:space-x-4">
           {userRole ? (
             <>
             <Link to={getDashboardPath()}>
@@ -156,6 +165,95 @@ const Header: React.FC = () => {
               </Link>
             </div>
           )}
+        </div>
+
+        <div className="flex lg:hidden items-center gap-2">
+          {userRole && (
+            <Link to={getDashboardPath()}>
+              <Button variant="ghost" size="icon" aria-label="Open dashboard">
+                <Home className="h-5 w-5" />
+              </Button>
+            </Link>
+          )}
+
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Open menu">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+
+            <SheetContent side="right" className="w-[85vw] max-w-sm">
+              <SheetHeader>
+                <SheetTitle>Menu</SheetTitle>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-2">
+                {userRole ? (
+                  <>
+                    <SheetClose asChild>
+                      <Link to={getDashboardPath()}>
+                        <Button variant="ghost" className="w-full justify-start">
+                          <Home className="h-4 w-4 mr-2" />
+                          Dashboard
+                        </Button>
+                      </Link>
+                    </SheetClose>
+
+                    {userRole === 'student' && studentId && (
+                      <SheetClose asChild>
+                        <Link to={`/student/profile/${studentId}`}>
+                          <Button variant="ghost" className="w-full justify-start">
+                            <User className="h-4 w-4 mr-2" />
+                            Profile
+                          </Button>
+                        </Link>
+                      </SheetClose>
+                    )}
+
+                    {userRole === 'teacher' && (
+                      <SheetClose asChild>
+                        <Link to="/teacher/profile">
+                          <Button variant="ghost" className="w-full justify-start">
+                            <User className="h-4 w-4 mr-2" />
+                            Profile
+                          </Button>
+                        </Link>
+                      </SheetClose>
+                    )}
+
+                    {(userRole === 'superadmin' || userRole === 'schooladmin' || userRole === 'teacher') && (
+                      <SheetClose asChild>
+                        <Link to="/register">
+                          <Button variant="ghost" className="w-full justify-start">
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Register
+                          </Button>
+                        </Link>
+                      </SheetClose>
+                    )}
+
+                    <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </Button>
+                  </>
+                ) : (
+                  <SheetClose asChild>
+                    <Link to="/login">
+                      <Button className="w-full">Login</Button>
+                    </Link>
+                  </SheetClose>
+                )}
+              </div>
+
+              {userRole && (
+                <p className="mt-6 text-sm text-muted-foreground">
+                  Signed in as {userName || 'User'} ({userRole})
+                </p>
+              )}
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </header>

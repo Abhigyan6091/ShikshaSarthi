@@ -242,16 +242,16 @@ const StudentDashboard: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <Header />
 
-      <main className="flex-1 py-8">
+      <main className="flex-1 py-6 md:py-8">
         <div className="edu-container">
           {/* Welcome Section with Student Info */}
           <div className="mb-8">
-            <div className="flex items-center space-x-4 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
               <div className="h-16 w-16 bg-gradient-to-br from-edu-blue to-edu-purple rounded-full flex items-center justify-center text-white text-2xl font-bold">
                 {student.name.charAt(0).toUpperCase()}
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                   Welcome back, {student.name}! 👋
                 </h1>
                 <p className="text-gray-600">Ready to ace your NMMS preparation today?</p>
@@ -482,8 +482,8 @@ const StudentDashboard: React.FC = () => {
                       className="block"
                     >
                       <div className="p-4 border rounded-lg hover:shadow-md transition-all hover:border-edu-blue group">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center space-x-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                          <div className="flex items-start sm:items-center gap-3">
                             <div className={`p-2 rounded-full ${
                               activity.percentage >= 75 ? 'bg-green-100' : 
                               activity.percentage >= 50 ? 'bg-yellow-100' : 'bg-red-100'
@@ -516,7 +516,7 @@ const StudentDashboard: React.FC = () => {
                           </Badge>
                         </div>
                         
-                        <div className="flex items-center space-x-6 text-sm">
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
                           <span className="flex items-center text-green-600">
                             <span className="font-semibold mr-1">{activity.correct}</span> Correct
                           </span>

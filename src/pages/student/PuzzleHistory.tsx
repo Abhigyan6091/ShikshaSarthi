@@ -191,7 +191,7 @@ const PuzzleHistory: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
       <Header />
 
-      <main className="flex-1 py-8">
+      <main className="flex-1 py-6 md:py-8">
         <div className="container mx-auto px-4 max-w-5xl">
           {/* Header */}
           <div className="mb-8">
@@ -204,12 +204,12 @@ const PuzzleHistory: React.FC = () => {
               मल्टीमीडिया मूल्यांकन पर वापस जाएं
             </Button>
 
-            <div className="flex items-center space-x-4 mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-2">
               <div className="h-14 w-14 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl flex items-center justify-center text-white shadow-lg">
                 <History className="h-7 w-7" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                   पहेली गेम्स इतिहास
                 </h1>
                 <p className="text-gray-600">
@@ -224,10 +224,10 @@ const PuzzleHistory: React.FC = () => {
             <Accordion type="single" collapsible className="mb-8">
               <AccordionItem value="analysis" className="border border-indigo-200 rounded-lg px-4 bg-white shadow-sm">
                 <AccordionTrigger className="hover:no-underline py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                      <BarChart3 className="h-5 w-5 text-white" />
-                    </div>
+                    <div className="flex items-start sm:items-center gap-3">
+                      <div className="h-10 w-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <BarChart3 className="h-5 w-5 text-white" />
+                      </div>
                     <div className="text-left">
                       <h3 className="text-lg font-semibold text-gray-900">पहेली विश्लेषण</h3>
                       <p className="text-sm text-gray-600">व्यक्तिगत और संयुक्त स्कोर देखें</p>
@@ -415,17 +415,17 @@ const PuzzleHistory: React.FC = () => {
                     return (
                       <div 
                         key={result._id || index} 
-                        className="flex items-center justify-between bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors"
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors"
                       >
-                        <div className="flex items-center space-x-4">
+                        <div className="flex items-start sm:items-center gap-4 min-w-0">
                           <div className="h-10 w-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white">
                             <IconComponent className="h-5 w-5" />
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <div className="font-medium text-gray-900">
                               {getPuzzleTitle(result.puzzleType)}
                             </div>
-                            <div className="text-sm text-gray-500 flex items-center gap-4">
+                            <div className="text-sm text-gray-500 flex flex-wrap items-center gap-3">
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-4 w-4" />
                                 {formatDate(result.attemptedAt)}
@@ -443,7 +443,7 @@ const PuzzleHistory: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center gap-3 self-end sm:self-auto">
                           <div className="text-right">
                             <div className={`text-xl font-bold ${getScoreColor(result.score)}`}>
                               {result.score}

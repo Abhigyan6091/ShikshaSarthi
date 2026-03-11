@@ -961,18 +961,18 @@ export default function CreateQuizNew() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Create Quiz</h1>
+    <div className="container mx-auto p-3 sm:p-4 lg:p-6 max-w-7xl">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4 mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold">Create Quiz</h1>
         
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
           <Input
             placeholder="Enter Quiz ID to Update"
             value={quizToUpdate}
             onChange={(e) => setQuizToUpdate(e.target.value)}
-            className="w-64"
+            className="w-full sm:w-64"
           />
-          <Button onClick={loadQuizForUpdate} variant="outline">
+          <Button onClick={loadQuizForUpdate} variant="outline" className="w-full sm:w-auto">
             <Edit className="mr-2 h-4 w-4" />
             Load Quiz
           </Button>
@@ -1136,12 +1136,12 @@ export default function CreateQuizNew() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-10 gap-2 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2 mb-6">
                   {questionSlots.map((slot) => (
                     <Button
                       key={slot.index}
                       variant={slot.question ? "default" : "outline"}
-                      className={`relative ${!slot.question ? 'border-2 border-dashed' : ''}`}
+                      className={`relative h-auto py-2 px-1 sm:px-2 ${!slot.question ? 'border-2 border-dashed' : ''}`}
                       onClick={() => loadQuestionsForSlot(slot.index)}
                     >
                       <div className="flex flex-col items-center">
@@ -1157,8 +1157,8 @@ export default function CreateQuizNew() {
                   ))}
                 </div>
 
-                <div className="flex gap-4">
-                  <Button onClick={handleCreateQuiz} className="flex-1" size="lg">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <Button onClick={handleCreateQuiz} className="flex-1 w-full" size="lg">
                     <Save className="mr-2 h-4 w-4" />
                     {isUpdateMode ? 'Update Quiz' : 'Create Quiz'}
                   </Button>
@@ -1168,7 +1168,7 @@ export default function CreateQuizNew() {
 
           {/* Question Filter Dialog */}
           <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="w-[95vw] sm:w-full max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
               <DialogHeader>
                 <DialogTitle>
                   Select Question for Slot {selectedSlot !== null ? selectedSlot + 1 : ''} 
@@ -1184,7 +1184,7 @@ export default function CreateQuizNew() {
                 {/* Puzzle Question Selection */}
                 {selectedSlot !== null && questionSlots[selectedSlot].type === 'puzzle' ? (
                   <div className="space-y-3">
-                    <h3 className="text-lg font-semibold text-orange-700">पहेली गेम चुनें</h3>
+                    <h3 className="text-base sm:text-lg font-semibold text-orange-700">पहेली गेम चुनें</h3>
                     <p className="text-sm text-gray-600 mb-4">क्विज़ में जोड़ने के लिए एक पहेली गेम चुनें। छात्र क्विज़ के दौरान यह गेम खेलेंगे।</p>
                     <div className="grid grid-cols-1 gap-4">
                       {filteredQuestions.map((puzzle: any) => (
@@ -1195,7 +1195,7 @@ export default function CreateQuizNew() {
                         >
                           <CardContent className="p-5">
                             <div className="flex items-start gap-4">
-                              <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                              <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${
                                 puzzle.puzzleType === 'memory_match'
                                   ? 'bg-gradient-to-br from-indigo-500 to-purple-500'
                                   : 'bg-gradient-to-br from-cyan-500 to-teal-500'
@@ -1206,14 +1206,14 @@ export default function CreateQuizNew() {
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <h4 className="font-bold text-lg text-gray-900">{puzzle.puzzleTitle || puzzle.question}</h4>
+                                  <h4 className="font-bold text-base sm:text-lg text-gray-900">{puzzle.puzzleTitle || puzzle.question}</h4>
                                   <Badge className="bg-orange-100 text-orange-700 text-xs">{puzzle.puzzleDuration}</Badge>
                                 </div>
                                 <p className="text-sm text-gray-600 mb-3">{puzzle.puzzleDescription}</p>
                                 
                                 {/* Modes */}
                                 {puzzle.puzzleModes && (
-                                  <div className="flex gap-2">
+                                  <div className="flex flex-wrap gap-2">
                                     {puzzle.puzzleModes.map((mode: any) => (
                                       <div key={mode.id} className="bg-gray-100 rounded-lg px-3 py-1.5 text-xs">
                                         <span className="font-medium text-gray-700">{mode.label}</span>
@@ -1266,8 +1266,8 @@ export default function CreateQuizNew() {
                     {/* Step 1: Subject Selection for MCQ/Audio */}
                     {mcqAudioSelectionStep === 'subject' && (
                       <div className="space-y-3">
-                        <h3 className="text-lg font-semibold text-blue-700">Select Subject</h3>
-                        <div className="grid grid-cols-2 gap-3">
+                        <h3 className="text-base sm:text-lg font-semibold text-blue-700">Select Subject</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {mcqAudioAvailableSubjects.map((subject) => (
                             <Card 
                               key={subject}
@@ -1287,9 +1287,9 @@ export default function CreateQuizNew() {
                     {/* Step 2: Topic Selection for MCQ/Audio */}
                     {mcqAudioSelectionStep === 'topic' && (
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-semibold text-blue-700">Select Topic from {mcqAudioSelectedSubject}</h3>
-                          <Button variant="outline" size="sm" onClick={handleMcqAudioSelectionBack}>← Back</Button>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <h3 className="text-base sm:text-lg font-semibold text-blue-700">Select Topic from {mcqAudioSelectedSubject}</h3>
+                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handleMcqAudioSelectionBack}>← Back</Button>
                         </div>
                         <div className="grid grid-cols-1 gap-3">
                           {mcqAudioAvailableTopics.map((topic) => (
@@ -1313,11 +1313,11 @@ export default function CreateQuizNew() {
                     {/* Step 3: Question Selection for MCQ/Audio */}
                     {mcqAudioSelectionStep === 'questions' && (
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-semibold text-blue-700">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <h3 className="text-base sm:text-lg font-semibold text-blue-700">
                             Select {questionSlots[selectedSlot].type.toUpperCase()} Question from {mcqAudioSelectedTopic}
                           </h3>
-                          <Button variant="outline" size="sm" onClick={handleMcqAudioSelectionBack}>← Back</Button>
+                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handleMcqAudioSelectionBack}>← Back</Button>
                         </div>
                         <div className="max-h-96 overflow-y-auto space-y-3">
                           {filteredQuestions.map((question) => (
@@ -1337,7 +1337,7 @@ export default function CreateQuizNew() {
                                     {/* Audio for audio questions */}
                                     {question.type === 'audio' && question.audio && (
                                       <div className="mb-2">
-                                        <audio controls className="w-full max-w-md">
+                                        <audio controls className="w-full">
                                           <source src={question.audio} type="audio/mpeg" />
                                           <source src={question.audio} type="audio/mp3" />
                                           Your browser does not support audio playback.
@@ -1347,7 +1347,7 @@ export default function CreateQuizNew() {
                                     
                                     {/* Options */}
                                     {question.options && question.options.length > 0 && (
-                                      <div className="grid grid-cols-2 gap-1 mb-2">
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 mb-2">
                                         {question.options.map((opt, optIdx) => (
                                           <div
                                             key={optIdx} 
@@ -1417,8 +1417,8 @@ export default function CreateQuizNew() {
                     {/* Step 1: Subject Selection */}
                     {videoSelectionStep === 'subject' && (
                       <div className="space-y-3">
-                        <h3 className="text-lg font-semibold text-purple-700">Select Subject</h3>
-                        <div className="grid grid-cols-2 gap-3">
+                        <h3 className="text-base sm:text-lg font-semibold text-purple-700">Select Subject</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {availableSubjects.map((subject) => (
                             <Card 
                               key={subject}
@@ -1441,9 +1441,9 @@ export default function CreateQuizNew() {
                     {/* Step 2: Topic Selection */}
                     {videoSelectionStep === 'topic' && (
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-semibold text-purple-700">Select Topic from {selectedSubject}</h3>
-                          <Button variant="outline" size="sm" onClick={handleVideoSelectionBack}>← Back</Button>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <h3 className="text-base sm:text-lg font-semibold text-purple-700">Select Topic from {selectedSubject}</h3>
+                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handleVideoSelectionBack}>← Back</Button>
                         </div>
                         <div className="grid grid-cols-1 gap-3">
                           {availableTopics.map((topic) => {
@@ -1457,7 +1457,7 @@ export default function CreateQuizNew() {
                                 onClick={() => handleTopicSelect(topic)}
                               >
                                 <CardContent className="p-4">
-                                  <div className="flex items-center justify-between">
+                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2 mb-1">
                                         <span className="text-xl">📖</span>
@@ -1470,7 +1470,7 @@ export default function CreateQuizNew() {
                                         <div className="text-xs text-gray-500">⏱️ {videoSet.videoDuration}</div>
                                       )}
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-left sm:text-right">
                                       <Badge className="bg-purple-500 text-white text-lg px-3 py-1">
                                         {videoSet?.questions?.length || 0} Questions
                                       </Badge>
@@ -1487,11 +1487,11 @@ export default function CreateQuizNew() {
                     {/* Step 3: Individual Question Selection */}
                     {videoSelectionStep === 'questions' && (
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-lg font-semibold text-purple-700">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                          <h3 className="text-base sm:text-lg font-semibold text-purple-700">
                             Select Question from {selectedTopic}
                           </h3>
-                          <Button variant="outline" size="sm" onClick={handleVideoSelectionBack}>← Back to Topics</Button>
+                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handleVideoSelectionBack}>← Back to Topics</Button>
                         </div>
                         <div className="space-y-3 max-h-96 overflow-y-auto">
                           {filteredQuestions.map((question, qIdx) => (
@@ -1512,7 +1512,7 @@ export default function CreateQuizNew() {
                                     
                                     {/* Options */}
                                     {question.options && question.options.length > 0 && (
-                                      <div className="grid grid-cols-2 gap-2 mt-2">
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                                         {question.options.map((opt: string, optIdx: number) => (
                                           <div 
                                             key={optIdx} 
@@ -1554,7 +1554,7 @@ export default function CreateQuizNew() {
                 ) : (
                   <>
                     {/* Regular Filters for MCQ, Audio, Puzzle */}
-                    <div className="grid grid-cols-5 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
                       <Input
                         placeholder="Subject"
                         value={filters.subject}
@@ -1592,7 +1592,7 @@ export default function CreateQuizNew() {
                             onClick={() => selectQuestion(question)}
                           >
                             <CardContent className="p-4">
-                              <div className="flex justify-between items-start">
+                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                                 <div className="flex-1">
                                   {/* Audio Question Display */}
                                   {isAudioQuestion && (
@@ -1626,7 +1626,7 @@ export default function CreateQuizNew() {
                                   )}
                                   
                                   {/* Video Metadata */}
-                                  <div className="grid grid-cols-2 gap-2 mb-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
                                     <div className="text-sm">
                                       <span className="font-semibold text-purple-700">Duration:</span> 
                                       <span className="ml-1">{question.videoDuration || 'N/A'}</span>
@@ -1648,7 +1648,7 @@ export default function CreateQuizNew() {
                                   {/* All Questions in this Video Set */}
                                   {question.questions && question.questions.length > 0 && (
                                     <div className="mt-4 border-2 border-purple-300 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-white">
-                                      <div className="flex items-center justify-between mb-3">
+                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                                         <p className="text-sm font-bold text-purple-800 flex items-center gap-2">
                                           <span className="bg-purple-200 px-2 py-1 rounded">
                                             📚 All {question.questions.length} Questions in this Video
@@ -1737,7 +1737,7 @@ export default function CreateQuizNew() {
                                     </div>
                                   )}
                                   {question.questionImage && (
-                                    <img src={question.questionImage} alt="Question" className="mt-2 max-w-xs rounded" />
+                                    <img src={question.questionImage} alt="Question" className="mt-2 w-full sm:max-w-xs rounded" />
                                   )}
                                   {question.options && question.options.length > 0 && (
                                     <div className="mt-2 space-y-1">
@@ -1759,7 +1759,7 @@ export default function CreateQuizNew() {
                                   </div>
                                   <p className="font-medium">{question.question || 'No question text'}</p>
                                   {question.questionImage && (
-                                    <img src={question.questionImage} alt="Question" className="mt-2 max-w-xs rounded" />
+                                    <img src={question.questionImage} alt="Question" className="mt-2 w-full sm:max-w-xs rounded" />
                                   )}
                                   {question.options && question.options.length > 0 && (
                                     <div className="mt-2 space-y-1">
@@ -1773,7 +1773,7 @@ export default function CreateQuizNew() {
                                     </>
                                   )}
                                 </div>
-                                <div className="ml-4 text-right text-sm text-gray-500">
+                                <div className="sm:ml-4 text-left sm:text-right text-sm text-gray-500">
                                   <div>Subject: {question.subject || 'N/A'}</div>
                                   <div>Topic: {question.topic || 'N/A'}</div>
                                   <div>Class: {question.class || 'N/A'}</div>

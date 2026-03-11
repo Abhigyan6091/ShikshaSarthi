@@ -56,6 +56,14 @@ type GameScreen = "intro" | "game" | "results";
 
 const SOLVE_TIME = 180; // 3 minutes combined
 
+const getResponsivePieceSize = () => {
+  if (typeof window === "undefined") return 72;
+  if (window.innerWidth < 400) return 54;
+  if (window.innerWidth < 640) return 62;
+  if (window.innerWidth < 1024) return 72;
+  return 86;
+};
+
 /* ============================================================
    IMAGE POOL  (21 memory images + descriptions)
    ============================================================ */
@@ -132,6 +140,7 @@ const MatchPieces: React.FC = () => {
   const [showExitAlert, setShowExitAlert] = useState(false);
   const [draggedPiece, setDraggedPiece] = useState<{ piece: PieceType; from: "scattered" | number } | null>(null);
   const [dragOverPos, setDragOverPos] = useState<number | null>(null);
+  const [pieceSize, setPieceSize] = useState<number>(getResponsivePieceSize());
 
   // Student
   const [studentId, setStudentId] = useState<string>("");
@@ -149,6 +158,12 @@ const MatchPieces: React.FC = () => {
         console.error("Error parsing student data:", e);
       }
     }
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => setPieceSize(getResponsivePieceSize());
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   /* ---------- PICK 3 RANDOM IMAGES & START ---------- */
@@ -549,7 +564,7 @@ const MatchPieces: React.FC = () => {
 
   /* ===================== UI ===================== */
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-cyan-50 via-white to-teal-50 overflow-hidden">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-cyan-50 via-white to-teal-50">
       <Header />
 
       {/* EXIT ALERT */}
@@ -574,21 +589,21 @@ const MatchPieces: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-y-auto">
 
         {/* =============== INTRO SCREEN =============== */}
         {screen === "intro" && (
-          <div className="h-full flex items-center justify-center px-4">
+          <div className="min-h-[calc(100vh-120px)] flex items-center justify-center px-4 py-6">
             <div className="max-w-3xl w-full">
               <div className="text-center mb-8">
                 <div className="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-teal-600 text-white px-4 py-2 rounded-full text-sm font-medium mb-4">
                   <Sparkles className="h-4 w-4" />
                   चित्र पहेली
                 </div>
-                <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">
                   मैच <span className="bg-gradient-to-r from-cyan-600 to-teal-600 bg-clip-text text-transparent">पीसेज़</span>
                 </h1>
-                <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                <p className="text-base sm:text-xl text-gray-600 max-w-2xl mx-auto">
                   टुकड़ों को जोड़कर मूल चित्र बनाएं — अपनी पहचान क्षमता दिखाएं!
                 </p>
               </div>
@@ -611,7 +626,7 @@ const MatchPieces: React.FC = () => {
                     </ul>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="bg-cyan-50 rounded-xl p-3 text-center hover:shadow-md transition-all duration-300 hover:-translate-y-1">
                       <Puzzle className="h-6 w-6 text-cyan-600 mx-auto mb-1" />
                       <p className="text-2xl font-bold text-cyan-600">3</p>
@@ -647,14 +662,14 @@ const MatchPieces: React.FC = () => {
 
         {/* =============== GAME SCREEN =============== */}
         {screen === "game" && images.length > 0 && (
-          <div className="h-full flex flex-col p-3" style={{ height: "calc(100vh - 64px)" }}>
+          <div className="px-2 sm:px-3 py-3">
             {/* TOP BAR — image description + progress */}
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-3">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold bg-gradient-to-r from-cyan-500 to-teal-500 text-white">
                 <ImageIcon className="h-4 w-4" />
                 चित्र {currentImageIdx + 1} / 3
               </div>
-              <div className="flex-1 bg-white/70 rounded-lg px-3 py-1.5 text-sm text-gray-600 flex items-center gap-2">
+              <div className="w-full lg:flex-1 bg-white/70 rounded-lg px-3 py-1.5 text-sm text-gray-600 flex items-start sm:items-center gap-2">
                 <Info className="h-4 w-4 text-cyan-500 flex-shrink-0" />
                 {images[currentImageIdx]?.description}
               </div>
@@ -678,11 +693,11 @@ const MatchPieces: React.FC = () => {
             </div>
 
             {/* MAIN GAME AREA */}
-            <div className="flex-1 flex gap-3 min-h-0">
+            <div className="flex flex-col xl:flex-row gap-3">
 
               {/* LEFT: Scattered Pieces */}
               <div
-                className="w-72 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-3 flex flex-col overflow-hidden"
+                className="w-full xl:w-72 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-3 flex flex-col overflow-hidden min-h-[220px] xl:min-h-0"
                 onDragOver={handleDragOver}
                 onDrop={handleDropOnScattered}
               >
@@ -699,7 +714,7 @@ const MatchPieces: React.FC = () => {
                       <p className="text-sm text-center">सभी टुकड़े रख दिए!</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-3 gap-2 p-1">
+                    <div className="grid grid-cols-3 gap-2 p-1 puzzle-fixed-3">
                       {scatteredPieces.map(piece => (
                         <div
                           key={piece.id}
@@ -709,12 +724,12 @@ const MatchPieces: React.FC = () => {
                           className={`cursor-grab active:cursor-grabbing hover:scale-105 transition-transform
                             ${selectedPiece?.piece.id === piece.id ? "scale-105" : ""}`}
                         >
-                          <PieceView
-                            piece={piece}
-                            size={72}
-                            imageSrc={images[currentImageIdx].src}
-                            isSelected={selectedPiece?.piece.id === piece.id}
-                          />
+                            <PieceView
+                              piece={piece}
+                              size={pieceSize}
+                              imageSrc={images[currentImageIdx].src}
+                              isSelected={selectedPiece?.piece.id === piece.id}
+                            />
                         </div>
                       ))}
                     </div>
@@ -723,8 +738,8 @@ const MatchPieces: React.FC = () => {
               </div>
 
               {/* CENTER: 3×3 Grid */}
-              <div className="flex-1 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-3 flex flex-col overflow-hidden relative">
-                <div className="flex items-center justify-between mb-2">
+              <div className="xl:flex-1 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-3 flex flex-col overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-cyan-500 to-teal-500 text-white">
                     <Grid3X3 className="h-3.5 w-3.5" />
                     पहेली ग्रिड
@@ -734,8 +749,8 @@ const MatchPieces: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Reference image — floating top-right of play area */}
-                <div className="absolute top-3 right-3 z-20 w-36">
+                {/* Reference image */}
+                <div className="self-end w-28 sm:w-36 mb-2">
                   <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-cyan-200 p-1.5">
                     <p className="text-[10px] font-bold text-gray-600 flex items-center gap-1 mb-1 px-0.5">
                       <Eye className="h-3 w-3 text-cyan-600" />
@@ -754,14 +769,12 @@ const MatchPieces: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="grid grid-cols-3 gap-1.5 bg-gray-100 p-2 rounded-xl">
+                <div className="flex-1 flex items-center justify-center overflow-auto">
+                  <div className="grid grid-cols-3 gap-1.5 bg-gray-100 p-2 rounded-xl puzzle-fixed-3">
                     {Array.from({ length: 9 }).map((_, pos) => {
                       const piece = grid[pos];
                       const isCorrectPos = piece ? piece.correctPosition === pos : false;
                       const isDragTarget = dragOverPos === pos && draggedPiece !== null;
-                      // Calculate piece size based on available space
-                      const pieceSize = Math.min(120, Math.floor((window.innerHeight - 240) / 3.5));
 
                       return (
                         <div
@@ -840,7 +853,7 @@ const MatchPieces: React.FC = () => {
               </div>
 
               {/* RIGHT: Stats */}
-              <div className="w-64 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-4 flex flex-col">
+              <div className="w-full xl:w-64 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl p-4 flex flex-col">
                 <h3 className="text-sm font-bold text-center text-gray-800 mb-2 flex items-center justify-center gap-2">
                   <BarChart3 className="h-4 w-4 text-cyan-600" />
                   गेम स्टेटस
@@ -925,8 +938,8 @@ const MatchPieces: React.FC = () => {
 
         {/* =============== RESULTS SCREEN =============== */}
         {screen === "results" && analysis && (
-          <div className="h-full flex items-center justify-center px-4 py-4">
-            <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 max-w-5xl w-full max-h-[calc(100vh-100px)] overflow-y-auto">
+          <div className="px-3 sm:px-4 py-4">
+            <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-4 sm:p-8 max-w-5xl w-full mx-auto max-h-[calc(100vh-110px)] overflow-y-auto">
               <div className="flex flex-col md:flex-row gap-8">
 
                 {/* LEFT: Score */}
@@ -942,7 +955,7 @@ const MatchPieces: React.FC = () => {
                   </h2>
 
                   {/* Score Circle */}
-                  <div className="relative w-40 h-40 mb-5">
+                  <div className="relative w-32 h-32 sm:w-40 sm:h-40 mb-5">
                     <svg className="w-full h-full transform -rotate-90">
                       <circle cx="80" cy="80" r="72" stroke="#e5e7eb" strokeWidth="12" fill="none" />
                       <circle
@@ -963,7 +976,7 @@ const MatchPieces: React.FC = () => {
                       </defs>
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-4xl font-bold text-gray-800">{analysis.score}</span>
+                      <span className="text-3xl sm:text-4xl font-bold text-gray-800">{analysis.score}</span>
                       <span className="text-sm text-gray-500">/ 100</span>
                     </div>
                   </div>
@@ -1032,7 +1045,7 @@ const MatchPieces: React.FC = () => {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="grid grid-cols-2 gap-4 mt-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
                     <Button
                       onClick={startGame}
                       className="bg-gradient-to-r from-cyan-600 to-teal-600 hover:shadow-lg transform hover:scale-105 transition-all duration-300 text-white font-semibold"

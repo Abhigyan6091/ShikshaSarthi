@@ -48,9 +48,9 @@ const Analytics: React.FC = () => {
       
       <main className="flex-1 py-8 bg-gray-50">
         <div className="edu-container">
-          <div className="flex items-center mb-8">
-            <Link to="/teacher" className="mr-4">
-              <Button variant="ghost" size="sm">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-8">
+            <Link to="/teacher" className="sm:mr-4 w-full sm:w-auto">
+              <Button variant="ghost" size="sm" className="w-full sm:w-auto">
                 <ArrowLeft className="h-4 w-4 mr-1" />
                 Back to Dashboard
               </Button>
@@ -59,7 +59,7 @@ const Analytics: React.FC = () => {
           </div>
           
           <Tabs defaultValue="overview" className="space-y-8">
-            <TabsList className="w-full max-w-md">
+            <TabsList className="grid w-full grid-cols-3 sm:max-w-md">
               <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
               <TabsTrigger value="quizzes" className="flex-1">Quizzes</TabsTrigger>
               <TabsTrigger value="students" className="flex-1">Students</TabsTrigger>

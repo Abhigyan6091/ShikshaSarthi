@@ -206,15 +206,15 @@ const TakeAdvancedQuiz: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <div className="container mx-auto p-3 sm:p-6 max-w-4xl">
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="text-3xl font-bold">Take Advanced Quiz</CardTitle>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <CardTitle className="text-2xl sm:text-3xl font-bold">Take Advanced Quiz</CardTitle>
             <Button 
               variant="outline" 
               onClick={() => navigate('/student/advanced-quiz-past-reports')}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 w-full sm:w-auto"
             >
               <FileText className="h-4 w-4" />
               Past Reports
@@ -226,7 +226,7 @@ const TakeAdvancedQuiz: React.FC = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="quizId">Enter Quiz ID</Label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     id="quizId"
                     placeholder="Enter quiz ID provided by your teacher"
@@ -234,7 +234,7 @@ const TakeAdvancedQuiz: React.FC = () => {
                     onChange={(e) => setQuizId(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleLoadQuiz()}
                   />
-                  <Button onClick={handleLoadQuiz} disabled={loading}>
+                  <Button onClick={handleLoadQuiz} disabled={loading} className="w-full sm:w-auto">
                     {loading ? 'Loading...' : 'Load Quiz'}
                   </Button>
                 </div>
@@ -245,7 +245,7 @@ const TakeAdvancedQuiz: React.FC = () => {
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg border-2 border-blue-200">
                 <h3 className="text-2xl font-bold mb-4">Quiz: {quizInfo.quizId}</h3>
                 
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                   <div className="flex items-center gap-2">
                     <Clock className="h-5 w-5 text-blue-600" />
                     <span className="font-semibold">Time Limit:</span>
@@ -260,7 +260,7 @@ const TakeAdvancedQuiz: React.FC = () => {
 
                 <div className="space-y-2">
                   <h4 className="font-semibold text-lg mb-2">Question Types:</h4>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {quizInfo.questionTypes.mcq > 0 && (
                       <div className="flex items-center gap-2 bg-blue-100 p-2 rounded">
                         {getQuestionTypeIcon('mcq')}
@@ -296,11 +296,11 @@ const TakeAdvancedQuiz: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex gap-4">
-                <Button onClick={handleStartQuiz} className="flex-1" size="lg">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button onClick={handleStartQuiz} className="flex-1 w-full" size="lg">
                   Start Quiz
                 </Button>
-                <Button onClick={() => setQuizInfo(null)} variant="outline" size="lg">
+                <Button onClick={() => setQuizInfo(null)} variant="outline" size="lg" className="w-full sm:w-auto">
                   Cancel
                 </Button>
               </div>

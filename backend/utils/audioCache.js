@@ -6,6 +6,17 @@ const crypto = require('crypto');
 
 // Cache directory
 const CACHE_DIR = path.join(__dirname, '..', 'data', 'audio-cache');
+const FALLBACK_AUDIO_CACHE_TTL_MS = 15 * 24 * 60 * 60 * 1000; // 15 days
+const DEFAULT_AUDIO_CACHE_TTL_MS = Number(process.env.AUDIO_CACHE_TTL_MS || FALLBACK_AUDIO_CACHE_TTL_MS);
+const deleteTimers = new Map();
+
+function normalizeTtlMs(ttlMs) {
+  const parsed = Number(ttlMs);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+  return FALLBACK_AUDIO_CACHE_TTL_MS;
+}
 
 // Ensure cache directory exists
 function ensureCacheDir() {
@@ -27,6 +38,104 @@ function getCachedFilePath(url) {
   return path.join(CACHE_DIR, filename);
 }
 
+function touchFile(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) return;
+  try {
+    const now = new Date();
+    fs.utimesSync(filePath, now, now);
+  } catch (error) {
+    console.error('Failed to update cache file timestamp:', filePath, error.message);
+  }
+}
+
+function scheduleDelete(filePath, ttlMs = DEFAULT_AUDIO_CACHE_TTL_MS) {
+  if (!filePath) return;
+  ensureCacheDir();
+  touchFile(filePath);
+  const effectiveTtlMs = normalizeTtlMs(ttlMs);
+
+  if (deleteTimers.has(filePath)) {
+    clearTimeout(deleteTimers.get(filePath));
+  }
+
+  const timer = setTimeout(() => {
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log('Audio cache expired and deleted:', path.basename(filePath));
+      }
+    } catch (error) {
+      console.error('Failed to delete expired audio cache:', filePath, error.message);
+    } finally {
+      deleteTimers.delete(filePath);
+    }
+  }, effectiveTtlMs);
+
+  if (typeof timer.unref === 'function') {
+    timer.unref();
+  }
+
+  deleteTimers.set(filePath, timer);
+}
+
+function scheduleDeleteByFilename(filename, ttlMs = DEFAULT_AUDIO_CACHE_TTL_MS) {
+  if (!filename) return;
+  scheduleDelete(path.join(CACHE_DIR, filename), ttlMs);
+}
+
+function scheduleDeleteByUrl(url, ttlMs = DEFAULT_AUDIO_CACHE_TTL_MS) {
+  if (!url) return;
+  scheduleDelete(getCachedFilePath(url), ttlMs);
+}
+
+function deleteExpiredFiles(ttlMs = DEFAULT_AUDIO_CACHE_TTL_MS) {
+  ensureCacheDir();
+  const effectiveTtlMs = normalizeTtlMs(ttlMs);
+
+  const nowMs = Date.now();
+  const files = fs.readdirSync(CACHE_DIR);
+  let deleted = 0;
+
+  files.forEach((file) => {
+    const filePath = path.join(CACHE_DIR, file);
+    try {
+      const stats = fs.statSync(filePath);
+      if (!stats.isFile()) return;
+
+      const ageMs = nowMs - stats.mtimeMs;
+      if (ageMs > effectiveTtlMs) {
+        if (deleteTimers.has(filePath)) {
+          clearTimeout(deleteTimers.get(filePath));
+          deleteTimers.delete(filePath);
+        }
+        fs.unlinkSync(filePath);
+        deleted++;
+      }
+    } catch (error) {
+      console.error('Failed while checking expired cache file:', filePath, error.message);
+    }
+  });
+
+  if (deleted > 0) {
+    console.log(`Startup cache cleanup deleted ${deleted} expired audio file(s)`);
+  }
+
+  return {
+    scanned: files.length,
+    deleted,
+    ttlMs: effectiveTtlMs
+  };
+}
+
+function initializeCacheCleanup() {
+  ensureCacheDir();
+  const result = deleteExpiredFiles(DEFAULT_AUDIO_CACHE_TTL_MS);
+  console.log(
+    `Audio cache startup cleanup -> scanned: ${result.scanned}, deleted: ${result.deleted}, ttlMs: ${result.ttlMs}`
+  );
+  return result;
+}
+
 // Check if file is cached
 function isCached(url) {
   const filePath = getCachedFilePath(url);
@@ -43,6 +152,7 @@ function downloadAndCache(url) {
     // If already cached, return immediately
     if (fs.existsSync(filePath)) {
       console.log('Audio already cached:', getFilenameFromUrl(url));
+      scheduleDelete(filePath);
       resolve(filePath);
       return;
     }
@@ -64,6 +174,7 @@ function downloadAndCache(url) {
       file.on('finish', () => {
         file.close();
         console.log('Audio cached successfully:', getFilenameFromUrl(url));
+        scheduleDelete(filePath);
         resolve(filePath);
       });
 
@@ -136,6 +247,10 @@ function clearCache() {
   
   files.forEach(file => {
     const filePath = path.join(CACHE_DIR, file);
+    if (deleteTimers.has(filePath)) {
+      clearTimeout(deleteTimers.get(filePath));
+      deleteTimers.delete(filePath);
+    }
     fs.unlinkSync(filePath);
     deleted++;
   });
@@ -150,10 +265,19 @@ module.exports = {
   ensureCacheDir,
   getFilenameFromUrl,
   getCachedFilePath,
+  touchFile,
+  normalizeTtlMs,
   isCached,
   downloadAndCache,
   batchDownload,
   getCacheStats,
   clearCache,
-  CACHE_DIR
+  deleteExpiredFiles,
+  initializeCacheCleanup,
+  CACHE_DIR,
+  FALLBACK_AUDIO_CACHE_TTL_MS,
+  DEFAULT_AUDIO_CACHE_TTL_MS,
+  scheduleDelete,
+  scheduleDeleteByFilename,
+  scheduleDeleteByUrl
 };

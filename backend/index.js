@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
+const audioCache = require("./utils/audioCache");
 
 const questionRoutes = require("./routes/question");
 const quizRoutes = require("./routes/quiz");
@@ -22,6 +23,9 @@ const matTestRoutes = require("./routes/matTest");
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Ensure stale audio cache is cleaned at every backend startup.
+audioCache.initializeCacheCleanup();
 
 // Serve static video files for offline access
 app.use('/videos', express.static('public/videos'));

@@ -86,12 +86,26 @@
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-height: 100%;
+  }
+
   * {
     @apply border-border;
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden;
+  }
+
+  img,
+  video,
+  iframe {
+    max-width: 100%;
+    height: auto;
   }
 }
 
@@ -172,5 +186,77 @@
   .animate-bounce-gentle {
     animation: bounce-gentle 2s ease-in-out infinite;
   }
-}
 
+  @media (max-width: 1023px) {
+    .edu-container {
+      @apply px-4;
+    }
+
+    /* Common fixed sidebars/panels should stack on tablet and below */
+    .w-80,
+    .w-72,
+    .w-64,
+    .w-56,
+    .w-40 {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+  }
+
+  /* Keep dense question/status palettes usable on small screens */
+  @media (max-width: 767px) {
+    .container {
+      padding-left: 1rem !important;
+      padding-right: 1rem !important;
+    }
+
+    .grid.grid-cols-10,
+    .grid.grid-cols-9 {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+
+    .grid.grid-cols-8,
+    .grid.grid-cols-7,
+    .grid.grid-cols-6,
+    .grid.grid-cols-5 {
+      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+
+    .grid.grid-cols-4 {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .grid.grid-cols-3,
+    .grid.grid-cols-2 {
+      grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+    }
+
+    /* Preserve 3x3 puzzle boards on mobile */
+    .puzzle-fixed-3.grid.grid-cols-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+
+    .overflow-x-auto {
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+
+  @media (max-width: 479px) {
+    .grid.grid-cols-10,
+    .grid.grid-cols-9 {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .grid.grid-cols-8,
+    .grid.grid-cols-7,
+    .grid.grid-cols-6,
+    .grid.grid-cols-5 {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+
+    [class*="min-w-\\[120px\\]"] {
+      min-width: 0 !important;
+      width: 100% !important;
+    }
+  }
+}

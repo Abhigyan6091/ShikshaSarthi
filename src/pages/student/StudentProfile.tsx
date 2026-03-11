@@ -211,7 +211,7 @@ const StudentProfile: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       <Header />
       
-      <main className="flex-1 py-8">
+      <main className="flex-1 py-6 md:py-8">
         <div className="edu-container">
           {/* Header Section */}
           <div className="mb-8">
@@ -223,12 +223,12 @@ const StudentProfile: React.FC = () => {
               ← Back
             </Button>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="h-20 w-20 bg-gradient-to-br from-edu-blue to-edu-purple rounded-full flex items-center justify-center text-white text-3xl font-bold">
                 {student.name.charAt(0).toUpperCase()}
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">{student.name}</h1>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{student.name}</h1>
                 <p className="text-gray-600">Student Profile</p>
               </div>
             </div>
@@ -398,7 +398,7 @@ const StudentProfile: React.FC = () => {
                 <div className="space-y-4">
                   {recentPerformance.map((quiz, index) => (
                     <div key={index} className="border-b pb-4 last:border-b-0">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                         <div>
                           <p className="font-semibold">Quiz ID: {quiz.quizId}</p>
                           <p className="text-sm text-gray-600">{quiz.date}</p>
@@ -407,7 +407,7 @@ const StudentProfile: React.FC = () => {
                           {quiz.score}%
                         </Badge>
                       </div>
-                      <div className="flex items-center space-x-4 text-sm">
+                      <div className="flex flex-wrap items-center gap-4 text-sm">
                         <span className="text-green-600">✓ {quiz.correct} Correct</span>
                         <span className="text-red-600">✗ {quiz.incorrect} Incorrect</span>
                         <span className="text-gray-600">− {quiz.unattempted} Unattempted</span>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,10 +7,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/components/ui/use-toast";
 import { 
   BarChart3, Users, Trophy, Clock, Target, Medal, Crown, 
-  BookOpen, Volume2, Video, Puzzle, AlertCircle, CheckCircle2, XCircle,
+  BookOpen, Volume2, Video, Puzzle, AlertCircle, CheckCircle2, XCircle, Layers,
   MinusCircle, ChevronDown, ChevronUp, Award
 } from "lucide-react";
 import axios from "axios";
+import Cookies from "js-cookie";
 import {
   BarChart,
   Bar,
@@ -90,6 +91,22 @@ interface QuestionAnalytics {
   };
 }
 
+interface TeacherQuiz {
+  _id?: string;
+  quizId: string;
+  totalQuestions?: number;
+  timeLimit?: number;
+  questionTypes?: {
+    mcq?: number;
+    audio?: number;
+    video?: number;
+    puzzle?: number;
+  };
+  startTime?: Date | string;
+  endTime?: Date | string;
+  createdAt?: Date | string;
+}
+
 interface QuizAnalytics {
   quizInfo: {
     quizId: string;
@@ -129,11 +146,100 @@ export default function QuizAnalyticsFinal() {
   const [quizId, setQuizId] = useState("");
   const [analytics, setAnalytics] = useState<QuizAnalytics | null>(null);
   const [loading, setLoading] = useState(false);
+  const [advancedQuizzes, setAdvancedQuizzes] = useState<TeacherQuiz[]>([]);
+  const [quizzesLoading, setQuizzesLoading] = useState(false);
+  const [showQuizSelector, setShowQuizSelector] = useState(false);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const loadAnalytics = async () => {
-    if (!quizId.trim()) {
+  const getTeacherIdentifier = () => {
+    const currentUser = localStorage.getItem("currentUser");
+    const teacherCookie = Cookies.get("teacher");
+    let teacherData: any = null;
+
+    if (currentUser) {
+      try {
+        teacherData = JSON.parse(currentUser);
+      } catch (error) {
+        console.error("Failed to parse currentUser:", error);
+      }
+    }
+
+    if (teacherCookie && (!teacherData || !teacherData.teacherId)) {
+      try {
+        const cookieData = JSON.parse(teacherCookie);
+        teacherData = cookieData.teacher || cookieData;
+      } catch (error) {
+        console.error("Failed to parse teacher cookie:", error);
+      }
+    }
+
+    if (teacherData?.teacher) {
+      teacherData = teacherData.teacher;
+    }
+
+    return teacherData?.teacherId || teacherData?._id || teacherData?.id || teacherData?.username || "";
+  };
+
+  const isAdvancedQuiz = (quiz: TeacherQuiz) => {
+    const mcq = Number(quiz?.questionTypes?.mcq || 0);
+    const audio = Number(quiz?.questionTypes?.audio || 0);
+    const video = Number(quiz?.questionTypes?.video || 0);
+    const puzzle = Number(quiz?.questionTypes?.puzzle || 0);
+    const configuredQuestionCount = mcq + audio + video + puzzle;
+
+    return (
+      configuredQuestionCount > 0 &&
+      Number(quiz?.totalQuestions || 0) > 0 &&
+      Number(quiz?.timeLimit || 0) > 0 &&
+      Boolean(quiz?.startTime) &&
+      Boolean(quiz?.endTime)
+    );
+  };
+
+  useEffect(() => {
+    const fetchAdvancedQuizzes = async () => {
+      const teacherIdentifier = getTeacherIdentifier();
+      if (!teacherIdentifier) {
+        toast({
+          title: "Error",
+          description: "Teacher session not found. Please login again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setQuizzesLoading(true);
+      try {
+        const response = await axios.get(`${API_URL}/quizzes/teacher/${teacherIdentifier}`);
+        const quizzes = Array.isArray(response.data) ? response.data : [];
+        const filtered = quizzes
+          .filter(isAdvancedQuiz)
+          .sort((a: TeacherQuiz, b: TeacherQuiz) => {
+            const aTime = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const bTime = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return bTime - aTime;
+          });
+
+        setAdvancedQuizzes(filtered);
+      } catch (error: any) {
+        console.error("Error fetching advanced quizzes:", error);
+        toast({
+          title: "Error",
+          description: error.response?.data?.message || "Failed to load quiz list",
+          variant: "destructive"
+        });
+      } finally {
+        setQuizzesLoading(false);
+      }
+    };
+
+    fetchAdvancedQuizzes();
+  }, [toast]);
+
+  const loadAnalytics = async (targetQuizId?: string) => {
+    const selectedQuizId = (targetQuizId ?? quizId).trim();
+    if (!selectedQuizId) {
       toast({
         title: "Error",
         description: "Please enter a quiz ID",
@@ -142,11 +248,16 @@ export default function QuizAnalyticsFinal() {
       return;
     }
 
+    if (selectedQuizId !== quizId) {
+      setQuizId(selectedQuizId);
+    }
+
     setLoading(true);
     try {
-      const response = await axios.get(`${API_URL}/quizzes/analytics/${quizId}`);
+      const response = await axios.get(`${API_URL}/quizzes/analytics/${selectedQuizId}`);
       console.log('Analytics data received:', response.data);
       setAnalytics(response.data);
+      setShowQuizSelector(false);
       
       toast({
         title: "✅ Success",
@@ -162,6 +273,17 @@ export default function QuizAnalyticsFinal() {
       setAnalytics(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleQuizSelectorToggle = () => {
+    const nextState = !showQuizSelector;
+    setShowQuizSelector(nextState);
+
+    if (nextState) {
+      // Re-open selector in "pick quiz" mode
+      setAnalytics(null);
+      setQuizId("");
     }
   };
 
@@ -197,6 +319,17 @@ export default function QuizAnalyticsFinal() {
     return new Date(date).toLocaleString('en-IN', {
       dateStyle: 'medium',
       timeStyle: 'short'
+    });
+  };
+
+  const formatShortDate = (date?: Date | string) => {
+    if (!date) return "N/A";
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return "N/A";
+    return parsed.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
     });
   };
 
@@ -244,7 +377,7 @@ export default function QuizAnalyticsFinal() {
     <div className="container mx-auto p-4 md:p-6 max-w-7xl">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+        <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
           📊 Comprehensive Quiz Analytics
         </h1>
         <p className="text-gray-600">Deep insights into student performance and quiz effectiveness</p>
@@ -253,7 +386,7 @@ export default function QuizAnalyticsFinal() {
       {/* Quiz ID Input */}
       <Card className="mb-6 border-2 shadow-lg">
         <CardContent className="pt-6">
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <Input
               placeholder="Enter Quiz ID (e.g., QUIZ001)"
               value={quizId}
@@ -261,7 +394,7 @@ export default function QuizAnalyticsFinal() {
               onKeyPress={(e) => e.key === 'Enter' && loadAnalytics()}
               className="flex-1 text-lg"
             />
-            <Button onClick={loadAnalytics} disabled={loading} size="lg" className="px-8">
+            <Button onClick={loadAnalytics} disabled={loading} size="lg" className="px-8 w-full sm:w-auto">
               {loading ? (
                 <>
                   <div className="animate-spin mr-2">⏳</div>
@@ -274,9 +407,90 @@ export default function QuizAnalyticsFinal() {
                 </>
               )}
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={handleQuizSelectorToggle}
+              disabled={loading || quizzesLoading}
+              className="w-full sm:w-auto"
+            >
+              <Layers className="mr-2 h-5 w-5" />
+              {showQuizSelector ? "Hide Quiz List" : "Select Advanced Quiz"}
+            </Button>
           </div>
         </CardContent>
       </Card>
+
+      {/* Advanced Quiz Cards */}
+      {showQuizSelector && (
+        <Card className="mb-6 border-2 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex flex-wrap items-center gap-2 text-lg sm:text-xl">
+              <Layers className="h-5 w-5 text-indigo-600" />
+              Select Advanced/Comprehensive Quiz
+            </CardTitle>
+            <CardDescription>
+              Click any quiz box to load analytics instantly.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {quizzesLoading ? (
+              <div className="text-sm text-gray-500">Loading advanced quiz list...</div>
+            ) : advancedQuizzes.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {advancedQuizzes.map((quiz) => {
+                  const mcq = Number(quiz?.questionTypes?.mcq || 0);
+                  const audio = Number(quiz?.questionTypes?.audio || 0);
+                  const video = Number(quiz?.questionTypes?.video || 0);
+                  const puzzle = Number(quiz?.questionTypes?.puzzle || 0);
+                  const isSelected = quizId === quiz.quizId;
+
+                  return (
+                    <button
+                      key={quiz._id || quiz.quizId}
+                      type="button"
+                      onClick={() => loadAnalytics(quiz.quizId)}
+                      disabled={loading}
+                      className={`w-full rounded-xl border-2 p-4 text-left transition-all ${
+                        isSelected
+                          ? "border-blue-500 bg-blue-50 shadow-md"
+                          : "border-gray-200 bg-white hover:border-blue-300 hover:shadow-md"
+                      } ${loading ? "cursor-not-allowed opacity-70" : ""}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm text-gray-500">Quiz ID</p>
+                          <p className="font-bold text-blue-700 break-all">{quiz.quizId}</p>
+                        </div>
+                        <Badge variant="outline" className="shrink-0">
+                          {Number(quiz.totalQuestions || 0)} Qs
+                        </Badge>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:text-sm">
+                        <div className="rounded-md bg-blue-50 px-2 py-1 text-blue-700">MCQ: {mcq}</div>
+                        <div className="rounded-md bg-green-50 px-2 py-1 text-green-700">Audio: {audio}</div>
+                        <div className="rounded-md bg-purple-50 px-2 py-1 text-purple-700">Video: {video}</div>
+                        <div className="rounded-md bg-orange-50 px-2 py-1 text-orange-700">Puzzle: {puzzle}</div>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
+                        <span>Time Limit: {Number(quiz.timeLimit || 0)} min</span>
+                        <span>Created: {formatShortDate(quiz.createdAt)}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-600">
+                No advanced/comprehensive quizzes found for your account.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {analytics && (
         <div className="space-y-6">
@@ -290,7 +504,7 @@ export default function QuizAnalyticsFinal() {
               <CardDescription>Basic quiz information and configuration</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white p-4 rounded-lg shadow">
                   <div className="text-sm text-gray-500 mb-1">Quiz ID</div>
                   <div className="font-bold text-xl text-blue-600">{analytics.quizInfo.quizId}</div>
@@ -309,7 +523,7 @@ export default function QuizAnalyticsFinal() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                 <Badge variant="outline" className="justify-center py-3 text-base bg-blue-100 border-blue-300">
                   <BookOpen className="mr-2 h-5 w-5" />
                   MCQ: {analytics.quizInfo.questionTypes.mcq}
@@ -331,7 +545,7 @@ export default function QuizAnalyticsFinal() {
           </Card>
 
           {/* Key Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="border-2 border-green-200 shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-green-50 to-emerald-50">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -395,20 +609,27 @@ export default function QuizAnalyticsFinal() {
               <CardDescription>Total responses across all students</CardDescription>
             </CardHeader>
             <CardContent>
+              {(() => {
+                const answerDistribution = getAnswerDistribution();
+                const totalResponses = answerDistribution.reduce((sum, item) => sum + item.value, 0);
+
+                return (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={getAnswerDistribution()}
+                      data={answerDistribution}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
                       outerRadius={100}
+                      innerRadius={45}
+                      minAngle={2}
+                      paddingAngle={2}
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {getAnswerDistribution().map((entry, index) => (
+                      {answerDistribution.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -416,17 +637,25 @@ export default function QuizAnalyticsFinal() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex flex-col justify-center space-y-4">
-                  {getAnswerDistribution().map((item, idx) => (
+                  {answerDistribution.map((item, idx) => {
+                    const percentage = totalResponses > 0 ? ((item.value / totalResponses) * 100).toFixed(1) : "0.0";
+                    return (
                     <div key={idx} className="flex items-center justify-between p-4 rounded-lg border-2" style={{ borderColor: item.color, backgroundColor: `${item.color}20` }}>
                       <div className="flex items-center gap-3">
                         <div className="w-6 h-6 rounded-full" style={{ backgroundColor: item.color }}></div>
                         <span className="font-semibold text-lg">{item.name}</span>
                       </div>
-                      <span className="text-2xl font-bold" style={{ color: item.color }}>{item.value}</span>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold" style={{ color: item.color }}>{item.value}</div>
+                        <div className="text-xs text-gray-600">{percentage}%</div>
+                      </div>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               </div>
+                );
+              })()}
             </CardContent>
           </Card>
 
@@ -449,8 +678,8 @@ export default function QuizAnalyticsFinal() {
                   >
                     <Card className="border">
                       <CollapsibleTrigger className="w-full">
-                        <div className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer">
-                          <div className="flex items-center gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 hover:bg-gray-50 cursor-pointer">
+                          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                             <Badge variant="outline" className="text-base px-3 py-1">
                               Q{index + 1}
                             </Badge>
@@ -462,7 +691,7 @@ export default function QuizAnalyticsFinal() {
                               ID: {q.questionId.slice(-8)}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-3 sm:gap-4 self-start sm:self-auto">
                             <div className="text-sm text-gray-600">
                               {q.correct}✓ / {q.incorrect}✗ / {q.skipped}○
                             </div>
@@ -520,7 +749,7 @@ export default function QuizAnalyticsFinal() {
                                   <img 
                                     src={q.questionData.questionImage} 
                                     alt="Question"
-                                    className="max-w-md rounded-lg border shadow-sm"
+                                    className="w-full max-w-md h-auto rounded-lg border shadow-sm object-contain"
                                   />
                                 </div>
                               )}

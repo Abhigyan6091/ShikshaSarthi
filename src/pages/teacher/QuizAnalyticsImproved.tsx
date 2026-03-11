@@ -261,7 +261,7 @@ export default function QuizAnalyticsImproved() {
     <div className="container mx-auto p-4 md:p-6 max-w-7xl">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+        <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
           📊 Comprehensive Quiz Analytics
         </h1>
         <p className="text-gray-600">Deep insights into student performance and quiz effectiveness</p>
@@ -270,7 +270,7 @@ export default function QuizAnalyticsImproved() {
       {/* Quiz ID Input */}
       <Card className="mb-6 border-2 shadow-lg">
         <CardContent className="pt-6">
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <Input
               placeholder="Enter Quiz ID (e.g., QUIZ001)"
               value={quizId}
@@ -278,7 +278,7 @@ export default function QuizAnalyticsImproved() {
               onKeyPress={(e) => e.key === 'Enter' && loadAnalytics()}
               className="flex-1 text-lg"
             />
-            <Button onClick={loadAnalytics} disabled={loading} size="lg" className="px-8">
+            <Button onClick={loadAnalytics} disabled={loading} size="lg" className="px-8 w-full sm:w-auto">
               {loading ? (
                 <>
                   <div className="animate-spin mr-2">⏳</div>
@@ -307,7 +307,7 @@ export default function QuizAnalyticsImproved() {
               <CardDescription>Basic quiz information and configuration</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white p-4 rounded-lg shadow">
                   <div className="text-sm text-gray-500 mb-1">Quiz ID</div>
                   <div className="font-bold text-xl text-blue-600">{analytics.quizInfo.quizId}</div>
@@ -326,7 +326,7 @@ export default function QuizAnalyticsImproved() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                 <Badge variant="outline" className="justify-center py-3 text-base bg-blue-100 border-blue-300">
                   <BookOpen className="mr-2 h-5 w-5" />
                   MCQ: {analytics.quizInfo.questionTypes.mcq}
@@ -359,7 +359,7 @@ export default function QuizAnalyticsImproved() {
           </Card>
 
           {/* Key Metrics Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="border-2 border-green-200 shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-green-50 to-emerald-50">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -731,7 +731,7 @@ export default function QuizAnalyticsImproved() {
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="mcq" className="w-full">
-                  <TabsList className="grid w-full grid-cols-4 mb-4">
+                  <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 mb-4">
                     <TabsTrigger value="mcq" className="flex items-center gap-2">
                       <BookOpen className="h-4 w-4" />
                       MCQ
@@ -763,9 +763,9 @@ export default function QuizAnalyticsImproved() {
                             return (
                               <div 
                                 key={student.studentId}
-                                className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all hover:shadow-lg ${getPerformanceBgColor(percentage)}`}
+                                className={`flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 rounded-lg border-2 transition-all hover:shadow-lg ${getPerformanceBgColor(percentage)}`}
                               >
-                                <div className="flex items-center justify-center w-14">
+                                <div className="flex items-center justify-center w-12 sm:w-14 self-start sm:self-auto">
                                   {index === 0 && <Crown className="h-8 w-8 text-yellow-500" />}
                                   {index === 1 && <Medal className="h-7 w-7 text-gray-400" />}
                                   {index === 2 && <Medal className="h-7 w-7 text-orange-400" />}
@@ -779,7 +779,7 @@ export default function QuizAnalyticsImproved() {
                                     ✓ {sectionData.correct} correct · ✗ {sectionData.incorrect} wrong · ○ {sectionData.unattempted} skipped
                                   </div>
                                 </div>
-                                <div className="text-right">
+                                <div className="text-left sm:text-right w-full sm:w-auto">
                                   <div className={`font-bold text-2xl ${getPerformanceColor(percentage)}`}>
                                     {sectionData.percentage}%
                                   </div>
