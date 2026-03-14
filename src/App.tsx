@@ -45,6 +45,11 @@ import AdvancedQuizPlayer from "./pages/student/AdvancedQuizPlayer";
 import AdvancedQuizResults from "./pages/student/AdvancedQuizResults";
 import AdvancedQuizPastReports from "./pages/student/AdvancedQuizPastReports";
 import DemoTest from "./pages/DemoTest";
+import ExperimentSimulation from "./pages/student/experimentSimulation/ExperimentSimulation";
+import ExperimentList from "./pages/student/experimentSimulation/ExperimentList";
+import ExperimentPage from "./pages/student/experimentSimulation/ExperimentPage";
+import LabQuiz from "./pages/student/experimentSimulation/LabQuiz";
+import ExperimentAnalytics from "./pages/student/experimentSimulation/ExperimentAnalytics";
 
 // Question Page
 import Upload_question from "./components/questions/Upload_question";
@@ -98,6 +103,11 @@ const AppRoutes = () => {
       <Route path="/student/dashboard" element={<StudentDashboard />} />
       <Route path="/student/profile/:id" element={<StudentProfile />} />
       <Route path="/student/assessment/:id" element={<StudentProfile />} />
+      <Route path="/student/experiments" element={<ExperimentSimulation />} />
+      <Route path="/student/experiments/:subject" element={<ExperimentList />} />
+      <Route path="/student/experiment/:experimentName" element={<ExperimentPage />} />
+      <Route path="/student/experiments/analytics" element={<ExperimentAnalytics />} />
+      <Route path="/student/experiments/:subject/quiz" element={<LabQuiz />} />
       <Route path="/student/practice" element={<StudentPractice />} />
       <Route path="/student/practice/:subject" element={<SubjectTopics />} />
       <Route path="/student/practice/vocab" element={<VocabularyQuizPage />} />

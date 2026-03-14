@@ -1,0 +1,166 @@
+[
+  {
+    "class": "11",
+    "subject": "Physics",
+    "section": "Measurement",
+    "experiment_name": "Vernier Caliper Measurements",
+    "description": "Objective: To measure external diameter, internal diameter and depth of objects using a Vernier caliper. Theory: A Vernier caliper is a precision instrument used to measure small lengths more accurately than a ruler. It consists of a main scale and a vernier scale that slides along the main scale. The vernier scale allows measurement of fractions of the smallest division on the main scale. Important Formula: Least Count = Value of one main scale division / Number of vernier divisions. Final Reading = Main Scale Reading + (Vernier Coincidence × Least Count). Learning Outcome: Students learn accurate measurement techniques and understand precision instruments and error correction.",
+    "simulation_link": "https://phet.colorado.edu/sims/html/john-travoltage/latest/john-travoltage_all.html"
+  },
+  {
+    "class": "11",
+    "subject": "Physics",
+    "section": "Measurement",
+    "experiment_name": "Screw Gauge Measurement",
+    "description": "Objective: To measure the thickness or diameter of a small wire or sheet using a screw gauge. Theory: A screw gauge works on the principle of converting rotational motion into linear motion. When the thimble is rotated, the spindle moves forward or backward by a fixed distance known as pitch. Important Formula: Least Count = Pitch / Number of divisions on circular scale. Final Reading = Pitch Scale Reading + (Circular Scale Reading × Least Count). Learning Outcome: Students understand precision measurement of very small objects and learn how least count improves measurement accuracy.",
+    "simulation_link": "https://phet.colorado.edu/en/simulation/micrometer"
+  },
+  {
+    "class": "11",
+    "subject": "Physics",
+    "section": "Oscillations",
+    "experiment_name": "Simple Pendulum Experiment",
+    "description": "Objective: To determine the relation between length and time period of a simple pendulum. Theory: A simple pendulum consists of a small heavy bob suspended by a light string from a rigid support. When displaced slightly and released, it oscillates periodically. For small oscillations the motion approximates simple harmonic motion. Important Formula: T = 2π√(L/g), where T is time period, L is length of the pendulum and g is acceleration due to gravity. Learning Outcome: Students verify that the square of the time period is proportional to the length of the pendulum and understand periodic motion.",
+    "simulation_link": "https://phet.colorado.edu/en/simulation/pendulum-lab"
+  },
+  {
+    "class": "11",
+    "subject": "Physics",
+    "section": "Mechanics",
+    "experiment_name": "Coefficient of Friction",
+    "description": "Objective: To study the relation between frictional force and normal reaction and determine the coefficient of friction. Theory: Friction is the force that opposes relative motion between two surfaces in contact. The maximum friction before motion begins is called limiting friction. Important Formula: F = μN where F is frictional force, μ is coefficient of friction and N is normal reaction. Learning Outcome: Students learn how surface roughness affects motion and how friction influences everyday mechanical systems.",
+    "simulation_link": "https://phet.colorado.edu/en/simulation/friction"
+  },
+  {
+    "class": "11",
+    "subject": "Physics",
+    "section": "Elasticity",
+    "experiment_name": "Young's Modulus of a Wire",
+    "description": "Objective: To determine Young's modulus of a wire. Theory: When a force is applied to a material it undergoes deformation. Within elastic limit the material returns to its original shape when the force is removed. Young's modulus is the ratio of stress to strain. Important Formula: Y = Stress / Strain = (F/A) / (ΔL/L) = FL / (AΔL). Learning Outcome: Students understand elastic properties of materials and how mechanical strength of materials is quantified.",
+    "simulation_link": "https://vlab.amrita.edu/?sub=1&brch=74"
+  },
+  {
+    "class": "11",
+    "subject": "Physics",
+    "section": "Elasticity",
+    "experiment_name": "Spring Constant Determination",
+    "description": "Objective: To determine the force constant of a spring using Hooke's law. Theory: Hooke's law states that within elastic limit the extension of a spring is directly proportional to the applied force. Important Formula: F = kx where F is applied force, k is spring constant and x is extension. Learning Outcome: Students learn how springs store energy and how elastic systems obey linear force relationships.",
+    "simulation_link": "https://vlab.amrita.edu/?sub=1&brch=74"
+  },
+  {
+    "class": "11",
+    "subject": "Physics",
+    "section": "Thermal Physics",
+    "experiment_name": "Cooling Curve of Hot Object",
+    "description": "Objective: To study variation of temperature of a hot object with time. Theory: The experiment demonstrates Newton's Law of Cooling which states that the rate of loss of heat is proportional to the difference between the temperature of the body and its surroundings. Formula: dT/dt ∝ (T − Ts). Learning Outcome: Students understand heat transfer and thermal equilibrium.",
+    "simulation_link": "https://vlab.amrita.edu/?sub=1&brch=73"
+  },
+  {
+    "class": "11",
+    "subject": "Physics",
+    "section": "Thermal Physics",
+    "experiment_name": "Surface Tension by Capillary Rise",
+    "description": "Objective: To determine surface tension of water using capillary rise method. Theory: Surface tension arises due to intermolecular attraction between liquid molecules. When a capillary tube is dipped in water the liquid rises due to adhesive forces between liquid and tube wall. Formula: T = (ρ g r h)/2. Learning Outcome: Students understand intermolecular forces and properties of liquids.",
+    "simulation_link": "https://vlab.amrita.edu/?sub=1&brch=74"
+  },
+  {
+    "class": "11",
+    "subject": "Physics",
+    "section": "Waves",
+    "experiment_name": "Frequency vs Length using Sonometer",
+    "description": "Objective: To study the relation between frequency and length of a vibrating string. Theory: When a stretched string vibrates it produces standing waves. The frequency depends on length, tension and mass per unit length of the string. Formula: f = (1/2L) √(T/μ). Learning Outcome: Students understand resonance and vibration of stretched strings.",
+    "simulation_link": "https://vlab.amrita.edu/?sub=1&brch=74"
+  },
+  {
+    "class": "11",
+    "subject": "Physics",
+    "section": "Waves",
+    "experiment_name": "Speed of Sound using Resonance Tube",
+    "description": "Objective: To determine speed of sound in air using resonance tube. Theory: When sound waves reflect in an air column standing waves are formed. Resonance occurs when the air column length matches specific wave conditions. Formula: v = fλ. Learning Outcome: Students learn wave propagation and resonance in air columns.",
+    "simulation_link": "https://vlab.amrita.edu/?sub=1&brch=74"
+  },
+
+  {
+    "class": "12",
+    "subject": "Physics",
+    "section": "Current Electricity",
+    "experiment_name": "Ohm's Law",
+    "description": "Objective: To verify Ohm's law and determine resistance of a wire. Theory: Ohm's law states that current flowing through a conductor is directly proportional to the potential difference across it provided temperature remains constant. Formula: V = IR. Learning Outcome: Students understand linear relationship between voltage and current.",
+    "simulation_link": "https://phet.colorado.edu/en/simulation/ohms-law"
+  },
+  {
+    "class": "12",
+    "subject": "Physics",
+    "section": "Current Electricity",
+    "experiment_name": "Meter Bridge Experiment",
+    "description": "Objective: To determine resistance of a wire using a meter bridge. Theory: Meter bridge works on the principle of Wheatstone bridge which balances two arms of a circuit. Formula: R/X = L/(100-L). Learning Outcome: Students learn bridge circuits and precise resistance measurement.",
+    "simulation_link": "https://vlab.amrita.edu/?sub=1&brch=192"
+  },
+  {
+    "class": "12",
+    "subject": "Physics",
+    "section": "Current Electricity",
+    "experiment_name": "Potentiometer EMF Comparison",
+    "description": "Objective: To compare electromotive forces of two cells using a potentiometer. Theory: Potentiometer measures potential difference without drawing current from the source. Formula: E1/E2 = L1/L2. Learning Outcome: Students understand accurate measurement of EMF.",
+    "simulation_link": "https://vlab.amrita.edu/?sub=1&brch=193"
+  },
+  {
+    "class": "12",
+    "subject": "Physics",
+    "section": "Current Electricity",
+    "experiment_name": "Internal Resistance of Cell",
+    "description": "Objective: To determine internal resistance of a cell using potentiometer. Theory: Internal resistance is resistance offered by electrolyte inside the cell. Formula: r = (E - V)/I. Learning Outcome: Students learn practical electrical measurement methods.",
+    "simulation_link": "https://vlab.amrita.edu/?sub=1&brch=193"
+  },
+
+  {
+    "class": "12",
+    "subject": "Physics",
+    "section": "Optics",
+    "experiment_name": "Focal Length of Convex Lens",
+    "description": "Objective: To determine focal length of convex lens using u-v method. Theory: A convex lens converges parallel rays to its focal point. Formula: 1/f = 1/v + 1/u. Learning Outcome: Students understand image formation and lens formula.",
+    "simulation_link": "https://phet.colorado.edu/en/simulation/geometric-optics"
+  },
+  {
+    "class": "12",
+    "subject": "Physics",
+    "section": "Optics",
+    "experiment_name": "Refractive Index of Glass Block",
+    "description": "Objective: To determine refractive index of a glass slab. Theory: Refraction occurs when light travels from one medium to another causing change in speed and direction. Formula: n = sin i / sin r. Learning Outcome: Students understand Snell's law and optical properties of materials.",
+    "simulation_link": "https://phet.colorado.edu/en/simulation/bending-light"
+  },
+
+  {
+    "class": "11",
+    "subject": "Chemistry",
+    "section": "Physical Chemistry",
+    "experiment_name": "pH Determination",
+    "description": "Objective: To determine pH of given solutions using universal indicator or pH paper. Theory: pH indicates acidity or basicity of a solution and is defined as pH = -log[H+]. Learning Outcome: Students understand acid-base strength and pH scale.",
+    "simulation_link": "https://phet.colorado.edu/en/simulation/ph-scale"
+  },
+  {
+    "class": "11",
+    "subject": "Chemistry",
+    "section": "Volumetric Analysis",
+    "experiment_name": "Oxalic Acid vs Sodium Hydroxide Titration",
+    "description": "Objective: To determine strength of sodium hydroxide solution using standard oxalic acid. Theory: Neutralization occurs between acid and base forming salt and water. Formula: N1V1 = N2V2. Learning Outcome: Students learn titration techniques.",
+    "simulation_link": "https://vlab.amrita.edu/?sub=2&brch=193"
+  },
+
+  {
+    "class": "11",
+    "subject": "Biology",
+    "section": "Plant Physiology",
+    "experiment_name": "Osmosis using Potato Osmoscope",
+    "description": "Objective: To demonstrate osmosis using a potato osmoscope. Theory: Osmosis is movement of water across a semipermeable membrane from a region of higher water concentration to lower water concentration. Learning Outcome: Students understand water movement in plant cells.",
+    "simulation_link": "https://vlab.amrita.edu/?sub=3&brch=271"
+  },
+  {
+    "class": "12",
+    "subject": "Biology",
+    "section": "Cell Biology",
+    "experiment_name": "Mitosis in Onion Root Tip",
+    "description": "Objective: To observe stages of mitosis in onion root tip cells. Theory: Mitosis is a type of cell division producing two identical daughter cells through stages prophase, metaphase, anaphase and telophase. Learning Outcome: Students understand cell division and chromosome distribution.",
+    "simulation_link": "https://vlab.amrita.edu/?sub=3&brch=271"
+  }
+]

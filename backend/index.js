@@ -19,6 +19,7 @@ const audioQuestionRoutes = require("./routes/audioQuestions");
 const puzzlesRoutes = require("./routes/puzzles");
 const matRoutes = require("./routes/mat");
 const matTestRoutes = require("./routes/matTest");
+const experimentRoutes = require("./routes/experimentRoutes");
 
 const app = express();
 app.use(cors());
@@ -57,6 +58,7 @@ app.use("/audio-questions", audioQuestionRoutes);
 app.use("/puzzles", puzzlesRoutes);
 app.use("/api/mat", matRoutes);
 app.use("/api/mat-test", matTestRoutes);
+app.use("/api/experiments", experimentRoutes);
 // https://shiksha-sarthi-nmms-prep-cn64.vercel.app
 
 
