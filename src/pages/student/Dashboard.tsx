@@ -34,7 +34,8 @@ import {
   Headphones,
   Video,
   Puzzle,
-  Sparkles
+  Sparkles,
+  FlaskConical
 } from "lucide-react";
 import SubjectIcon from "@/components/SubjectIcon";
 
@@ -456,7 +457,29 @@ const StudentDashboard: React.FC = () => {
               </CardFooter>
             </Card>
 
-            {/* Audio Quiz History card removed as requested */}
+            <Card className="border-2 border-edu-blue/20 hover:border-edu-blue/40 transition-colors">
+              <CardHeader>
+                <FlaskConical className="h-10 w-10 text-edu-blue mb-2" />
+                <CardTitle>Experiment Simulation</CardTitle>
+                <CardDescription>
+                  Engage with interactive lab simulations for Physics, Chemistry, and Biology.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-500">
+                  Engage with interactive lab simulations for Physics, Chemistry, and Biology.
+                </p>
+              </CardContent>
+              <CardFooter>
+                <Link to="/student/experiments">
+                  <Button
+                    className="w-full bg-gradient-to-r from-edu-blue to-edu-purple"
+                  >
+                    Start Experiment Simulation
+                  </Button>
+                </Link>
+              </CardFooter>
+            </Card>
           </div>
 
           {/* All Quizzes List with Scrolling - Shows 8 at a time */}
