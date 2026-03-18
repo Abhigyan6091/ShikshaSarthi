@@ -7,13 +7,14 @@ import Footer from '@/components/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import Cookies from 'js-cookie';
 const API_URL= import.meta.env.VITE_API_URL;
-import { 
-  BookOpen, 
-  ListChecks, 
-  BarChart, 
+import {
+  BookOpen,
+  ListChecks,
+  BarChart,
   PlusCircle,
   Users,
-  Layers
+  Layers,
+  MessageSquare
 } from 'lucide-react';
 import SubjectIcon from '@/components/SubjectIcon';
 
@@ -148,7 +149,7 @@ const TeacherDashboard: React.FC = () => {
           </div>
           
           {/* Main Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             <Card className="border-2 border-edu-blue/20 hover:border-edu-blue/40 transition-colors">
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -194,7 +195,7 @@ const TeacherDashboard: React.FC = () => {
                 </Link>
               </CardFooter>
             </Card>
-            
+
             <Card className="border-2 border-edu-purple/20 hover:border-edu-purple/40 transition-colors">
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -214,6 +215,30 @@ const TeacherDashboard: React.FC = () => {
                 <Link to="/teacher/analytics" className="w-full">
                   <Button variant="outline" className="w-full border-edu-purple text-edu-purple hover:bg-edu-purple/10">
                     View Analytics
+                  </Button>
+                </Link>
+              </CardFooter>
+            </Card>
+
+            <Card className="border-2 border-orange-500/20 hover:border-orange-500/40 transition-colors">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-xl mb-1">Give Feedback</CardTitle>
+                    <CardDescription>Provide feedback on school forms</CardDescription>
+                  </div>
+                  <MessageSquare className="h-8 w-8 text-orange-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-500">
+                  View and submit feedback forms created by your school administration.
+                </p>
+              </CardContent>
+              <CardFooter>
+                <Link to="/teacher/give-feedback" className="w-full">
+                  <Button variant="outline" className="w-full border-orange-600 text-orange-600 hover:bg-orange-50">
+                    Give Feedback
                   </Button>
                 </Link>
               </CardFooter>

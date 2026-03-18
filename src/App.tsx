@@ -71,6 +71,11 @@ import TeacherProfile from "./pages/TeacherProfile";
 // Admin Pages
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
 import SchoolAdminDashboard from "./pages/schooladmin/Dashboard";
+import FeedbackManagement from "./pages/schooladmin/FeedbackManagement";
+import CreateFeedbackForm from "./pages/schooladmin/CreateFeedbackForm";
+import EditFeedbackForm from "./pages/schooladmin/EditFeedbackForm";
+import AnalyzeFeedback from "./pages/schooladmin/AnalyzeFeedback";
+import GiveFeedback from "./pages/teacher/GiveFeedback";
 
 //Quiz
 import AttemptQuiz from "./pages/student/AttemptQuiz";
@@ -97,6 +102,10 @@ const AppRoutes = () => {
       {/* Admin Routes */}
       <Route path="/superadmin" element={<SuperAdminDashboard />} />
       <Route path="/schooladmin" element={<SchoolAdminDashboard />} />
+      <Route path="/schooladmin/feedback-management" element={<FeedbackManagement />} />
+      <Route path="/schooladmin/create-feedback-form" element={<CreateFeedbackForm />} />
+      <Route path="/schooladmin/edit-feedback-form/:formId" element={<EditFeedbackForm />} />
+      <Route path="/schooladmin/analyze-feedback" element={<AnalyzeFeedback />} />
 
       {/* Student Routes */}
       <Route path="/student" element={<StudentDashboard />} />
@@ -153,6 +162,7 @@ const AppRoutes = () => {
       <Route path="/teacher/analytics" element={<Analytics />} />
       <Route path="/teacher/manage-classes" element={<ManageClasses />} />
       <Route path="/teacher/class/:classId/students" element={<ClassStudents />} />
+      <Route path="/teacher/give-feedback" element={<GiveFeedback />} />
       <Route path="/addmyquestion"element={<AddMyQuestion></AddMyQuestion>}></Route>
       <Route path="/teacher/quiz-details/:quizId" element={<QuizDetails />} />
       <Route path="/teacher/quiz-analytics/:quizId" element={<QuizAnalyticsPage />} />
