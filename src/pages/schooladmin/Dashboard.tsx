@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Users, GraduationCap, PlusCircle, School, Eye } from 'lucide-react';
+import { Users, GraduationCap, PlusCircle, School, Eye, MessageSquare } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -154,6 +154,23 @@ const SchoolAdminDashboard: React.FC = () => {
               <CardContent>
                 <Link to="/register">
                   <Button className="w-full">Register</Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-green-500/20 hover:border-green-500/40 transition-colors">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-xl mb-1">Feedback Management</CardTitle>
+                    <CardDescription>Create and manage feedback forms</CardDescription>
+                  </div>
+                  <MessageSquare className="h-8 w-8 text-green-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Link to="/schooladmin/feedback-management">
+                  <Button className="w-full bg-green-600 hover:bg-green-700">Manage Feedback</Button>
                 </Link>
               </CardContent>
             </Card>

@@ -20,6 +20,8 @@ const puzzlesRoutes = require("./routes/puzzles");
 const matRoutes = require("./routes/mat");
 const matTestRoutes = require("./routes/matTest");
 const experimentRoutes = require("./routes/experimentRoutes");
+const feedbackFormRoutes = require("./routes/feedbackForm");
+const feedbackResponseRoutes = require("./routes/feedbackResponse");
 
 const app = express();
 app.use(cors());
@@ -59,6 +61,8 @@ app.use("/puzzles", puzzlesRoutes);
 app.use("/api/mat", matRoutes);
 app.use("/api/mat-test", matTestRoutes);
 app.use("/api/experiments", experimentRoutes);
+app.use("/api/feedback-forms", feedbackFormRoutes);
+app.use("/api/feedback-responses", feedbackResponseRoutes);
 // https://shiksha-sarthi-nmms-prep-cn64.vercel.app
 
 
