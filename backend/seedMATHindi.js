@@ -565,7 +565,126 @@ const matQuestionsHindi = [
     yearPaper: { year: '2023-24', paper: 'PRACTICE', questionNumber: 5 },
     tags: ['अक्षर मान', 'योग'],
     timeLimit: 60
-  }
+  },
+  {
+  questionId: 'MAT-SC-H-009',
+  module: 'श्रृंखला पूर्णता',
+  question: '5, 11, 23, 47, ?',
+  options: ['95', '96', '94', '97'],
+  correctAnswer: 0,
+  difficulty: 'Medium',
+  explanation: 'प्रत्येक संख्या = पिछली संख्या ×2 +1 → 47×2+1 = 95',
+  hint: 'संख्या को दुगना करके 1 जोड़ें।',
+  yearPaper: { year: '2024', paper: 'PRACTICE', questionNumber: 1 },
+  tags: ['संख्या श्रृंखला'],
+  timeLimit: 60
+},
+{
+  questionId: 'MAT-BR-H-004',
+  module: 'रक्त संबंध',
+  question: 'यदि राम, श्याम का पिता है और श्याम, मोहन का पिता है, तो राम का मोहन से क्या संबंध है?',
+  options: ['पिता', 'दादा', 'भाई', 'चाचा'],
+  correctAnswer: 1,
+  difficulty: 'Easy',
+  explanation: 'राम → श्याम → मोहन, इसलिए राम मोहन का दादा है।',
+  hint: 'पीढ़ी का संबंध देखें।',
+  yearPaper: { year: '2024', paper: 'PRACTICE', questionNumber: 2 },
+  tags: ['रक्त संबंध'],
+  timeLimit: 60
+},
+{
+  questionId: 'MAT-DS-H-003',
+  module: 'दिशा ज्ञान',
+  question: 'एक व्यक्ति उत्तर की ओर 10 मीटर चलता है, फिर पूर्व की ओर 10 मीटर चलता है। वह प्रारंभिक बिंदु से कितनी दूर है?',
+  options: ['10', '20', '14', '15'],
+  correctAnswer: 2,
+  difficulty: 'Medium',
+  explanation: 'समकोण त्रिभुज → √(10²+10²) = √200 ≈ 14',
+  hint: 'पाइथागोरस का प्रयोग करें।',
+  yearPaper: { year: '2024', paper: 'PRACTICE', questionNumber: 3 },
+  tags: ['दिशा'],
+  timeLimit: 75
+},
+{
+  questionId: 'MAT-AN-H-004',
+  module: 'सादृश्य',
+  question: 'कुत्ता : पिल्ला :: बिल्ली : ?',
+  options: ['बछड़ा', 'शावक', 'बिलौटा', 'पिल्ला'],
+  correctAnswer: 2,
+  difficulty: 'Easy',
+  explanation: 'कुत्ते का बच्चा पिल्ला और बिल्ली का बच्चा बिलौटा कहलाता है।',
+  hint: 'जानवर और उसके बच्चे का संबंध देखें।',
+  yearPaper: { year: '2024', paper: 'PRACTICE', questionNumber: 4 },
+  tags: ['सादृश्य'],
+  timeLimit: 45
+},
+{
+  questionId: 'MAT-OO-H-004',
+  module: 'विषम ज्ञात कीजिए',
+  question: 'विषम ज्ञात कीजिए: 4, 9, 16, 20',
+  options: ['4', '9', '16', '20'],
+  correctAnswer: 3,
+  difficulty: 'Easy',
+  explanation: '4,9,16 पूर्ण वर्ग हैं लेकिन 20 नहीं है।',
+  hint: 'पूर्ण वर्ग देखें।',
+  yearPaper: { year: '2024', paper: 'PRACTICE', questionNumber: 5 },
+  tags: ['संख्या पैटर्न'],
+  timeLimit: 45
+},
+{
+  questionId: 'MAT-VD-H-003',
+  module: 'वेन आरेख',
+  question: 'किसी कक्षा में 30 छात्र हैं। 18 गणित पसंद करते हैं, 12 विज्ञान पसंद करते हैं, 5 दोनों पसंद करते हैं। केवल गणित पसंद करने वाले कितने हैं?',
+  options: ['13', '18', '7', '5'],
+  correctAnswer: 0,
+  difficulty: 'Medium',
+  explanation: 'केवल गणित = 18 − 5 = 13',
+  hint: 'दोनों को घटाएं।',
+  yearPaper: { year: '2024', paper: 'PRACTICE', questionNumber: 6 },
+  tags: ['वेन आरेख'],
+  timeLimit: 75
+},
+{
+  questionId: 'MAT-CT-H-003',
+  module: 'कैलेंडर और समय',
+  question: 'यदि आज सोमवार है, तो 10 दिन बाद कौन सा दिन होगा?',
+  options: ['बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'],
+  correctAnswer: 1,
+  difficulty: 'Easy',
+  explanation: '10 mod 7 = 3 → सोमवार +3 = गुरुवार',
+  hint: '7 से भाग दें।',
+  yearPaper: { year: '2024', paper: 'PRACTICE', questionNumber: 7 },
+  tags: ['कैलेंडर'],
+  timeLimit: 45
+},
+{
+  questionId: 'MAT-LR-H-003',
+  module: 'तार्किक विचार',
+  question: 'सभी पक्षी उड़ सकते हैं। कौवा एक पक्षी है। निष्कर्ष: कौवा उड़ सकता है।',
+  options: ['सही', 'गलत', 'निर्धारित नहीं', 'संभव'],
+  correctAnswer: 0,
+  difficulty: 'Easy',
+  explanation: 'यदि सभी पक्षी उड़ सकते हैं और कौवा पक्षी है, तो कौवा उड़ सकता है।',
+  hint: 'सामान्य कथन लागू करें।',
+  yearPaper: { year: '2024', paper: 'PRACTICE', questionNumber: 8 },
+  tags: ['तर्क'],
+  timeLimit: 45
+},
+{
+  questionId: 'MAT-NL-H-003',
+  module: 'संख्या और अक्षर पैटर्न',
+  question: 'A=1, B=2, C=3... तो DOG का मान क्या है?',
+  options: ['26', '24', '25', '27'],
+  correctAnswer: 0,
+  difficulty: 'Easy',
+  explanation: 'D=4, O=15, G=7 → 4+15+7 = 26',
+  hint: 'अक्षर का स्थान मान जोड़ें।',
+  yearPaper: { year: '2024', paper: 'PRACTICE', questionNumber: 9 },
+  tags: ['अक्षर मान'],
+  timeLimit: 60
+}
+
+
 ];
 
 // Connect to MongoDB and seed the database
