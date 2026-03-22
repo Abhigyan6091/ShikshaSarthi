@@ -1,9 +1,24 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const SchoolAdmin = require("../models/SchoolAdmin");
 const Teacher = require("../models/Teacher");
 const Student = require("../models/Student");
 const Class = require("../models/Class");
+
+async function findSchoolAdminByIdentifier(identifier) {
+  if (!identifier) return null;
+
+  let schoolAdmin = await SchoolAdmin.findOne({ username: identifier });
+  if (schoolAdmin) return schoolAdmin;
+
+  if (mongoose.Types.ObjectId.isValid(identifier)) {
+    schoolAdmin = await SchoolAdmin.findById(identifier);
+    if (schoolAdmin) return schoolAdmin;
+  }
+
+  return null;
+}
 
 // SchoolAdmin Login
 router.post("/login", async (req, res) => {
@@ -56,9 +71,10 @@ router.get("/:username", async (req, res) => {
 // Register Teacher
 router.post("/register/teacher", async (req, res) => {
   try {
-    const { adminUsername, ...teacherData } = req.body;
+    const { adminUsername, adminId, adminIdentifier, ...teacherData } = req.body;
+    const adminLookupKey = adminUsername || adminId || adminIdentifier;
     
-    const schoolAdmin = await SchoolAdmin.findOne({ username: adminUsername });
+    const schoolAdmin = await findSchoolAdminByIdentifier(adminLookupKey);
     if (!schoolAdmin) {
       return res.status(404).json({ error: "SchoolAdmin not found" });
     }
@@ -78,9 +94,10 @@ router.post("/register/teacher", async (req, res) => {
 // Register Student
 router.post("/register/student", async (req, res) => {
   try {
-    const { adminUsername, ...studentData } = req.body;
+    const { adminUsername, adminId, adminIdentifier, ...studentData } = req.body;
+    const adminLookupKey = adminUsername || adminId || adminIdentifier;
     
-    const schoolAdmin = await SchoolAdmin.findOne({ username: adminUsername });
+    const schoolAdmin = await findSchoolAdminByIdentifier(adminLookupKey);
     if (!schoolAdmin) {
       return res.status(404).json({ error: "SchoolAdmin not found" });
     }

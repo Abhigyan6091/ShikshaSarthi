@@ -71,6 +71,8 @@ import TeacherProfile from "./pages/TeacherProfile";
 // Admin Pages
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
 import SchoolAdminDashboard from "./pages/schooladmin/Dashboard";
+import SchoolAdminProfile from "./pages/schooladmin/Profile";
+import TeacherProfileView from "./pages/schooladmin/TeacherProfileView";
 import FeedbackManagement from "./pages/schooladmin/FeedbackManagement";
 import CreateFeedbackForm from "./pages/schooladmin/CreateFeedbackForm";
 import EditFeedbackForm from "./pages/schooladmin/EditFeedbackForm";
@@ -102,6 +104,8 @@ const AppRoutes = () => {
       {/* Admin Routes */}
       <Route path="/superadmin" element={<SuperAdminDashboard />} />
       <Route path="/schooladmin" element={<SchoolAdminDashboard />} />
+      <Route path="/schooladmin/profile" element={<SchoolAdminProfile />} />
+      <Route path="/schooladmin/teacher-profile/:teacherId" element={<TeacherProfileView />} />
       <Route path="/schooladmin/feedback-management" element={<FeedbackManagement />} />
       <Route path="/schooladmin/create-feedback-form" element={<CreateFeedbackForm />} />
       <Route path="/schooladmin/edit-feedback-form/:formId" element={<EditFeedbackForm />} />

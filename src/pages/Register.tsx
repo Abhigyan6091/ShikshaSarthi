@@ -90,7 +90,14 @@ const Register: React.FC = () => {
           }
         } else {
           // For non-teachers
-          setCurrentUsername(user.teacherId || user._id || user.username || '');
+          let resolvedUsername = '';
+          if (role === 'schooladmin' || role === 'superadmin') {
+            resolvedUsername = user.username || user._id || '';
+          } else {
+            resolvedUsername = user.teacherId || user._id || user.username || '';
+          }
+
+          setCurrentUsername(resolvedUsername);
           setCurrentUserSchoolId(user.schoolId || '');
           
           if (role === 'schooladmin') {

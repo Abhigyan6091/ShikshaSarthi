@@ -130,10 +130,10 @@ const Header: React.FC = () => {
                 <></>
               )}
               
-              {/* Show Dashboard and Profile buttons for teachers */}
-              {userRole === 'teacher' && (
+              {/* Show profile button for teachers and school admins */}
+              {(userRole === 'teacher' || userRole === 'schooladmin') && (
                 <>
-                  <Link to="/teacher/profile">
+                  <Link to={userRole === 'teacher' ? "/teacher/profile" : "/schooladmin/profile"}>
                     <Button variant="ghost" size="sm">
                       <User className="h-4 w-4 mr-2" />
                       Profile
@@ -211,9 +211,9 @@ const Header: React.FC = () => {
                       </SheetClose>
                     )}
 
-                    {userRole === 'teacher' && (
+                    {(userRole === 'teacher' || userRole === 'schooladmin') && (
                       <SheetClose asChild>
-                        <Link to="/teacher/profile">
+                        <Link to={userRole === 'teacher' ? "/teacher/profile" : "/schooladmin/profile"}>
                           <Button variant="ghost" className="w-full justify-start">
                             <User className="h-4 w-4 mr-2" />
                             Profile
