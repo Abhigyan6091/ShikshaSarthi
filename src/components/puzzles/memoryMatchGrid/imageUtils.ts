@@ -16,6 +16,7 @@
 
 // Set to true to use local images from public/images folder
 const USE_LOCAL_IMAGES = true;
+const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
 
 // Local images from public/images folder
 // These are the current images available in your project
@@ -99,16 +100,48 @@ export const uploadToCloudinary = async (
   file: File,
   folder: string = "memory_game"
 ): Promise<string | null> => {
+  const fileToBase64 = (inputFile: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(reader.error || new Error("Failed to read image"));
+      reader.readAsDataURL(inputFile);
+    });
+
+  try {
+    // Try local-first upload so the app works fully offline.
+    const base64Data = await fileToBase64(file);
+    const localResponse = await fetch(`${API_URL}/media/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        base64Data,
+        fileName: file.name,
+        mimeType: file.type,
+        mediaType: "images",
+      }),
+    });
+
+    if (localResponse.ok) {
+      const localPayload = await localResponse.json();
+      return localPayload.localUrl?.startsWith("http")
+        ? localPayload.localUrl
+        : `${API_URL}${localPayload.localUrl}`;
+    }
+  } catch (error) {
+    console.warn("Local media upload failed, fallback to Cloudinary:", error);
+  }
+
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", "ml_default");
   formData.append("folder", folder);
 
   try {
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/dmebh0vcd/image/upload`,
-      { method: "POST", body: formData }
-    );
+    const response = await fetch(`https://api.cloudinary.com/v1_1/dmebh0vcd/image/upload`, {
+      method: "POST",
+      body: formData,
+    });
 
     if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
     const data = await response.json();

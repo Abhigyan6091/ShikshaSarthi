@@ -205,16 +205,38 @@ const AdvancedQuizResults: React.FC = () => {
       ? parseFloat(resultData.score.percentage) 
       : resultData.score.percentage;
 
-    // Process section-wise results
-    const sectionWise = {
-      mcq: { correct: 0, incorrect: 0, unattempted: 0, total: 0 },
-      audio: { correct: 0, incorrect: 0, unattempted: 0, total: 0 },
-      video: { correct: 0, incorrect: 0, unattempted: 0, total: 0 },
-      puzzle: { correct: 0, incorrect: 0, unattempted: 0, total: 0 }
+    const normalizeSectionStats = (stats: any) => {
+      const correct = Number(stats?.correct || 0);
+      const incorrect = Number(stats?.incorrect || 0);
+      const unattempted = Number(stats?.unattempted || 0);
+      const total = Number(stats?.total || (correct + incorrect + unattempted));
+      return {
+        correct,
+        incorrect,
+        unattempted,
+        total: total > 0 ? total : 0
+      };
     };
 
-    // Check if answers exist
-    if (resultData.answers && Array.isArray(resultData.answers)) {
+    // Prefer precomputed section-wise data if available
+    let sectionWise = {
+      mcq: normalizeSectionStats(resultData.sectionWise?.mcq),
+      audio: normalizeSectionStats(resultData.sectionWise?.audio),
+      video: normalizeSectionStats(resultData.sectionWise?.video),
+      puzzle: normalizeSectionStats(resultData.sectionWise?.puzzle)
+    };
+
+    const hasSectionData = Object.values(sectionWise).some((s) => s.total > 0);
+
+    // Fallback: derive section-wise results from answers
+    if (!hasSectionData && resultData.answers && Array.isArray(resultData.answers)) {
+      sectionWise = {
+        mcq: { correct: 0, incorrect: 0, unattempted: 0, total: 0 },
+        audio: { correct: 0, incorrect: 0, unattempted: 0, total: 0 },
+        video: { correct: 0, incorrect: 0, unattempted: 0, total: 0 },
+        puzzle: { correct: 0, incorrect: 0, unattempted: 0, total: 0 }
+      };
+
       resultData.answers.forEach((answer: any) => {
         const type = answer.questionType as 'mcq' | 'audio' | 'video' | 'puzzle';
         if (sectionWise[type]) {
@@ -278,6 +300,19 @@ const AdvancedQuizResults: React.FC = () => {
         puzzle: { rank: 0, total: 0 }
       };
 
+      const normalizeSectionStats = (stats: any) => {
+        const correct = Number(stats?.correct || 0);
+        const incorrect = Number(stats?.incorrect || 0);
+        const unattempted = Number(stats?.unattempted || 0);
+        const total = Number(stats?.total || (correct + incorrect + unattempted));
+        return {
+          correct,
+          incorrect,
+          unattempted,
+          total: total > 0 ? total : 0
+        };
+      };
+
       // Process section rankings
       if (analytics.sectionRankings) {
         ['mcq', 'audio', 'video', 'puzzle'].forEach(section => {
@@ -292,18 +327,42 @@ const AdvancedQuizResults: React.FC = () => {
         });
       }
 
-      setResults(prev => prev ? {
-        ...prev,
-        allStudentsStats: {
-          totalAttempts: analytics.studentReports.length,
-          averageScore: avgScore,
-          highestScore: Math.max(...scores),
-          lowestScore: Math.min(...scores),
-          yourRank: yourRank > 0 ? yourRank : scores.length
-        },
-        sectionRankings,
-        leaderboard: analytics.studentReports.slice(0, 10) // Top 10
-      } : null);
+      setResults(prev => {
+        if (!prev) return null;
+
+        const hasPrevSectionData = Object.values(prev.sectionWise).some((s: any) => s.total > 0);
+        let mergedSectionWise = prev.sectionWise;
+
+        if (!hasPrevSectionData) {
+          const currentStudentReport = analytics.studentReports.find(
+            (studentReport: any) =>
+              String(studentReport.studentId).trim() === String(resultData.studentId).trim()
+          );
+
+          if (currentStudentReport?.sectionWise) {
+            mergedSectionWise = {
+              mcq: normalizeSectionStats(currentStudentReport.sectionWise.mcq),
+              audio: normalizeSectionStats(currentStudentReport.sectionWise.audio),
+              video: normalizeSectionStats(currentStudentReport.sectionWise.video),
+              puzzle: normalizeSectionStats(currentStudentReport.sectionWise.puzzle)
+            };
+          }
+        }
+
+        return {
+          ...prev,
+          sectionWise: mergedSectionWise,
+          allStudentsStats: {
+            totalAttempts: analytics.studentReports.length,
+            averageScore: avgScore,
+            highestScore: Math.max(...scores),
+            lowestScore: Math.min(...scores),
+            yourRank: yourRank > 0 ? yourRank : scores.length
+          },
+          sectionRankings,
+          leaderboard: analytics.studentReports.slice(0, 10) // Top 10
+        };
+      });
     } catch (error: any) {
       console.error('Error fetching comparative stats:', error);
       console.error('Error details:', error.response?.data || error.message);
@@ -467,6 +526,38 @@ const AdvancedQuizResults: React.FC = () => {
       score: 'text-orange-600'
     }
   } as const;
+
+  const sectionPerformanceData = [
+    {
+      section: 'MCQ',
+      score: results.sectionWise.mcq.total > 0
+        ? Number(((results.sectionWise.mcq.correct / results.sectionWise.mcq.total) * 100).toFixed(1))
+        : 0,
+      total: results.sectionWise.mcq.total
+    },
+    {
+      section: 'Audio',
+      score: results.sectionWise.audio.total > 0
+        ? Number(((results.sectionWise.audio.correct / results.sectionWise.audio.total) * 100).toFixed(1))
+        : 0,
+      total: results.sectionWise.audio.total
+    },
+    {
+      section: 'Video',
+      score: results.sectionWise.video.total > 0
+        ? Number(((results.sectionWise.video.correct / results.sectionWise.video.total) * 100).toFixed(1))
+        : 0,
+      total: results.sectionWise.video.total
+    },
+    {
+      section: 'Puzzle',
+      score: results.sectionWise.puzzle.total > 0
+        ? Number(((results.sectionWise.puzzle.correct / results.sectionWise.puzzle.total) * 100).toFixed(1))
+        : 0,
+      total: results.sectionWise.puzzle.total
+    }
+  ];
+  const hasSectionPerformanceData = sectionPerformanceData.some((item) => item.total > 0);
 
   return (
     <div className="container mx-auto p-3 sm:p-6 max-w-6xl">
@@ -1209,38 +1300,18 @@ const AdvancedQuizResults: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {!hasSectionPerformanceData && (
+              <div className="mb-4 p-3 rounded-lg border border-amber-300 bg-amber-50 text-sm text-amber-800">
+                Section-wise data is unavailable for this report. Showing overall score fallback.
+              </div>
+            )}
             <ResponsiveContainer width="100%" height={300}>
               <BarChart
-                data={[
-                  {
-                    section: 'MCQ',
-                    score: results.sectionWise.mcq.total > 0 
-                      ? ((results.sectionWise.mcq.correct / results.sectionWise.mcq.total) * 100).toFixed(1)
-                      : 0,
-                    total: results.sectionWise.mcq.total
-                  },
-                  {
-                    section: 'Audio',
-                    score: results.sectionWise.audio.total > 0 
-                      ? ((results.sectionWise.audio.correct / results.sectionWise.audio.total) * 100).toFixed(1)
-                      : 0,
-                    total: results.sectionWise.audio.total
-                  },
-                  {
-                    section: 'Video',
-                    score: results.sectionWise.video.total > 0 
-                      ? ((results.sectionWise.video.correct / results.sectionWise.video.total) * 100).toFixed(1)
-                      : 0,
-                    total: results.sectionWise.video.total
-                  },
-                  {
-                    section: 'Puzzle',
-                    score: results.sectionWise.puzzle.total > 0 
-                      ? ((results.sectionWise.puzzle.correct / results.sectionWise.puzzle.total) * 100).toFixed(1)
-                      : 0,
-                    total: results.sectionWise.puzzle.total
-                  }
-                ].filter(item => item.total > 0)}
+                data={
+                  hasSectionPerformanceData
+                    ? sectionPerformanceData
+                    : [{ section: 'Overall', score: Number(getPercentage().toFixed(1)), total: 1 }]
+                }
                 margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />

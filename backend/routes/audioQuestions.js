@@ -3,8 +3,29 @@ const router = express.Router();
 const AudioQuestion = require("../models/AudioQuestion");
 const AudioQuizAttempt = require("../models/AudioQuizAttempt");
 const audioCache = require("../utils/audioCache");
+const { ensureCloudUrlLocalized } = require("../sync/mediaSyncService");
 const path = require('path');
 const fs = require('fs');
+
+function isHttpUrl(value) {
+  return typeof value === "string" && /^https?:\/\//i.test(value);
+}
+
+function toAbsoluteUploadUrl(value, req) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  if (value.startsWith("/uploads/")) {
+    return `${req.protocol}://${req.get("host")}${value}`;
+  }
+
+  if (value.startsWith("uploads/")) {
+    return `${req.protocol}://${req.get("host")}/${value}`;
+  }
+
+  return value;
+}
 
 // Test route to create a sample attempt
 router.post("/test-attempt", async (req, res) => {
@@ -154,8 +175,10 @@ router.get("/:class/:subject/:topic", async (req, res) => {
 
     console.log(`Found ${questions.length} audio questions`);
 
-    // Cache audio files in background and update URLs
-    const audioUrls = questions.map(q => q.audio).filter(Boolean);
+    // Cache only remote HTTP audio files in background.
+    const audioUrls = questions
+      .map((q) => toAbsoluteUploadUrl(q.audio, req))
+      .filter((url) => isHttpUrl(url));
     
     // Start caching in background (don't wait for it)
     if (audioUrls.length > 0) {
@@ -166,19 +189,62 @@ router.get("/:class/:subject/:topic", async (req, res) => {
       });
     }
 
-    // Return questions with local audio URLs if cached, otherwise Cloudinary URLs
-    const questionsWithCachedAudio = questions.map(question => {
+    // Return questions with local playable URLs.
+    const questionsWithCachedAudio = [];
+    for (const question of questions) {
       const questionObj = question.toObject();
-      if (questionObj.audio) {
-        const filename = audioCache.getFilenameFromUrl(questionObj.audio);
-        // Use local URL if file will be cached
-        questionObj.audioLocal = `/api/audio-questions/audio/${filename}`;
-        questionObj.audioOriginal = questionObj.audio;
-        // Set audio to local URL for immediate use (will fallback to Cloudinary if not cached yet)
-        questionObj.audio = questionObj.audioLocal;
+      const normalizedAudio = toAbsoluteUploadUrl(questionObj.audio, req);
+
+      if (!normalizedAudio) {
+        questionsWithCachedAudio.push(questionObj);
+        continue;
       }
-      return questionObj;
-    });
+
+      if (isHttpUrl(normalizedAudio) && normalizedAudio.includes("res.cloudinary.com")) {
+        try {
+          const localized = await ensureCloudUrlLocalized(normalizedAudio);
+          if (localized && localized.localUrl) {
+            questionObj.audioOriginal = normalizedAudio;
+            questionObj.audio = localized.localUrl;
+            questionObj.localPath = localized.relativePath;
+            questionObj.cloudUrl = questionObj.cloudUrl || normalizedAudio;
+
+            // Persist localized path for offline use.
+            await AudioQuestion.updateOne(
+              { _id: questionObj._id },
+              {
+                $set: {
+                  audio: localized.localUrl,
+                  localPath: localized.relativePath,
+                  cloudUrl: questionObj.cloudUrl,
+                },
+              },
+              {
+                runValidators: false,
+                includeDeleted: true,
+                skipSyncMetadata: true,
+              }
+            );
+
+            questionsWithCachedAudio.push(questionObj);
+            continue;
+          }
+        } catch (_localizeError) {
+          // fallback to existing cache proxy flow below
+        }
+
+        const filename = audioCache.getFilenameFromUrl(normalizedAudio);
+        questionObj.audioLocal = `${req.protocol}://${req.get("host")}/audio-questions/audio/${filename}`;
+        questionObj.audioOriginal = normalizedAudio;
+        questionObj.audio = questionObj.audioLocal;
+        questionsWithCachedAudio.push(questionObj);
+        continue;
+      }
+
+      // Keep already-local files (uploads folder) or non-Cloudinary HTTP URLs as-is.
+      questionObj.audio = normalizedAudio;
+      questionsWithCachedAudio.push(questionObj);
+    }
 
     res.json(questionsWithCachedAudio);
   } catch (error) {
@@ -244,7 +310,11 @@ router.put("/:id", async (req, res) => {
 // Delete an audio question
 router.delete("/:id", async (req, res) => {
   try {
-    const audioQuestion = await AudioQuestion.findByIdAndDelete(req.params.id);
+    const audioQuestion = await AudioQuestion.findByIdAndUpdate(
+      req.params.id,
+      { isDeleted: true },
+      { new: true }
+    );
 
     if (!audioQuestion) {
       return res.status(404).json({ message: "Audio question not found" });

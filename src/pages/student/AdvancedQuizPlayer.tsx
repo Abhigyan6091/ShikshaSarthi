@@ -9,6 +9,8 @@ import { useToast } from '@/components/ui/use-toast';
 import axios from 'axios';
 import EmbeddableMemoryMatch from '@/components/puzzles/EmbeddableMemoryMatch';
 import EmbeddableMatchPieces from '@/components/puzzles/EmbeddableMatchPieces';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { clearAdvancedQuizDraft, setAdvancedQuizDraft } from '@/store/slices/advancedQuizDraftSlice';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -21,7 +23,7 @@ interface QuestionData {
 interface Answer {
   questionId: string;
   questionType: string;
-  selectedAnswer: string | string[];
+  selectedAnswer: string | string[] | null;
   timeSpent: number;
   videoAnalytics?: {
     videoDuration: number;
@@ -40,12 +42,45 @@ interface Answer {
   };
 }
 
+interface QuizInfo {
+  quizId: string;
+  teacherId: string;
+  timeLimit: number;
+  totalQuestions: number;
+  questionTypes: {
+    mcq: number;
+    audio: number;
+    video: number;
+    puzzle: number;
+  };
+  startTime: string;
+  endTime: string;
+  questions: string[];
+  videoQuestionMetadata?: Array<{
+    slotIndex: number;
+    parentVideoId: string;
+    questionIndex: number;
+  }>;
+}
+
+interface AdvancedQuizPlayerLocationState {
+  quizInfo?: QuizInfo;
+  studentId?: string;
+}
+
 const AdvancedQuizPlayer: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const dispatch = useAppDispatch();
   
-  const { quizInfo, studentId } = location.state || {};
+  const locationState = (location.state || {}) as AdvancedQuizPlayerLocationState;
+  const persistedDraft = useAppSelector((state) => state.advancedQuizDraft.currentDraft);
+  const initialQuizInfoRef = useRef<QuizInfo | undefined>((locationState.quizInfo || persistedDraft?.quizInfo) as QuizInfo | undefined);
+  const initialStudentIdRef = useRef<string>(locationState.studentId || persistedDraft?.studentId || '');
+
+  const quizInfo = initialQuizInfoRef.current as QuizInfo;
+  const studentId: string = initialStudentIdRef.current;
   
   const [questions, setQuestions] = useState<QuestionData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -73,12 +108,106 @@ const AdvancedQuizPlayer: React.FC = () => {
     lastPlayTime: number;
   }}>({});
   
-  const timerRef = useRef<number | null>(null);
-  const countdownRef = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
+  const countdownRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
   const startTimeRef = useRef<number>(Date.now());
   const questionStartTimeRef = useRef<number>(Date.now());
   const answersRef = useRef<Answer[]>([]);
   const questionsRef = useRef<QuestionData[]>([]);
+  const draftRestoreCompletedRef = useRef<boolean>(false);
+  const lastServerDraftSaveRef = useRef<number>(0);
+  const initialPersistedDraftRef = useRef(persistedDraft);
+  const nextServerDraftSyncAtRef = useRef<number>(0);
+  const SERVER_DRAFT_SYNC_INTERVAL_SECONDS = 10 * 60;
+  const INITIAL_SERVER_DRAFT_SYNC_DELAY_SECONDS = 20;
+  const LOCAL_DRAFT_TIME_CHECKPOINT_SECONDS = 30;
+
+  const createDraftSnapshot = () => {
+    if (!quizInfo || !studentId) {
+      return null;
+    }
+
+    return {
+      quizId: quizInfo.quizId,
+      studentId: studentId.trim(),
+      quizInfo,
+      currentIndex,
+      answers,
+      puzzleResults,
+      videoAnalytics,
+      timeRemaining,
+      initialTimeLimit,
+      quizStarted,
+      quizEnded,
+      startedAt: new Date(startTimeRef.current).toISOString()
+    };
+  };
+
+  const applyDraftState = (
+    draft: any,
+    fallbackTimeRemaining: number,
+    fallbackInitialTimeLimit: number
+  ) => {
+    const safeCurrentIndex = Math.max(0, Number(draft?.currentIndex || 0));
+    const safeAnswers = Array.isArray(draft?.answers) ? draft.answers : [];
+    const safePuzzleResults = draft?.puzzleResults && typeof draft.puzzleResults === 'object'
+      ? draft.puzzleResults
+      : {};
+    const safeVideoAnalytics = draft?.videoAnalytics && typeof draft.videoAnalytics === 'object'
+      ? draft.videoAnalytics
+      : {};
+    const safeInitialTime = Number(draft?.initialTimeLimit || fallbackInitialTimeLimit);
+    const requestedTimeRemaining = Number(draft?.timeRemaining || fallbackTimeRemaining);
+    const safeTimeRemaining = Math.max(
+      0,
+      Math.min(requestedTimeRemaining, fallbackTimeRemaining)
+    );
+
+    setCurrentIndex(safeCurrentIndex);
+    setAnswers(safeAnswers);
+    setPuzzleResults(safePuzzleResults);
+    setVideoAnalytics(safeVideoAnalytics);
+    setInitialTimeLimit(safeInitialTime);
+    setTimeRemaining(safeTimeRemaining);
+
+    if (draft?.quizStarted) {
+      setShowInstructions(false);
+      setQuizStarted(true);
+    }
+
+    if (draft?.startedAt) {
+      const parsed = new Date(draft.startedAt).getTime();
+      startTimeRef.current = Number.isFinite(parsed) ? parsed : Date.now();
+    } else {
+      startTimeRef.current = Date.now();
+    }
+
+    questionStartTimeRef.current = Date.now();
+    draftRestoreCompletedRef.current = true;
+  };
+
+  const saveDraftToServer = async (force = false) => {
+    const snapshot = createDraftSnapshot();
+    if (!snapshot || !snapshot.quizStarted || snapshot.quizEnded) {
+      return;
+    }
+
+    const now = Date.now();
+    if (
+      !force &&
+      now - lastServerDraftSaveRef.current < SERVER_DRAFT_SYNC_INTERVAL_SECONDS * 1000
+    ) {
+      return;
+    }
+
+    lastServerDraftSaveRef.current = now;
+
+    try {
+      await axios.put(`${API_URL}/quizzes/advanced-draft`, snapshot);
+    } catch (error) {
+      console.error('Failed to sync advanced quiz draft to database:', error);
+    }
+  };
 
   useEffect(() => {
     if (!quizInfo) {
@@ -100,41 +229,95 @@ const AdvancedQuizPlayer: React.FC = () => {
     
     console.log('Quiz initialized with studentId:', studentId);
 
-    loadQuestions();
-    
-    // Calculate remaining time based on quiz end time (not just time limit)
-    const nowTime = new Date();
-    const endTime = new Date(quizInfo.endTime);
-    const remainingSeconds = Math.floor((endTime.getTime() - nowTime.getTime()) / 1000);
-    
-    // Use the smaller of: remaining time to end OR configured time limit
-    const configuredTimeLimit = quizInfo.timeLimit * 60;
-    const actualTimeRemaining = Math.min(remainingSeconds, configuredTimeLimit);
-    
-    if (actualTimeRemaining <= 0) {
-      // Quiz time has already expired
-      setTimeRemaining(0);
-      toast({
-        title: "Quiz Ended",
-        description: "The quiz time has expired",
-        variant: "destructive"
-      });
-      setTimeout(() => navigate('/student'), 2000);
-      return;
-    }
-    
-    setTimeRemaining(actualTimeRemaining);
-    setInitialTimeLimit(actualTimeRemaining); // Store the initial time for accurate calculation later
-    console.log(`Time remaining calculated: ${actualTimeRemaining}s (${Math.floor(actualTimeRemaining/60)}m)`);
-    
-    // Calculate countdown to quiz start
-    const startTime = new Date(quizInfo.startTime);
-    const secondsUntilStart = Math.floor((startTime.getTime() - nowTime.getTime()) / 1000);
-    
-    if (secondsUntilStart > 0) {
-      setCountdownToStart(secondsUntilStart);
-    }
-  }, [quizInfo]);
+    const initializeQuizAttempt = async () => {
+      await loadQuestions();
+
+      // Calculate remaining time based on quiz end time (not just time limit)
+      const nowTime = new Date();
+      const endTime = new Date(quizInfo.endTime);
+      const remainingSeconds = Math.floor((endTime.getTime() - nowTime.getTime()) / 1000);
+
+      // Use the smaller of: remaining time to end OR configured time limit
+      const configuredTimeLimit = quizInfo.timeLimit * 60;
+      const actualTimeRemaining = Math.min(remainingSeconds, configuredTimeLimit);
+
+      if (actualTimeRemaining <= 0) {
+        // Quiz time has already expired
+        setTimeRemaining(0);
+        toast({
+          title: "Quiz Ended",
+          description: "The quiz time has expired",
+          variant: "destructive"
+        });
+        setTimeout(() => navigate('/student'), 2000);
+        return;
+      }
+
+      setTimeRemaining(actualTimeRemaining);
+      setInitialTimeLimit(actualTimeRemaining); // Store the initial time for accurate calculation later
+      console.log(`Time remaining calculated: ${actualTimeRemaining}s (${Math.floor(actualTimeRemaining / 60)}m)`);
+
+      // Calculate countdown to quiz start
+      const startTime = new Date(quizInfo.startTime);
+      const secondsUntilStart = Math.floor((startTime.getTime() - nowTime.getTime()) / 1000);
+      if (secondsUntilStart > 0) {
+        setCountdownToStart(secondsUntilStart);
+      }
+
+      let restoredFromDraft = false;
+      let skipLocalRestore = false;
+
+      const persistedDraftSnapshot = initialPersistedDraftRef.current;
+      if (
+        persistedDraftSnapshot &&
+        (
+          String(persistedDraftSnapshot.quizId || '').trim() !== String(quizInfo.quizId || '').trim() ||
+          String(persistedDraftSnapshot.studentId || '').trim() !== String(studentId || '').trim()
+        )
+      ) {
+        dispatch(clearAdvancedQuizDraft());
+      }
+
+      try {
+        const response = await axios.get(`${API_URL}/quizzes/advanced-draft/${quizInfo.quizId}/${studentId}`);
+        if (response.data?.draft) {
+          applyDraftState(response.data.draft, actualTimeRemaining, actualTimeRemaining);
+          restoredFromDraft = true;
+          toast({
+            title: "Progress Restored",
+            description: "Your previous advanced quiz answers were restored."
+          });
+        }
+      } catch (draftError: any) {
+        if (draftError.response?.status === 409) {
+          skipLocalRestore = true;
+          dispatch(clearAdvancedQuizDraft());
+        }
+
+        if (draftError.response?.status !== 404 && draftError.response?.status !== 409) {
+          console.error('Failed to fetch server-side advanced quiz draft:', draftError);
+        }
+      }
+
+      if (
+        !restoredFromDraft &&
+        !skipLocalRestore &&
+        persistedDraftSnapshot &&
+        persistedDraftSnapshot.quizId === quizInfo.quizId &&
+        persistedDraftSnapshot.studentId === studentId
+      ) {
+        applyDraftState(persistedDraftSnapshot, actualTimeRemaining, actualTimeRemaining);
+        toast({
+          title: "Progress Restored",
+          description: "Recovered your quiz progress from local storage."
+        });
+      } else if (!restoredFromDraft) {
+        draftRestoreCompletedRef.current = true;
+      }
+    };
+
+    initializeQuizAttempt();
+  }, [quizInfo, studentId, navigate, toast, dispatch]);
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -144,6 +327,69 @@ const AdvancedQuizPlayer: React.FC = () => {
   useEffect(() => {
     questionsRef.current = questions;
   }, [questions]);
+
+  useEffect(() => {
+    if (questions.length > 0 && currentIndex >= questions.length) {
+      setCurrentIndex(questions.length - 1);
+    }
+  }, [questions, currentIndex]);
+
+  const localDraftTimeCheckpoint = Math.floor(
+    timeRemaining / LOCAL_DRAFT_TIME_CHECKPOINT_SECONDS
+  );
+
+  useEffect(() => {
+    if (!draftRestoreCompletedRef.current) {
+      return;
+    }
+
+    const snapshot = createDraftSnapshot();
+    if (!snapshot) {
+      return;
+    }
+
+    dispatch(setAdvancedQuizDraft(snapshot));
+  }, [
+    dispatch,
+    quizInfo,
+    studentId,
+    currentIndex,
+    answers,
+    puzzleResults,
+    videoAnalytics,
+    localDraftTimeCheckpoint,
+    initialTimeLimit,
+    quizStarted,
+    quizEnded
+  ]);
+
+  useEffect(() => {
+    if (!quizInfo || !studentId || !quizStarted || quizEnded || !draftRestoreCompletedRef.current) {
+      nextServerDraftSyncAtRef.current = 0;
+      return;
+    }
+
+    const now = Date.now();
+    if (nextServerDraftSyncAtRef.current === 0) {
+      nextServerDraftSyncAtRef.current = now + (INITIAL_SERVER_DRAFT_SYNC_DELAY_SECONDS * 1000);
+      return;
+    }
+
+    if (now >= nextServerDraftSyncAtRef.current) {
+      nextServerDraftSyncAtRef.current = now + (SERVER_DRAFT_SYNC_INTERVAL_SECONDS * 1000);
+      saveDraftToServer(true);
+    }
+  }, [
+    quizInfo,
+    studentId,
+    quizStarted,
+    quizEnded,
+    timeRemaining,
+    currentIndex,
+    answers,
+    puzzleResults,
+    videoAnalytics
+  ]);
 
   // Countdown timer before quiz starts
   useEffect(() => {
@@ -569,6 +815,13 @@ const AdvancedQuizPlayer: React.FC = () => {
         duration: 4000
       });
 
+      dispatch(clearAdvancedQuizDraft());
+      try {
+        await axios.delete(`${API_URL}/quizzes/advanced-draft/${quizInfo.quizId}/${studentId}`);
+      } catch (draftDeleteError) {
+        console.error('Failed to delete advanced quiz draft after submission:', draftDeleteError);
+      }
+
       // Navigate to results page with data
       navigate('/student/advanced-quiz-results', {
         state: {
@@ -594,6 +847,13 @@ const AdvancedQuizPlayer: React.FC = () => {
       
       // If it's a duplicate submission error, navigate to results anyway
       if (error.response?.status === 400 && error.response?.data?.error?.includes('already submitted')) {
+        dispatch(clearAdvancedQuizDraft());
+        try {
+          await axios.delete(`${API_URL}/quizzes/advanced-draft/${quizInfo.quizId}/${studentId}`);
+        } catch (draftDeleteError) {
+          console.error('Failed to delete advanced quiz draft after duplicate submission:', draftDeleteError);
+        }
+
         toast({
           title: "Already Submitted",
           description: "This quiz was already submitted.",
@@ -1174,6 +1434,10 @@ const AdvancedQuizPlayer: React.FC = () => {
       </div>
     );
   };
+
+  if (!quizInfo) {
+    return null;
+  }
 
   // Instructions screen
   if (showInstructions) {

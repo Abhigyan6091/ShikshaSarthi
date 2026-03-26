@@ -35,6 +35,26 @@ const AdvancedQuizPastReports: React.FC = () => {
   const [studentId, setStudentId] = useState('');
   const [quizIdSearch, setQuizIdSearch] = useState('');
 
+  const getSafeTimestamp = (dateValue?: string) => {
+    if (!dateValue) return 0;
+    const timestamp = new Date(dateValue).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
+  };
+
+  const getSafeIsoDate = (dateValue?: string) => {
+    const timestamp = getSafeTimestamp(dateValue);
+    return timestamp > 0 ? new Date(timestamp).toISOString() : new Date().toISOString();
+  };
+
+  const formatReportDate = (dateValue?: string) => {
+    const timestamp = getSafeTimestamp(dateValue);
+    if (!timestamp) return 'N/A';
+    return new Date(timestamp).toLocaleString('en-IN', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    });
+  };
+
   useEffect(() => {
     // Get student info
     const studentData = localStorage.getItem('student');
@@ -98,7 +118,7 @@ const AdvancedQuizPastReports: React.FC = () => {
       
       // Sort by most recent first
       const sortedReports = response.data.sort((a: StudentReport, b: StudentReport) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        getSafeTimestamp(b.createdAt) - getSafeTimestamp(a.createdAt)
       );
       setReports(sortedReports);
     } catch (error: any) {
@@ -132,7 +152,7 @@ const AdvancedQuizPastReports: React.FC = () => {
             percentage: percentage
           },
           answers: report.answers,
-          quizEndTime: new Date(report.createdAt).toISOString(), // Use submission time as end time (past)
+          quizEndTime: getSafeIsoDate(report.createdAt), // Use submission time as end time (past)
           isPastReport: true // Flag to indicate this is a past report
         }
       }
@@ -259,10 +279,7 @@ const AdvancedQuizPastReports: React.FC = () => {
                       <CardTitle className="text-base sm:text-lg mb-1">Quiz: {report.quizId}</CardTitle>
                       <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-600">
                         <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                        {new Date(report.createdAt).toLocaleString('en-IN', {
-                          dateStyle: 'medium',
-                          timeStyle: 'short'
-                        })}
+                        {formatReportDate(report.createdAt)}
                       </div>
                     </div>
                     {getPerformanceBadge(percentage)}

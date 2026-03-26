@@ -185,7 +185,6 @@ const MATQuestionSchema = new mongoose.Schema({
 
 // Index for faster queries
 MATQuestionSchema.index({ module: 1, difficulty: 1 });
-MATQuestionSchema.index({ questionId: 1 });
 MATQuestionSchema.index({ 'yearPaper.year': 1 });
 
 // Update the updatedAt timestamp before saving

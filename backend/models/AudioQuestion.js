@@ -31,6 +31,16 @@ const audioQuestionSchema = new mongoose.Schema({
   audio: {
     type: String,   // Cloudinary mp3 URL
     required: true
+  },
+
+  // Offline-first media tracking
+  localPath: {
+    type: String,
+    default: null
+  },
+  cloudUrl: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

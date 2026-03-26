@@ -10,6 +10,15 @@ const questionSchema = new mongoose.Schema({
     type: String,
     required: false,
   },
+  // Offline-first media tracking
+  localPath: {
+    type: String,
+    default: null,
+  },
+  cloudUrl: {
+    type: String,
+    default: null,
+  },
   options: {
     type: [String],
     required: true,

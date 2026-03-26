@@ -16,7 +16,9 @@ import {
   BookOpen, 
   LogOut,
   UserPlus,
-  Menu
+  Menu,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 
 const Header: React.FC = () => {
@@ -25,6 +27,12 @@ const Header: React.FC = () => {
   const [userName, setUserName] = useState<string>('');
   const [studentId, setStudentId] = useState<string>('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(() => {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+    return window.navigator.onLine;
+  });
 
   useEffect(() => {
     // Check for logged in user
@@ -61,6 +69,19 @@ const Header: React.FC = () => {
         console.error('Error parsing student data', e);
       }
     }
+  }, []);
+
+  useEffect(() => {
+    const markOnline = () => setIsOnline(true);
+    const markOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', markOnline);
+    window.addEventListener('offline', markOffline);
+
+    return () => {
+      window.removeEventListener('online', markOnline);
+      window.removeEventListener('offline', markOffline);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -106,6 +127,15 @@ const Header: React.FC = () => {
         </div>
         
         <div className="hidden lg:flex items-center space-x-3 xl:space-x-4">
+          <div
+            className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
+              isOnline ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+            }`}
+            title={isOnline ? 'Online' : 'Offline'}
+          >
+            {isOnline ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
+            <span>{isOnline ? 'Online' : 'Offline'}</span>
+          </div>
           {userRole ? (
             <>
             <Link to={getDashboardPath()}>
@@ -168,6 +198,14 @@ const Header: React.FC = () => {
         </div>
 
         <div className="flex lg:hidden items-center gap-2">
+          <div
+            className={`flex items-center justify-center rounded-full p-2 ${
+              isOnline ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+            }`}
+            title={isOnline ? 'Online' : 'Offline'}
+          >
+            {isOnline ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+          </div>
           {userRole && (
             <Link to={getDashboardPath()}>
               <Button variant="ghost" size="icon" aria-label="Open dashboard">

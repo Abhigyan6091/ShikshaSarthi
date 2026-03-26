@@ -94,7 +94,7 @@
   router.get("/student/:studentId", async (req, res) => {
     const { studentId } = req.params;
     try {
-      const reports = await StudentReport.find({ studentId });
+      const reports = await StudentReport.find({ studentId, submissionStatus: { $ne: "draft" } });
       res.json(reports);
     } catch (err) {
       res.status(500).json({ error: "Error fetching student report" });
@@ -118,7 +118,7 @@
     const { quizId } = req.params;
 
     try {
-      const reports = await StudentReport.find({ quizId });
+      const reports = await StudentReport.find({ quizId, submissionStatus: { $ne: "draft" } });
       res.json(reports);
     } catch (err) {
       console.error("Error fetching student quiz reports:", err);
@@ -133,7 +133,8 @@
     try {
       const existingReport = await StudentReport.findOne({ 
         quizId, 
-        studentId: studentId.trim() 
+        studentId: studentId.trim(),
+        submissionStatus: { $ne: "draft" }
       });
       
       if (existingReport) {

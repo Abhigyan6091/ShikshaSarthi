@@ -219,7 +219,11 @@ router.delete('/:formId', async (req, res) => {
       });
     }
 
-    await FeedbackForm.deleteOne({ formId });
+    await FeedbackForm.findOneAndUpdate(
+      { formId },
+      { isDeleted: true },
+      { includeDeleted: true }
+    );
 
     res.status(200).json({ message: 'Feedback form deleted successfully' });
   } catch (error) {

@@ -1,0 +1,14 @@
+{
+  "watch": [
+    "index.js",
+    "models",
+    "routes",
+    "sync",
+    "utils"
+  ],
+  "ext": "js,json",
+  "ignore": [
+    "node_modules/**",
+    "data/**"
+  ]
+}

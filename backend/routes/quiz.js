@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const Quiz = require("../models/Quiz");
 const Teacher = require("../models/Teacher"); // adjust the path as needed
 const Question = require("../models/Question");
+const StudentReport = require("../models/StudentReport");
 
 // Helper: find a teacher by either their custom teacherId or MongoDB _id
 async function findTeacherByIdentifier(identifier) {
@@ -14,6 +15,34 @@ async function findTeacherByIdentifier(identifier) {
   }
   return await Teacher.findOne({ teacherId: identifier });
 }
+
+const submittedReportFilter = (quizId, studentId) => ({
+  quizId,
+  studentId,
+  submissionStatus: { $ne: "draft" },
+});
+
+const draftReportFilter = (quizId, studentId) => ({
+  quizId,
+  studentId,
+  submissionStatus: "draft",
+});
+
+const serializeDraftFromStudentReport = (reportDoc) => ({
+  quizId: reportDoc.quizId,
+  studentId: reportDoc.studentId,
+  quizInfo: reportDoc.draftState?.quizInfo || {},
+  currentIndex: Number(reportDoc.draftState?.currentIndex || 0),
+  answers: Array.isArray(reportDoc.answers) ? reportDoc.answers : [],
+  puzzleResults: reportDoc.draftState?.puzzleResults || {},
+  videoAnalytics: reportDoc.draftState?.videoAnalytics || {},
+  timeRemaining: Number(reportDoc.draftState?.timeRemaining || 0),
+  initialTimeLimit: Number(reportDoc.draftState?.initialTimeLimit || 0),
+  quizStarted: Boolean(reportDoc.draftState?.quizStarted),
+  quizEnded: Boolean(reportDoc.draftState?.quizEnded),
+  startedAt: reportDoc.draftState?.startedAt || reportDoc.updatedAt,
+  updatedAt: reportDoc.updatedAt,
+});
 
 
 // Create a new quiz
@@ -115,7 +144,11 @@ router.put("/update/:quizId", async (req, res) => {
 // Delete quiz by ID
 router.delete("/:id", async (req, res) => {
   try {
-    const deleted = await Quiz.findByIdAndDelete(req.params.id);
+    const deleted = await Quiz.findByIdAndUpdate(
+      req.params.id,
+      { isDeleted: true },
+      { new: true }
+    );
     if (!deleted) return res.status(404).json({ message: "Quiz not found" });
     res.status(200).json({ message: "Quiz deleted successfully" });
   } catch (err) {
@@ -255,10 +288,11 @@ router.get("/analytics/:quizId", async (req, res) => {
     const quiz = await Quiz.findOne({ quizId: req.params.quizId });
     if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
-    // Get all student reports for this quiz
-    const StudentReport = require("../models/StudentReport");
-    
-    const reports = await StudentReport.find({ quizId: quiz.quizId });
+    // Get all submitted reports for this quiz (ignore in-progress drafts)
+    const reports = await StudentReport.find({
+      quizId: quiz.quizId,
+      submissionStatus: { $ne: "draft" },
+    });
     
     console.log(`Found ${reports.length} reports for quiz ${quiz.quizId}`);
     
@@ -556,6 +590,113 @@ router.get("/analytics/:quizId", async (req, res) => {
   }
 });
 
+// Advanced quiz draft APIs
+router.get("/advanced-draft/:quizId/:studentId", async (req, res) => {
+  try {
+    const quizId = String(req.params.quizId || "").trim();
+    const studentId = String(req.params.studentId || "").trim();
+
+    if (!quizId || !studentId) {
+      return res.status(400).json({ error: "quizId and studentId are required" });
+    }
+
+    const submittedReport = await StudentReport.findOne(submittedReportFilter(quizId, studentId)).lean();
+    if (submittedReport) {
+      return res.status(409).json({
+        message: "Quiz already submitted. Draft is no longer available.",
+        submitted: true,
+      });
+    }
+
+    const draftReport = await StudentReport.findOne(draftReportFilter(quizId, studentId)).lean();
+    if (!draftReport) {
+      return res.status(404).json({ message: "No saved draft found" });
+    }
+
+    return res.status(200).json({ draft: serializeDraftFromStudentReport(draftReport) });
+  } catch (err) {
+    console.error("Error fetching advanced quiz draft:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.put("/advanced-draft", async (req, res) => {
+  try {
+    const quizId = String(req.body.quizId || "").trim();
+    const studentId = String(req.body.studentId || "").trim();
+
+    if (!quizId || !studentId) {
+      return res.status(400).json({ error: "quizId and studentId are required" });
+    }
+
+    const submittedReport = await StudentReport.findOne(submittedReportFilter(quizId, studentId)).lean();
+    if (submittedReport) {
+      return res.status(409).json({
+        message: "Quiz already submitted. Draft updates are disabled.",
+        submitted: true,
+      });
+    }
+
+    const updatePayload = {
+      quizId,
+      studentId,
+      correct: Number(req.body.correct || 0),
+      incorrect: Number(req.body.incorrect || 0),
+      unattempted: Number(req.body.unattempted || 0),
+      timeTaken: Number(req.body.timeTaken || 0),
+      answers: Array.isArray(req.body.answers) ? req.body.answers : [],
+      submissionStatus: "draft",
+      draftState: {
+        quizInfo: req.body.quizInfo || {},
+        currentIndex: Number(req.body.currentIndex || 0),
+        timeRemaining: Number(req.body.timeRemaining || 0),
+        initialTimeLimit: Number(req.body.initialTimeLimit || 0),
+        quizStarted: Boolean(req.body.quizStarted),
+        quizEnded: Boolean(req.body.quizEnded),
+        startedAt: req.body.startedAt ? new Date(req.body.startedAt) : new Date(),
+        puzzleResults: req.body.puzzleResults || {},
+        videoAnalytics: req.body.videoAnalytics || {},
+        lastSyncedAt: new Date(),
+      },
+    };
+
+    const savedDraft = await StudentReport.findOneAndUpdate(
+      draftReportFilter(quizId, studentId),
+      { $set: updatePayload },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    return res.status(200).json({
+      message: "Draft saved successfully",
+      draft: serializeDraftFromStudentReport(savedDraft),
+    });
+  } catch (err) {
+    console.error("Error saving advanced quiz draft:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete("/advanced-draft/:quizId/:studentId", async (req, res) => {
+  try {
+    const quizId = String(req.params.quizId || "").trim();
+    const studentId = String(req.params.studentId || "").trim();
+
+    if (!quizId || !studentId) {
+      return res.status(400).json({ error: "quizId and studentId are required" });
+    }
+
+    await StudentReport.findOneAndUpdate(
+      draftReportFilter(quizId, studentId),
+      { isDeleted: true },
+      { includeDeleted: true }
+    );
+    return res.status(200).json({ message: "Draft deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting advanced quiz draft:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Submit advanced quiz attempt
 router.post("/submit-advanced", async (req, res) => {
   try {
@@ -590,9 +731,12 @@ router.post("/submit-advanced", async (req, res) => {
       return res.status(404).json({ error: "Quiz not found" });
     }
 
+    const normalizedStudentId = studentId.trim();
+
     // Check if student has already submitted this quiz
-    const StudentReport = require("../models/StudentReport");
-    const existingSubmission = await StudentReport.findOne({ quizId, studentId: studentId.trim() });
+    const existingSubmission = await StudentReport.findOne(
+      submittedReportFilter(quizId, normalizedStudentId)
+    );
     
     if (existingSubmission) {
       return res.status(400).json({ 
@@ -602,19 +746,13 @@ router.post("/submit-advanced", async (req, res) => {
       });
     }
 
-    // Add student to attemptedBy if not already there
-    if (!quiz.attemptedBy.includes(studentId)) {
-      quiz.attemptedBy.push(studentId);
-      await quiz.save();
-    }
-
     // Create a student report
     const Student = require("../models/Student");
     
-    const student = await Student.findOne({ studentId });
+    const student = await Student.findOne({ studentId: normalizedStudentId });
     
     if (!student) {
-      console.warn(`Student with ID ${studentId} not found in database`);
+      console.warn(`Student with ID ${normalizedStudentId} not found in database`);
     }
 
     const normalizeHintText = (hint) => {
@@ -661,43 +799,60 @@ router.post("/submit-advanced", async (req, res) => {
       return null;
     };
     
-    const report = new StudentReport({
-      quizId,
-      studentId: studentId.trim(), // Ensure trimmed
-      correct: score.correct,
-      incorrect: score.incorrect,
-      unattempted: score.unattempted,
-      timeTaken: timeTaken || 0, // Add time taken
-      answers: answers.map((ans) => {
-        const answerObj = {
-          questionId: ans.questionId,
-          questionType: ans.questionType,
-          selectedAnswer: ans.selectedAnswer,
-          isCorrect: ans.isCorrect,
-          correctAnswer: ans.correctAnswer,
-          timeSpent: ans.timeSpent || 0
-        };
+    const normalizedAnswers = answers.map((ans) => {
+      const answerObj = {
+        questionId: ans.questionId,
+        questionType: ans.questionType,
+        selectedAnswer: ans.selectedAnswer,
+        isCorrect: ans.isCorrect,
+        correctAnswer: ans.correctAnswer,
+        timeSpent: ans.timeSpent || 0
+      };
+      
+      // Add video question specific data if present
+      if (ans.questionType === 'video') {
+        answerObj.questionText = ans.questionText;
+        answerObj.options = ans.options;
+        answerObj.hint = normalizeHintText(ans.hint);
+        answerObj.solution = normalizeSolutionText(ans.solution);
+        answerObj.parentVideoId = ans.parentVideoId;
+        answerObj.questionIndex = ans.questionIndex;
         
-        // Add video question specific data if present
-        if (ans.questionType === 'video') {
-          answerObj.questionText = ans.questionText;
-          answerObj.options = ans.options;
-          answerObj.hint = normalizeHintText(ans.hint);
-          answerObj.solution = normalizeSolutionText(ans.solution);
-          answerObj.parentVideoId = ans.parentVideoId;
-          answerObj.questionIndex = ans.questionIndex;
-          
-          // Add video analytics if present
-          if (ans.videoAnalytics) {
-            answerObj.videoAnalytics = ans.videoAnalytics;
-          }
+        // Add video analytics if present
+        if (ans.videoAnalytics) {
+          answerObj.videoAnalytics = ans.videoAnalytics;
         }
-        
-        return answerObj;
-      })
+      }
+      
+      return answerObj;
     });
 
-    await report.save();
+    const existingDraftReport = await StudentReport.findOne(
+      draftReportFilter(quizId, normalizedStudentId)
+    );
+
+    let report = null;
+    if (existingDraftReport) {
+      existingDraftReport.correct = score.correct;
+      existingDraftReport.incorrect = score.incorrect;
+      existingDraftReport.unattempted = score.unattempted;
+      existingDraftReport.timeTaken = timeTaken || 0;
+      existingDraftReport.answers = normalizedAnswers;
+      existingDraftReport.submissionStatus = "submitted";
+      existingDraftReport.draftState = undefined;
+      report = await existingDraftReport.save();
+    } else {
+      report = await new StudentReport({
+        quizId,
+        studentId: normalizedStudentId,
+        submissionStatus: "submitted",
+        correct: score.correct,
+        incorrect: score.incorrect,
+        unattempted: score.unattempted,
+        timeTaken: timeTaken || 0,
+        answers: normalizedAnswers,
+      }).save();
+    }
 
     // Also save puzzle results to PuzzleResult collection for puzzle history tracking
     const PuzzleResult = require("../models/PuzzleResult");
@@ -706,7 +861,7 @@ router.post("/submit-advanced", async (req, res) => {
       try {
         const pd = pAns.puzzleData;
         const puzzleDoc = {
-          studentId: studentId.trim(),
+          studentId: normalizedStudentId,
           puzzleType: pd.puzzleType,
           score: pd.score || 0,
           timeTaken: pd.timeTaken || 0,
@@ -768,7 +923,7 @@ router.post("/submit-advanced", async (req, res) => {
         }
 
         await new PuzzleResult(puzzleDoc).save();
-        console.log(`Saved enhanced puzzle result for student ${studentId}, type: ${pd.puzzleType}, score: ${pd.score}`);
+        console.log(`Saved enhanced puzzle result for student ${normalizedStudentId}, type: ${pd.puzzleType}, score: ${pd.score}`);
       } catch (puzzleErr) {
         console.error("Error saving enhanced puzzle result from quiz:", puzzleErr);
         // Don't fail the whole submission for puzzle save errors
@@ -776,8 +931,8 @@ router.post("/submit-advanced", async (req, res) => {
     }
 
     // Update quiz attemptedBy array if not already present
-    if (!quiz.attemptedBy.includes(studentId)) {
-      quiz.attemptedBy.push(studentId);
+    if (!quiz.attemptedBy.includes(normalizedStudentId)) {
+      quiz.attemptedBy.push(normalizedStudentId);
       await quiz.save();
     }
 

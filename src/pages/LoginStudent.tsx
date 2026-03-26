@@ -1,9 +1,29 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { Wifi, WifiOff } from "lucide-react";
 const API_URL = import.meta.env.VITE_API_URL;
 export default function LoginStudent() {
   const [id, setid] = useState("");
   const [password, setPassword] = useState("");
+  const [isOnline, setIsOnline] = useState<boolean>(() => {
+    if (typeof window === "undefined") {
+      return true;
+    }
+    return window.navigator.onLine;
+  });
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   function changeid(e) {
     setid(e.target.value);
@@ -40,6 +60,17 @@ export default function LoginStudent() {
 
   return (
     <div>
+      <div className="fixed top-4 right-4 z-10">
+        <div
+          className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ${
+            isOnline ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+          }`}
+          title={isOnline ? "Online" : "Offline"}
+        >
+          {isOnline ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
+          <span>{isOnline ? "Online" : "Offline"}</span>
+        </div>
+      </div>
       <div>Enter student id</div>
       <input value={id} onChange={changeid} />
 

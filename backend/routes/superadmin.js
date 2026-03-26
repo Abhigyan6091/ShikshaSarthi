@@ -5,6 +5,8 @@ const SchoolAdmin = require("../models/SchoolAdmin");
 const Teacher = require("../models/Teacher");
 const Student = require("../models/Student");
 const School = require("../models/School");
+const { ensureRecordWithBootstrap } = require("../sync/bootstrapGuard");
+const { repairLocalPasswordFromAtlas } = require("../sync/authPasswordRepair");
 
 // SuperAdmin Login
 router.post("/login", async (req, res) => {
@@ -15,15 +17,30 @@ router.post("/login", async (req, res) => {
   }
 
   try {
-    const superAdmin = await SuperAdmin.findOne({ username });
+    const superAdmin = await ensureRecordWithBootstrap(
+      () => SuperAdmin.findOne({ username }),
+      { trigger: "superadmin-login" }
+    );
 
     if (!superAdmin) {
       return res.status(401).json({ error: "Invalid credentials." });
     }
 
     // Use bcrypt to compare password
-    const isPasswordValid = await superAdmin.comparePassword(password);
-    
+    let isPasswordValid = await superAdmin.comparePassword(password);
+
+    if (!isPasswordValid) {
+      const repaired = await repairLocalPasswordFromAtlas({
+        model: SuperAdmin,
+        lookupQuery: { username },
+        candidatePassword: password,
+      });
+
+      if (repaired) {
+        isPasswordValid = true;
+      }
+    }
+
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid credentials." });
     }

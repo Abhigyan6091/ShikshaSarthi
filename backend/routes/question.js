@@ -97,7 +97,11 @@ router.put("/:id", async (req, res) => {
 // Delete question
 router.delete("/:id", async (req, res) => {
   try {
-    const deleted = await Question.findByIdAndDelete(req.params.id);
+    const deleted = await Question.findByIdAndUpdate(
+      req.params.id,
+      { isDeleted: true },
+      { new: true }
+    );
     if (!deleted) return res.status(404).json({ message: "Question not found" });
     res.status(200).json({ message: "Question deleted successfully" });
   } catch (err) {

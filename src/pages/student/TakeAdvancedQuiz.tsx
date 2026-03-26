@@ -8,6 +8,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Video, Volume2, BookOpen, Puzzle, FileText } from 'lucide-react';
 import axios from 'axios';
+import { useAppDispatch } from '@/store/hooks';
+import { clearAdvancedQuizDraft } from '@/store/slices/advancedQuizDraftSlice';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -30,10 +32,64 @@ interface QuizInfo {
 const TakeAdvancedQuiz: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const dispatch = useAppDispatch();
   const [quizId, setQuizId] = useState('');
   const [quizInfo, setQuizInfo] = useState<QuizInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [studentId, setStudentId] = useState('');
+  const [hasSavedProgress, setHasSavedProgress] = useState(false);
+  const [checkingDraft, setCheckingDraft] = useState(false);
+
+  const hasMatchingLocalDraft = (targetQuizId: string, targetStudentId: string) => {
+    try {
+      const rawState = localStorage.getItem('advancedQuizDraft.v1');
+      if (!rawState) return false;
+
+      const parsed = JSON.parse(rawState);
+      const localDraft = parsed?.advancedQuizDraft?.currentDraft;
+      if (!localDraft) return false;
+
+      return (
+        String(localDraft.quizId || '').trim() === String(targetQuizId || '').trim() &&
+        String(localDraft.studentId || '').trim() === String(targetStudentId || '').trim()
+      );
+    } catch (error) {
+      console.error('Failed to inspect local advanced quiz draft:', error);
+      return false;
+    }
+  };
+
+  const replaceDifferentLocalDraft = (nextQuizId: string, nextStudentId: string) => {
+    try {
+      const rawState = localStorage.getItem('advancedQuizDraft.v1');
+      if (!rawState) return;
+
+      const parsed = JSON.parse(rawState);
+      const localDraft = parsed?.advancedQuizDraft?.currentDraft;
+      if (!localDraft) return;
+
+      const oldQuizId = String(localDraft.quizId || '').trim();
+      const oldStudentId = String(localDraft.studentId || '').trim();
+      const isSameDraft =
+        oldQuizId === String(nextQuizId || '').trim() &&
+        oldStudentId === String(nextStudentId || '').trim();
+
+      if (!isSameDraft) {
+        dispatch(clearAdvancedQuizDraft());
+        localStorage.removeItem('advancedQuizDraft.v1');
+
+        if (oldQuizId && oldStudentId) {
+          axios
+            .delete(`${API_URL}/quizzes/advanced-draft/${oldQuizId}/${oldStudentId}`)
+            .catch((error) => {
+              console.error('Failed to delete previous draft from database:', error);
+            });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to replace local advanced quiz draft:', error);
+    }
+  };
 
   useEffect(() => {
     // Get student info
@@ -126,6 +182,27 @@ const TakeAdvancedQuiz: React.FC = () => {
       // SECOND: Load the quiz
       const response = await axios.get(`${API_URL}/quizzes/by-id/${quizId}`);
       const quiz = response.data;
+
+      if (studentId && studentId.trim()) {
+        setCheckingDraft(true);
+        try {
+          await axios.get(`${API_URL}/quizzes/advanced-draft/${quiz.quizId}/${studentId}`);
+          setHasSavedProgress(true);
+        } catch (draftError: any) {
+          if (draftError.response?.status === 404) {
+            setHasSavedProgress(hasMatchingLocalDraft(quiz.quizId, studentId));
+          } else if (draftError.response?.status === 409) {
+            setHasSavedProgress(false);
+          } else {
+            console.error('Draft lookup failed:', draftError);
+            setHasSavedProgress(hasMatchingLocalDraft(quiz.quizId, studentId));
+          }
+        } finally {
+          setCheckingDraft(false);
+        }
+      } else {
+        setHasSavedProgress(hasMatchingLocalDraft(quiz.quizId, studentId));
+      }
       
       // Check if quiz is active
       const now = new Date();
@@ -185,6 +262,7 @@ const TakeAdvancedQuiz: React.FC = () => {
     }
     
     console.log('Starting quiz with studentId:', studentId);
+    replaceDifferentLocalDraft(quizInfo.quizId, studentId);
     
     // Navigate to the quiz player with quiz data
     navigate('/student/advanced-quiz-player', {
@@ -294,11 +372,24 @@ const TakeAdvancedQuiz: React.FC = () => {
                     Make sure you have a stable internet connection.
                   </p>
                 </div>
+
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                  <p className="text-sm text-blue-800">
+                    <strong>Auto-save:</strong> Your answers (MCQ, Audio, Video, Puzzle) are saved instantly in local storage and synced to database in background.
+                  </p>
+                  {checkingDraft ? (
+                    <p className="text-xs text-blue-700 mt-1">Checking for saved progress...</p>
+                  ) : hasSavedProgress ? (
+                    <p className="text-xs text-green-700 mt-1">Saved progress found. You can resume from where you left off.</p>
+                  ) : (
+                    <p className="text-xs text-blue-700 mt-1">No previous draft found for this quiz. Background sync runs every ~10 minutes.</p>
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button onClick={handleStartQuiz} className="flex-1 w-full" size="lg">
-                  Start Quiz
+                  {hasSavedProgress ? 'Resume Quiz' : 'Start Quiz'}
                 </Button>
                 <Button onClick={() => setQuizInfo(null)} variant="outline" size="lg" className="w-full sm:w-auto">
                   Cancel

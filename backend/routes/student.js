@@ -3,6 +3,8 @@ const router = express.Router();
 const Student = require("../models/Student");
 const Question = require("../models/Question");
 const Quiz = require("../models/Quiz");
+const { ensureRecordWithBootstrap } = require("../sync/bootstrapGuard");
+const { repairLocalPasswordFromAtlas } = require("../sync/authPasswordRepair");
 
 // Create a new student
 router.post("/", async (req, res) => {
@@ -25,8 +27,11 @@ router.post("/login", async (req, res) => {
         .json({ error: "Student ID and password are required" });
     }
 
-    // Find student by studentId
-    const student = await Student.findOne({ studentId });
+    // Auto-bootstrap local data if first sync has not populated the record yet.
+    const student = await ensureRecordWithBootstrap(
+      () => Student.findOne({ studentId }),
+      { trigger: "student-login" }
+    );
 
     // If not found
     if (!student) {
@@ -34,8 +39,20 @@ router.post("/login", async (req, res) => {
     }
 
     // Use bcrypt to compare password
-    const isPasswordValid = await student.comparePassword(password);
-    
+    let isPasswordValid = await student.comparePassword(password);
+
+    if (!isPasswordValid) {
+      const repaired = await repairLocalPasswordFromAtlas({
+        model: Student,
+        lookupQuery: { studentId },
+        candidatePassword: password,
+      });
+
+      if (repaired) {
+        isPasswordValid = true;
+      }
+    }
+
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid student ID or password" });
     }
@@ -88,7 +105,11 @@ router.put("/:id", async (req, res) => {
 // Delete student by ID
 router.delete("/:id", async (req, res) => {
   try {
-    const deleted = await Student.findOneAndDelete({ studentId: req.params.id });
+    const deleted = await Student.findOneAndUpdate(
+      { studentId: req.params.id },
+      { isDeleted: true },
+      { new: true }
+    );
     if (!deleted) return res.status(404).json({ message: "Student not found" });
     res.status(200).json({ message: "Student deleted successfully" });
   } catch (err) {

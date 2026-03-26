@@ -62,7 +62,11 @@ router.put("/:id", async (req, res) => {
 // Delete school by ID
 router.delete("/:id", async (req, res) => {
   try {
-    const deleted = await School.findByIdAndDelete(req.params.id);
+    const deleted = await School.findByIdAndUpdate(
+      req.params.id,
+      { isDeleted: true },
+      { new: true }
+    );
     if (!deleted) return res.status(404).json({ message: "School not found" });
     res.status(200).json({ message: "School deleted successfully" });
   } catch (err) {

@@ -9,6 +9,8 @@ export default function SimpleQuestionForm() {
     options: ["", "", "", ""],
     correctAnswer: "",
     questionImage: "",
+    localPath: "",
+    cloudUrl: "",
     hint: { text: "", image: "", video: "" },
   };
 
@@ -44,6 +46,34 @@ export default function SimpleQuestionForm() {
     }
   };
 
+  const fileToBase64 = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error("Failed to read file"));
+      reader.readAsDataURL(file);
+    });
+
+  const uploadToLocalMedia = async (file, mediaType = "images") => {
+    const base64Data = await fileToBase64(file);
+    const response = await fetch(`${API_URL}/media/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        base64Data,
+        fileName: file.name,
+        mimeType: file.type,
+        mediaType,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Local upload failed: ${response.status}`);
+    }
+
+    return response.json();
+  };
+
   const uploadToCloudinary = async (file, resource_type = "image") => {
     const formData = new FormData();
     formData.append("file", file);
@@ -72,15 +102,33 @@ export default function SimpleQuestionForm() {
     setUploading(true);
     try {
       const isVideo = type === "video";
-      const uploadedUrl = await uploadToCloudinary(
-        file,
-        isVideo ? "video" : "image"
-      );
+      let uploadedUrl = null;
+      let uploadedLocalPath = "";
+      let uploadedCloudUrl = "";
+
+      try {
+        // Local-first media write for offline usage.
+        const localUpload = await uploadToLocalMedia(file, isVideo ? "videos" : "images");
+        uploadedUrl = localUpload.localUrl?.startsWith("http")
+          ? localUpload.localUrl
+          : `${API_URL}${localUpload.localUrl}`;
+        uploadedLocalPath = localUpload.localPath || "";
+        uploadedCloudUrl = localUpload.cloudUrl || "";
+      } catch (localError) {
+        // Fallback to direct cloud upload if local media endpoint is unavailable.
+        uploadedUrl = await uploadToCloudinary(file, isVideo ? "video" : "image");
+        uploadedCloudUrl = uploadedUrl || "";
+      }
 
       if (!uploadedUrl) throw new Error("Failed to get upload URL");
 
       if (type === "questionImage") {
-        setForm({ ...form, questionImage: uploadedUrl });
+        setForm({
+          ...form,
+          questionImage: uploadedUrl,
+          localPath: uploadedLocalPath,
+          cloudUrl: uploadedCloudUrl,
+        });
       } else {
         setForm({
           ...form,

@@ -6,6 +6,8 @@ const Quiz = require("../models/Quiz");
 const Question = require("../models/Question");
 const School = require("../models/School");
 const Student = require("../models/Student");
+const { ensureRecordWithBootstrap } = require("../sync/bootstrapGuard");
+const { repairLocalPasswordFromAtlas } = require("../sync/authPasswordRepair");
 
 // Create a new teacher
 router.post("/", async (req, res) => {
@@ -64,15 +66,30 @@ router.post("/login", async (req, res) => {
 
   try {
     // support logging in by either teacherId or _id
-    const teacher = await findTeacherByIdentifier(teacherId);
+    const teacher = await ensureRecordWithBootstrap(
+      () => findTeacherByIdentifier(teacherId),
+      { trigger: "teacher-login" }
+    );
 
     if (!teacher) {
       return res.status(401).json({ error: "Invalid Teacher ID or password." });
     }
 
     // Use bcrypt to compare password
-    const isPasswordValid = await teacher.comparePassword(password);
-    
+    let isPasswordValid = await teacher.comparePassword(password);
+
+    if (!isPasswordValid) {
+      const repaired = await repairLocalPasswordFromAtlas({
+        model: Teacher,
+        lookupQuery: { teacherId: teacher.teacherId },
+        candidatePassword: password,
+      });
+
+      if (repaired) {
+        isPasswordValid = true;
+      }
+    }
+
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid Teacher ID or password." });
     }
@@ -143,7 +160,11 @@ router.delete("/:id", async (req, res) => {
     const query = mongoose.isValidObjectId(identifier)
       ? { _id: identifier }
       : { teacherId: identifier };
-    const deleted = await Teacher.findOneAndDelete(query);
+    const deleted = await Teacher.findOneAndUpdate(
+      query,
+      { isDeleted: true },
+      { new: true }
+    );
     if (!deleted) return res.status(404).json({ message: "Teacher not found" });
     res.status(200).json({ message: "Teacher deleted successfully" });
   } catch (err) {

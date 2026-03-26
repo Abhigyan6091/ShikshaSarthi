@@ -139,7 +139,11 @@ router.put("/:id", async (req, res) => {
 // Delete video question
 router.delete("/:id", async (req, res) => {
   try {
-    const deleted = await VideoQuestion.findByIdAndDelete(req.params.id);
+    const deleted = await VideoQuestion.findByIdAndUpdate(
+      req.params.id,
+      { isDeleted: true },
+      { new: true }
+    );
     if (!deleted) {
       return res.status(404).json({ message: "Video question not found" });
     }

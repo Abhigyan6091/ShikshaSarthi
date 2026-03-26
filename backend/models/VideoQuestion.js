@@ -5,6 +5,8 @@ const videoQuestionSchema = new mongoose.Schema({
   class: { type: String, required: true },
   topic: { type: String, required: true },
   videoUrl: { type: String, required: true }, // Cloudinary video URL
+  localPath: { type: String, default: null },
+  cloudUrl: { type: String, default: null },
   videoTitle: { type: String, required: true },
   videoDescription: { type: String },
   videoDuration: { type: String }, // e.g., "5:30"

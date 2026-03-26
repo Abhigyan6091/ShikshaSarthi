@@ -229,7 +229,6 @@ const MATTestSchema = new mongoose.Schema({
 
 // Indexes for faster queries
 MATTestSchema.index({ studentId: 1, module: 1 });
-MATTestSchema.index({ testId: 1 });
 MATTestSchema.index({ studentId: 1, createdAt: -1 });
 
 // Calculate percentage before saving

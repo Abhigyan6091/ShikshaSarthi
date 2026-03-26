@@ -3,15 +3,33 @@ const mongoose = require("mongoose");
 const studentReportSchema = new mongoose.Schema({
   quizId: { type: String, required: true },
   studentId: { type: String, required: true },
+  submissionStatus: {
+    type: String,
+    enum: ["draft", "submitted"],
+    default: "submitted",
+    index: true,
+  },
   correct: { type: Number, required: true },
   incorrect: { type: Number, required: true },
   unattempted: { type: Number, required: true },
   timeTaken: { type: Number }, // Time taken in seconds
+  draftState: {
+    quizInfo: { type: mongoose.Schema.Types.Mixed, default: {} },
+    currentIndex: { type: Number, default: 0 },
+    timeRemaining: { type: Number, default: 0 },
+    initialTimeLimit: { type: Number, default: 0 },
+    quizStarted: { type: Boolean, default: false },
+    quizEnded: { type: Boolean, default: false },
+    startedAt: { type: Date },
+    puzzleResults: { type: mongoose.Schema.Types.Mixed, default: {} },
+    videoAnalytics: { type: mongoose.Schema.Types.Mixed, default: {} },
+    lastSyncedAt: { type: Date },
+  },
   answers: [
     {
       questionId: { type: String },
       questionType: { type: String },
-      selectedAnswer: String,
+      selectedAnswer: { type: mongoose.Schema.Types.Mixed, default: null },
       isCorrect: Boolean,
       correctAnswer: String,
       timeSpent: { type: Number, default: 0 }, // Time spent on this question in seconds
