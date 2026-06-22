@@ -17,7 +17,7 @@ services:
     container_name: shikshasarthi-app
     restart: always
     ports:
-      - "8080:80"
+      - "4000:80"
     environment:
       - MONGO_URI=mongodb://db:27017/app
       - USE_LOCAL_DB=true
