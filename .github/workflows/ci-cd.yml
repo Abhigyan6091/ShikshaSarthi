@@ -1,116 +1,71 @@
-name: CI/CD
+name: ShikshaSarthi Desktop & Hub CI/CD
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-env:
-  AWS_REGION: ap-south-1
-  ECR_REPOSITORY: shiksha-sarthi
-  EKS_CLUSTER_NAME: shiksha-cluster
-  K8S_NAMESPACE: shiksha
+    branches: [ main, deployment-updates ]
+  workflow_dispatch:
 
 jobs:
-  lint:
+  # 1. Build and Test the Application
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm run lint
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm install
+      
+      - name: Build Frontend
+        run: npm run build
 
-  build:
+  # 2. Build Docker Images and Ship to Registry
+  ship-docker:
+    needs: build-and-test
     runs-on: ubuntu-latest
-    needs: lint
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm run build
-      - uses: actions/upload-artifact@v4
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Build and Push Lean Image
+        uses: docker/build-push-action@v5
         with:
-          name: dist
-          path: dist/
+          context: .
+          file: ./Dockerfile.lean
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/shikshasarthi:latest
 
-  docker-build-push:
+  # 3. Update the Master Hub Manifest over Tailscale
+  update-hub-manifest:
+    needs: ship-docker
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: build
-    permissions:
-      id-token: write
-      contents: read
     steps:
       - uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v2
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build, tag, and push to ECR
-        id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+      - name: Push Version Update to Hub
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
-
-  deploy:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: docker-build-push
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Update kubeconfig
-        run: |
-          aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
-
-      - name: Install kustomize
-        run: |
-          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-          sudo mv kustomize /usr/local/bin/
-
-      - name: Deploy to EKS
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          cd k8s/overlays/production
-          kustomize edit set image shiksha-sarthi=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          kustomize build . | kubectl apply -f - --namespace $K8S_NAMESPACE
-
-      - name: Verify deployment
-        run: |
-          kubectl rollout status deployment/shiksha-app --namespace $K8S_NAMESPACE --timeout=120s
-          kubectl rollout status deployment/mongo --namespace $K8S_NAMESPACE --timeout=120s
+          # Generate version string based on date and run number
+          VERSION=$(date +'%Y.%m.%d').${{ github.run_number }}
+          API_KEY=${{ secrets.UPDATE_API_KEY }}
+          
+          # Use your Master Hub Tailscale IP (default 100.70.80.90)
+          # This endpoint was implemented in /api/updates/publish
+          curl -f -X POST "http://100.70.80.90:4000/api/updates/publish" \
+               -H "Content-Type: application/json" \
+               -d "{\"version\": \"$VERSION\", \"apiKey\": \"$API_KEY\", \"releaseNotes\": \"Automated update from GitHub Actions\"}"
