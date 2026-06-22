@@ -20,6 +20,7 @@ services:
       - "8080:80"
     environment:
       - MONGO_URI=mongodb://db:27017/app
+      - MONGO_URI_LOCAL=mongodb://db:27017/app
       - USE_LOCAL_DB=true
     depends_on:
       - db
