@@ -646,6 +646,8 @@ const class7MathematicsQuestionBank = [
     ]
 
   ])
-}
+    },
+    
 
 ];
+export { class7MathematicsQuestionBank };
