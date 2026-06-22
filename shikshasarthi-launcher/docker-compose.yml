@@ -31,7 +31,7 @@ services:
     container_name: shikshasarthi-sync-agent
     restart: always
     environment:
-      - HUB_URL=http://100.70.80.90:4000
+      - HUB_URL=http://100.111.94.52:4000
       - MONGO_URI=mongodb://db:27017/app
     depends_on:
       - db

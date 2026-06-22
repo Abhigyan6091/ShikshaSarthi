@@ -3,7 +3,7 @@ const axios = require('axios');
 const cron = require('node-cron');
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://db:27017/app';
-const HUB_URL = process.env.HUB_URL || 'http://100.70.80.90:4000';
+const HUB_URL = process.env.HUB_URL || 'http://100.111.94.52:4000';
 
 async function syncData() {
     console.log(`[${new Date().toISOString()}] Starting hourly sync...`);

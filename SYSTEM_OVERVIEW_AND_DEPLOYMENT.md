@@ -50,7 +50,7 @@ We use a "Pull-based" update model to ensure stability in schools with intermitt
 ## 3. Remote Maintenance via Tailscale
 Tailscale creates a secure "LAN" across all school servers.
 
-- **Hub IP**: `100.70.80.90` (Standardized across all code).
+- **Hub IP**: `100.111.94.52` (Standardized across all code).
 - **Syncing**: The `sync-agent` pushes student analytics and pulls new question bank updates hourly.
 - **Remote Access**: You can SSH into any school server using its Tailscale IP to debug or manual-fix without physical travel.
 

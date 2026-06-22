@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration from environment or defaults
-HUB_IP="100.70.80.90"
+HUB_IP="100.111.94.52"
 HUB_PORT="4000"
 MANIFEST_URL="http://${HUB_IP}:${HUB_PORT}/api/updates/manifest"
 COMPOSE_FILE="${COMPOSE_FILE:-/launcher_root/docker-compose.yml}"

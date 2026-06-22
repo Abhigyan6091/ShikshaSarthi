@@ -32,7 +32,7 @@ To update schools remotely without giving them a new EXE, you use the **Update A
     docker push your-username/shikshasarthi:latest
     ```
 2.  **Update Hub Manifest**:
-    On your **College Hub Server (100.70.80.90:4000)**, update the version in the manifest API:
+    On your **College Hub Server (100.111.94.52:4000)**, update the version in the manifest API:
     ```js
     // Endpoint: GET /api/update/manifest
     {
@@ -49,7 +49,7 @@ To update schools remotely without giving them a new EXE, you use the **Update A
 The **Sync Agent** is designed to bridge the gap between the offline school server and the online college hub.
 
 ### How it works:
-- **Hourly Cron**: Every hour, the `sync-agent` checks for a connection to `http://100.70.80.90:4000`.
+- **Hourly Cron**: Every hour, the `sync-agent` checks for a connection to `http://100.111.94.52:4000`.
 - **Push (Analytics)**: It queries the local MongoDB for any `StudentReport` where `synced: false`. These are uploaded to the Hub and then marked as `synced: true` locally.
 - **Pull (Content)**: It requests new `Questions` from the Hub that don't exist locally and inserts them into the school's database.
 
