@@ -66,6 +66,6 @@ jobs:
           
           # Use your Master Hub Tailscale IP (default 100.111.94.52)
           # This endpoint was implemented in /api/updates/publish
-          curl -f -X POST "http://100.111.94.52:4000/api/updates/publish" \
+          curl -f -X POST "http://100.111.94.52:8081/api/updates/publish" \
                -H "Content-Type: application/json" \
                -d "{\"version\": \"$VERSION\", \"apiKey\": \"$API_KEY\", \"releaseNotes\": \"Automated update from GitHub Actions\"}"

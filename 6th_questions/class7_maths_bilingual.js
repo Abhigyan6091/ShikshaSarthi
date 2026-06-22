@@ -1574,6 +1574,904 @@ const class7MathematicsQuestionBank = [
     ]
 
   ])
+    },
+    {
+  chapterNumber: 4,
+  topicId: "math-simple-equations",
+  chapterTitle: "Simple Equations",
+  chapterTitleHindi: "सरल समीकरण",
+  questions: makeQuestionSetFromConcepts("math-simple-equations", [
+
+    [
+      "7-math-se-01",
+      ["equations", "variables"],
+      "A number increased by 8 gives 21. Which equation correctly represents this statement?",
+      "किसी संख्या में 8 जोड़ने पर 21 प्राप्त होता है। कौन-सी समीकरण इस कथन को सही दर्शाती है?",
+      ["x + 8 = 21", "x - 8 = 21", "8x = 21", "21 - 8 = x + 8"],
+      ["x + 8 = 21", "x - 8 = 21", "8x = 21", "21 - 8 = x + 8"],
+      0,
+      [
+        "Let the unknown number be x.",
+        "Translate words into mathematical symbols."
+      ],
+      [
+        "अज्ञात संख्या को x मानिए।",
+        "शब्दों को गणितीय चिन्हों में बदलिए।"
+      ],
+      "If a number x is increased by 8 and becomes 21, then x + 8 = 21.",
+      "यदि संख्या x में 8 जोड़ने पर 21 मिलता है, तो समीकरण x + 8 = 21 होगी।",
+      "easy",
+      850
+    ],
+
+    [
+      "7-math-se-02",
+      ["equations", "solving"],
+      "Solve: x + 15 = 32",
+      "हल कीजिए: x + 15 = 32",
+      ["17", "47", "15", "32"],
+      ["17", "47", "15", "32"],
+      0,
+      [
+        "Subtract 15 from both sides.",
+        "Keep the equation balanced."
+      ],
+      [
+        "दोनों पक्षों से 15 घटाइए।",
+        "समीकरण का संतुलन बनाए रखिए।"
+      ],
+      "x = 32 - 15 = 17.",
+      "x = 32 - 15 = 17।",
+      "easy",
+      860
+    ],
+
+    [
+      "7-math-se-03",
+      ["equations", "subtraction"],
+      "Solve: y - 9 = 14",
+      "हल कीजिए: y - 9 = 14",
+      ["23", "5", "14", "9"],
+      ["23", "5", "14", "9"],
+      0,
+      [
+        "Add 9 to both sides.",
+        "Undo subtraction."
+      ],
+      [
+        "दोनों पक्षों में 9 जोड़िए।",
+        "घटाव को समाप्त कीजिए।"
+      ],
+      "y = 14 + 9 = 23.",
+      "y = 14 + 9 = 23।",
+      "easy",
+      870
+    ],
+
+    [
+      "7-math-se-04",
+      ["equations", "multiplication"],
+      "Solve: 7x = 49",
+      "हल कीजिए: 7x = 49",
+      ["7", "6", "8", "49"],
+      ["7", "6", "8", "49"],
+      0,
+      [
+        "Divide both sides by 7.",
+        "Use the inverse operation."
+      ],
+      [
+        "दोनों पक्षों को 7 से भाग दीजिए।",
+        "प्रतिलोम संक्रिया का उपयोग कीजिए।"
+      ],
+      "x = 49 ÷ 7 = 7.",
+      "x = 49 ÷ 7 = 7।",
+      "easy",
+      880
+    ],
+
+    [
+      "7-math-se-05",
+      ["equations", "division"],
+      "Solve: a/5 = 12",
+      "हल कीजिए: a/5 = 12",
+      ["60", "17", "7", "50"],
+      ["60", "17", "7", "50"],
+      0,
+      [
+        "Multiply both sides by 5.",
+        "Undo the division."
+      ],
+      [
+        "दोनों पक्षों को 5 से गुणा कीजिए।",
+        "भाग को समाप्त कीजिए।"
+      ],
+      "a = 12 × 5 = 60.",
+      "a = 12 × 5 = 60।",
+      "easy",
+      890
+    ],
+
+    [
+      "7-math-se-06",
+      ["word-problem"],
+      "Twice a number is 38. What is the number?",
+      "किसी संख्या का दुगुना 38 है। संख्या क्या है?",
+      ["19", "76", "18", "20"],
+      ["19", "76", "18", "20"],
+      0,
+      [
+        "Let the number be x.",
+        "Form the equation 2x = 38."
+      ],
+      [
+        "संख्या को x मानिए।",
+        "समीकरण 2x = 38 बनाइए।"
+      ],
+      "2x = 38 ⇒ x = 19.",
+      "2x = 38 ⇒ x = 19।",
+      "easy",
+      900
+    ],
+
+    [
+      "7-math-se-07",
+      ["word-problem"],
+      "The sum of a number and 17 is 45. What is the number?",
+      "किसी संख्या और 17 का योग 45 है। संख्या क्या है?",
+      ["28", "62", "17", "45"],
+      ["28", "62", "17", "45"],
+      0,
+      [
+        "Let the number be x.",
+        "Form x + 17 = 45."
+      ],
+      [
+        "संख्या को x मानिए।",
+        "समीकरण x + 17 = 45 बनाइए।"
+      ],
+      "x = 45 - 17 = 28.",
+      "x = 45 - 17 = 28।",
+      "easy",
+      910
+    ],
+
+    [
+      "7-math-se-08",
+      ["equations", "verification"],
+      "Which value satisfies the equation x + 6 = 18?",
+      "कौन-सा मान समीकरण x + 6 = 18 को संतुष्ट करता है?",
+      ["12", "24", "6", "18"],
+      ["12", "24", "6", "18"],
+      0,
+      [
+        "Substitute each option.",
+        "Check which makes the equation true."
+      ],
+      [
+        "प्रत्येक विकल्प को रखकर जाँचिए।",
+        "देखिए कौन-सा समीकरण को सत्य बनाता है।"
+      ],
+      "12 + 6 = 18.",
+      "12 + 6 = 18।",
+      "easy",
+      860
+    ],
+
+    [
+      "7-math-se-09",
+      ["equations", "applications"],
+      "Three times a number decreased by 5 equals 22. Which equation represents this situation?",
+      "किसी संख्या का तीन गुना, 5 कम करने पर 22 होता है। कौन-सी समीकरण सही है?",
+      ["3x - 5 = 22", "3x + 5 = 22", "x - 5 = 22", "5x - 3 = 22"],
+      ["3x - 5 = 22", "3x + 5 = 22", "x - 5 = 22", "5x - 3 = 22"],
+      0,
+      [
+        "Translate each phrase carefully.",
+        "Three times a number means 3x."
+      ],
+      [
+        "प्रत्येक वाक्यांश को ध्यान से बदलिए।",
+        "किसी संख्या का तीन गुना = 3x।"
+      ],
+      "Three times a number minus 5 equals 22 gives 3x - 5 = 22.",
+      "किसी संख्या का तीन गुना 5 कम करने पर 22 होता है, इसलिए 3x - 5 = 22।",
+      "medium",
+      920
+    ],
+
+    [
+      "7-math-se-10",
+      ["equations", "solving"],
+      "Solve: 3x - 5 = 22",
+      "हल कीजिए: 3x - 5 = 22",
+      ["9", "27", "7", "11"],
+      ["9", "27", "7", "11"],
+      0,
+      [
+        "Add 5 to both sides first.",
+        "Then divide by 3."
+      ],
+      [
+        "पहले दोनों पक्षों में 5 जोड़िए।",
+        "फिर 3 से भाग दीजिए।"
+      ],
+      "3x = 27 ⇒ x = 9.",
+      "3x = 27 ⇒ x = 9।",
+      "medium",
+      930
+    ],
+
+    [
+      "7-math-se-11",
+      ["equations", "olympiad"],
+      "If x + x + x = 45, then x = ?",
+      "यदि x + x + x = 45, तो x = ?",
+      ["15", "45", "30", "10"],
+      ["15", "45", "30", "10"],
+      0,
+      [
+        "Combine like terms.",
+        "3x = 45."
+      ],
+      [
+        "समान पदों को जोड़िए।",
+        "3x = 45 प्राप्त होगा।"
+      ],
+      "3x = 45 ⇒ x = 15.",
+      "3x = 45 ⇒ x = 15।",
+      "medium",
+      940
+    ],
+
+    [
+      "7-math-se-12",
+      ["equations", "reasoning"],
+      "The difference between a number and 12 is 18. What is the number?",
+      "किसी संख्या और 12 का अंतर 18 है। संख्या क्या है?",
+      ["30", "6", "18", "24"],
+      ["30", "6", "18", "24"],
+      0,
+      [
+        "Let the number be x.",
+        "Form x - 12 = 18."
+      ],
+      [
+        "संख्या को x मानिए।",
+        "समीकरण x - 12 = 18 बनाइए।"
+      ],
+      "x = 18 + 12 = 30.",
+      "x = 18 + 12 = 30।",
+      "medium",
+      950
+    ],
+
+    [
+      "7-math-se-13",
+      ["olympiad", "logic"],
+      "A number when divided by 4 gives 11. What is the number?",
+      "किसी संख्या को 4 से भाग देने पर 11 प्राप्त होता है। संख्या क्या है?",
+      ["44", "15", "40", "48"],
+      ["44", "15", "40", "48"],
+      0,
+      [
+        "Use the inverse operation.",
+        "Multiply 11 by 4."
+      ],
+      [
+        "प्रतिलोम संक्रिया का उपयोग कीजिए।",
+        "11 को 4 से गुणा कीजिए।"
+      ],
+      "Number = 11 × 4 = 44.",
+      "संख्या = 11 × 4 = 44।",
+      "medium",
+      940
+    ],
+
+    [
+      "7-math-se-14",
+      ["equations", "olympiad"],
+      "If 5x = 3x + 24, what is the value of x?",
+      "यदि 5x = 3x + 24, तो x का मान क्या है?",
+      ["12", "24", "8", "6"],
+      ["12", "24", "8", "6"],
+      0,
+      [
+        "Bring like terms together.",
+        "Subtract 3x from both sides."
+      ],
+      [
+        "समान पदों को एक ओर लाइए।",
+        "दोनों पक्षों से 3x घटाइए।"
+      ],
+      "2x = 24 ⇒ x = 12.",
+      "2x = 24 ⇒ x = 12।",
+      "hard",
+      980
+    ],
+
+    [
+      "7-math-se-15",
+      ["equations", "applications"],
+      "The perimeter of a square is 36 cm. If each side is x cm, which equation is correct?",
+      "एक वर्ग का परिमाप 36 सेमी है। यदि प्रत्येक भुजा x सेमी है, तो सही समीकरण कौन-सी होगी?",
+      ["4x = 36", "x + 4 = 36", "x² = 36", "2x = 36"],
+      ["4x = 36", "x + 4 = 36", "x² = 36", "2x = 36"],
+      0,
+      [
+        "Perimeter of a square = 4 × side.",
+        "Translate into an equation."
+      ],
+      [
+        "वर्ग का परिमाप = 4 × भुजा।",
+        "इसे समीकरण में बदलिए।"
+      ],
+      "Perimeter = 4x = 36.",
+      "परिमाप = 4x = 36।",
+      "medium",
+      950
+    ],
+
+    [
+      "7-math-se-16",
+      ["olympiad", "multi-step"],
+      "A number is increased by 8 and the result is doubled to obtain 40. What is the number?",
+      "किसी संख्या में 8 जोड़कर परिणाम को दोगुना किया जाता है और 40 प्राप्त होता है। संख्या क्या है?",
+      ["12", "20", "16", "8"],
+      ["12", "20", "16", "8"],
+      0,
+      [
+        "Form the equation 2(x + 8) = 40.",
+        "Solve step by step."
+      ],
+      [
+        "समीकरण 2(x + 8) = 40 बनाइए।",
+        "चरणबद्ध हल कीजिए।"
+      ],
+      "2(x + 8) = 40 ⇒ x + 8 = 20 ⇒ x = 12.",
+      "2(x + 8) = 40 ⇒ x + 8 = 20 ⇒ x = 12।",
+      "hard",
+      1000
+    ],
+
+    [
+      "7-math-se-17",
+      ["olympiad", "reasoning"],
+      "The sum of two consecutive integers is 41. What is the smaller integer?",
+      "दो क्रमागत पूर्णांकों का योग 41 है। छोटा पूर्णांक क्या है?",
+      ["20", "21", "19", "22"],
+      ["20", "21", "19", "22"],
+      0,
+      [
+        "Let the smaller integer be x.",
+        "The next integer is x + 1."
+      ],
+      [
+        "छोटे पूर्णांक को x मानिए।",
+        "अगला पूर्णांक x + 1 होगा।"
+      ],
+      "x + (x + 1) = 41 ⇒ 2x = 40 ⇒ x = 20.",
+      "x + (x + 1) = 41 ⇒ 2x = 40 ⇒ x = 20।",
+      "hard",
+      1010
+    ],
+
+    [
+      "7-math-se-18",
+      ["olympiad", "money"],
+      "A shopkeeper sells a notebook for ₹x. Three notebooks cost ₹126. What is x?",
+      "एक दुकानदार एक कॉपी ₹x में बेचता है। तीन कॉपियों की कीमत ₹126 है। x का मान क्या होगा?",
+      ["42", "126", "63", "36"],
+      ["42", "126", "63", "36"],
+      0,
+      [
+        "Form the equation 3x = 126.",
+        "Divide both sides by 3."
+      ],
+      [
+        "समीकरण 3x = 126 बनाइए।",
+        "दोनों पक्षों को 3 से भाग दीजिए।"
+      ],
+      "x = 126 ÷ 3 = 42.",
+      "x = 126 ÷ 3 = 42।",
+      "medium",
+      960
+    ],
+
+    [
+      "7-math-se-19",
+      ["olympiad", "challenge"],
+      "If 4x + 3 = 31, what is the value of x?",
+      "यदि 4x + 3 = 31, तो x का मान क्या है?",
+      ["7", "8", "9", "6"],
+      ["7", "8", "9", "6"],
+      0,
+      [
+        "Subtract 3 first.",
+        "Then divide by 4."
+      ],
+      [
+        "पहले 3 घटाइए।",
+        "फिर 4 से भाग दीजिए।"
+      ],
+      "4x = 28 ⇒ x = 7.",
+      "4x = 28 ⇒ x = 7।",
+      "hard",
+      1020
+    ],
+
+    [
+      "7-math-se-20",
+      ["olympiad", "challenge"],
+      "The age of a father is three times the age of his son. If their total age is 48 years, what is the son's age?",
+      "एक पिता की आयु उसके पुत्र की आयु की तीन गुनी है। यदि उनकी कुल आयु 48 वर्ष है, तो पुत्र की आयु क्या है?",
+      ["12 years", "16 years", "24 years", "18 years"],
+      ["12 वर्ष", "16 वर्ष", "24 वर्ष", "18 वर्ष"],
+      0,
+      [
+        "Let the son's age be x.",
+        "Father's age will be 3x."
+      ],
+      [
+        "पुत्र की आयु x मानिए।",
+        "पिता की आयु 3x होगी।"
+      ],
+      "x + 3x = 48 ⇒ 4x = 48 ⇒ x = 12.",
+      "x + 3x = 48 ⇒ 4x = 48 ⇒ x = 12।",
+      "hard",
+      1050
+    ]
+
+  ])
+    },
+    {
+  chapterNumber: 5,
+  topicId: "math-lines-and-angles",
+  chapterTitle: "Lines and Angles",
+  chapterTitleHindi: "रेखाएँ और कोण",
+  questions: makeQuestionSetFromConcepts("math-lines-and-angles", [
+
+    [
+      "7-math-la-01",
+      ["geometry", "basics"],
+      "A road extending endlessly in both directions is best represented in geometry by which figure?",
+      "दोनों दिशाओं में अनंत तक फैली सड़क को ज्यामिति में किस आकृति द्वारा दर्शाया जाता है?",
+      ["Line", "Line Segment", "Ray", "Point"],
+      ["रेखा", "रेखाखंड", "किरण", "बिंदु"],
+      0,
+      [
+        "Think about a figure with no endpoints.",
+        "It extends infinitely in both directions."
+      ],
+      [
+        "ऐसी आकृति के बारे में सोचिए जिसके कोई अंतिम बिंदु न हों।",
+        "यह दोनों दिशाओं में अनंत तक फैली होती है।"
+      ],
+      "A line extends infinitely in both directions.",
+      "रेखा दोनों दिशाओं में अनंत तक फैली होती है।",
+      "easy",
+      850
+    ],
+
+    [
+      "7-math-la-02",
+      ["geometry", "ray"],
+      "Sunlight traveling from the Sun toward Earth is best represented by:",
+      "सूर्य से पृथ्वी की ओर आने वाला प्रकाश किससे सबसे अच्छा प्रदर्शित किया जाता है?",
+      ["Ray", "Line", "Point", "Line Segment"],
+      ["किरण", "रेखा", "बिंदु", "रेखाखंड"],
+      0,
+      [
+        "It starts from a point and extends in one direction.",
+        "Think of a source of light."
+      ],
+      [
+        "यह एक बिंदु से शुरू होकर एक दिशा में फैलती है।",
+        "प्रकाश स्रोत के बारे में सोचिए।"
+      ],
+      "A ray has one endpoint and extends infinitely in one direction.",
+      "किरण का एक प्रारंभिक बिंदु होता है और यह एक दिशा में अनंत तक जाती है।",
+      "easy",
+      860
+    ],
+
+    [
+      "7-math-la-03",
+      ["angles"],
+      "Which angle measures exactly 90°?",
+      "कौन-सा कोण ठीक 90° का होता है?",
+      ["Right Angle", "Acute Angle", "Obtuse Angle", "Reflex Angle"],
+      ["समकोण", "न्यूनकोण", "अधिककोण", "प्रतिवर्ती कोण"],
+      0,
+      [
+        "Think of the corner of a square.",
+        "It forms an L-shape."
+      ],
+      [
+        "वर्ग के कोने के बारे में सोचिए।",
+        "यह L आकार बनाता है।"
+      ],
+      "A right angle measures exactly 90°.",
+      "समकोण का माप ठीक 90° होता है।",
+      "easy",
+      870
+    ],
+
+    [
+      "7-math-la-04",
+      ["angles", "classification"],
+      "An angle measuring 65° is classified as:",
+      "65° के कोण को किस प्रकार वर्गीकृत किया जाएगा?",
+      ["Acute Angle", "Right Angle", "Obtuse Angle", "Straight Angle"],
+      ["न्यूनकोण", "समकोण", "अधिककोण", "सरल कोण"],
+      0,
+      [
+        "Acute angles are less than 90°.",
+        "Compare 65° with 90°."
+      ],
+      [
+        "न्यूनकोण 90° से छोटे होते हैं।",
+        "65° की तुलना 90° से कीजिए।"
+      ],
+      "Since 65° < 90°, it is an acute angle.",
+      "चूँकि 65° < 90° है, इसलिए यह न्यूनकोण है।",
+      "easy",
+      880
+    ],
+
+    [
+      "7-math-la-05",
+      ["angles", "classification"],
+      "An angle measuring 135° is:",
+      "135° का कोण क्या कहलाएगा?",
+      ["Obtuse Angle", "Acute Angle", "Right Angle", "Straight Angle"],
+      ["अधिककोण", "न्यूनकोण", "समकोण", "सरल कोण"],
+      0,
+      [
+        "Obtuse angles lie between 90° and 180°.",
+        "Compare 135° with these limits."
+      ],
+      [
+        "अधिककोण 90° और 180° के बीच होते हैं।",
+        "135° की इन सीमाओं से तुलना करें।"
+      ],
+      "135° lies between 90° and 180°, so it is obtuse.",
+      "135° , 90° और 180° के बीच है, इसलिए यह अधिककोण है।",
+      "easy",
+      890
+    ],
+
+    [
+      "7-math-la-06",
+      ["linear-pair"],
+      "Two adjacent angles form a straight line. Their sum is:",
+      "दो संलग्न कोण मिलकर एक सीधी रेखा बनाते हैं। उनका योग कितना होगा?",
+      ["180°", "90°", "360°", "270°"],
+      ["180°", "90°", "360°", "270°"],
+      0,
+      [
+        "Think about a straight angle.",
+        "Linear pair property."
+      ],
+      [
+        "सरल कोण के बारे में सोचिए।",
+        "रेखीय युग्म का गुण याद कीजिए।"
+      ],
+      "Angles forming a linear pair sum to 180°.",
+      "रेखीय युग्म के कोणों का योग 180° होता है।",
+      "medium",
+      900
+    ],
+
+    [
+      "7-math-la-07",
+      ["complementary-angles"],
+      "If one angle of a complementary pair is 38°, the other angle is:",
+      "यदि पूरक कोणों के युग्म में एक कोण 38° है, तो दूसरा कोण कितना होगा?",
+      ["52°", "142°", "48°", "62°"],
+      ["52°", "142°", "48°", "62°"],
+      0,
+      [
+        "Complementary angles sum to 90°.",
+        "Subtract from 90°."
+      ],
+      [
+        "पूरक कोणों का योग 90° होता है।",
+        "90° में से घटाइए।"
+      ],
+      "90° - 38° = 52°.",
+      "90° - 38° = 52°।",
+      "medium",
+      910
+    ],
+
+    [
+      "7-math-la-08",
+      ["supplementary-angles"],
+      "If one supplementary angle is 112°, find the other.",
+      "यदि एक संपूरक कोण 112° है, तो दूसरा ज्ञात कीजिए।",
+      ["68°", "78°", "58°", "48°"],
+      ["68°", "78°", "58°", "48°"],
+      0,
+      [
+        "Supplementary angles add to 180°.",
+        "Subtract 112° from 180°."
+      ],
+      [
+        "संपूरक कोणों का योग 180° होता है।",
+        "180° में से 112° घटाइए।"
+      ],
+      "180° - 112° = 68°.",
+      "180° - 112° = 68°।",
+      "medium",
+      920
+    ],
+
+    [
+      "7-math-la-09",
+      ["vertical-angles"],
+      "When two lines intersect, vertically opposite angles are always:",
+      "जब दो रेखाएँ प्रतिच्छेद करती हैं, तो शीर्षाभिमुख कोण सदैव कैसे होते हैं?",
+      ["Equal", "Supplementary", "Complementary", "Unequal"],
+      ["बराबर", "संपूरक", "पूरक", "असमान"],
+      0,
+      [
+        "Recall the property of vertically opposite angles.",
+        "They always have the same measure."
+      ],
+      [
+        "शीर्षाभिमुख कोणों का गुण याद कीजिए।",
+        "इनका माप हमेशा समान होता है।"
+      ],
+      "Vertically opposite angles are equal.",
+      "शीर्षाभिमुख कोण बराबर होते हैं।",
+      "medium",
+      930
+    ],
+
+    [
+      "7-math-la-10",
+      ["parallel-lines"],
+      "Two railway tracks running side by side without meeting represent:",
+      "दो रेल पटरियाँ जो साथ-साथ चलती हैं और कभी नहीं मिलतीं, किसका उदाहरण हैं?",
+      ["Parallel Lines", "Intersecting Lines", "Perpendicular Lines", "Rays"],
+      ["समांतर रेखाएँ", "प्रतिच्छेदी रेखाएँ", "लंबवत रेखाएँ", "किरणें"],
+      0,
+      [
+        "Think about lines that never meet.",
+        "Distance between them remains constant."
+      ],
+      [
+        "ऐसी रेखाओं के बारे में सोचिए जो कभी नहीं मिलतीं।",
+        "उनके बीच की दूरी समान रहती है।"
+      ],
+      "Railway tracks are examples of parallel lines.",
+      "रेल पटरियाँ समांतर रेखाओं का उदाहरण हैं।",
+      "easy",
+      890
+    ],
+
+    [
+      "7-math-la-11",
+      ["perpendicular-lines"],
+      "The corner formed by two walls of a room is usually an example of:",
+      "एक कमरे की दो दीवारों के बीच बनने वाला कोना सामान्यतः किसका उदाहरण है?",
+      ["Perpendicular Lines", "Parallel Lines", "Intersecting Lines", "Ray"],
+      ["लंबवत रेखाएँ", "समांतर रेखाएँ", "प्रतिच्छेदी रेखाएँ", "किरण"],
+      0,
+      [
+        "Think about a right angle.",
+        "Perpendicular lines meet at 90°."
+      ],
+      [
+        "समकोण के बारे में सोचिए।",
+        "लंबवत रेखाएँ 90° पर मिलती हैं।"
+      ],
+      "Walls generally meet at right angles, forming perpendicular lines.",
+      "दीवारें सामान्यतः 90° पर मिलती हैं और लंबवत रेखाएँ बनाती हैं।",
+      "easy",
+      900
+    ],
+
+    [
+      "7-math-la-12",
+      ["olympiad", "angles"],
+      "One angle of a linear pair is three times the other. Find the smaller angle.",
+      "रेखीय युग्म का एक कोण दूसरे का तीन गुना है। छोटा कोण ज्ञात कीजिए।",
+      ["45°", "60°", "30°", "90°"],
+      ["45°", "60°", "30°", "90°"],
+      0,
+      [
+        "Let smaller angle be x.",
+        "x + 3x = 180°."
+      ],
+      [
+        "छोटे कोण को x मानिए।",
+        "x + 3x = 180° बनाइए।"
+      ],
+      "4x = 180°, x = 45°.",
+      "4x = 180°, इसलिए x = 45°।",
+      "hard",
+      980
+    ],
+
+    [
+      "7-math-la-13",
+      ["olympiad", "angles"],
+      "Two complementary angles are in the ratio 2:3. Find the larger angle.",
+      "दो पूरक कोणों का अनुपात 2:3 है। बड़ा कोण ज्ञात कीजिए।",
+      ["54°", "36°", "60°", "45°"],
+      ["54°", "36°", "60°", "45°"],
+      0,
+      [
+        "Let angles be 2x and 3x.",
+        "Their sum is 90°."
+      ],
+      [
+        "कोणों को 2x और 3x मानिए।",
+        "इनका योग 90° होगा।"
+      ],
+      "5x = 90°, x = 18°, larger angle = 54°.",
+      "5x = 90°, x = 18°, बड़ा कोण = 54°।",
+      "hard",
+      990
+    ],
+
+    [
+      "7-math-la-14",
+      ["olympiad", "vertically-opposite"],
+      "If one of the vertically opposite angles formed by two intersecting lines measures 125°, what is the measure of its opposite angle?",
+      "यदि दो प्रतिच्छेदी रेखाओं द्वारा बने शीर्षाभिमुख कोणों में से एक 125° है, तो उसका विपरीत कोण कितना होगा?",
+      ["125°", "55°", "65°", "180°"],
+      ["125°", "55°", "65°", "180°"],
+      0,
+      [
+        "Vertically opposite angles are equal.",
+        "Use the property directly."
+      ],
+      [
+        "शीर्षाभिमुख कोण बराबर होते हैं।",
+        "इस गुण का सीधे उपयोग कीजिए।"
+      ],
+      "The opposite angle is also 125°.",
+      "विपरीत कोण भी 125° होगा।",
+      "medium",
+      950
+    ],
+
+    [
+      "7-math-la-15",
+      ["olympiad", "supplementary"],
+      "One supplementary angle is twice the other. Find the larger angle.",
+      "एक संपूरक कोण दूसरे का दुगुना है। बड़ा कोण ज्ञात कीजिए।",
+      ["120°", "60°", "90°", "150°"],
+      ["120°", "60°", "90°", "150°"],
+      0,
+      [
+        "Let smaller angle be x.",
+        "x + 2x = 180°."
+      ],
+      [
+        "छोटे कोण को x मानिए।",
+        "x + 2x = 180° बनाइए।"
+      ],
+      "3x = 180°, x = 60°, larger angle = 120°.",
+      "3x = 180°, x = 60°, बड़ा कोण = 120°।",
+      "hard",
+      1000
+    ],
+
+    [
+      "7-math-la-16",
+      ["angles", "reasoning"],
+      "Which angle is larger than a straight angle but smaller than a complete angle?",
+      "कौन-सा कोण सरल कोण से बड़ा लेकिन पूर्ण कोण से छोटा होता है?",
+      ["Reflex Angle", "Acute Angle", "Right Angle", "Obtuse Angle"],
+      ["प्रतिवर्ती कोण", "न्यूनकोण", "समकोण", "अधिककोण"],
+      0,
+      [
+        "Think of angles between 180° and 360°.",
+        "These are called reflex angles."
+      ],
+      [
+        "180° और 360° के बीच के कोणों के बारे में सोचिए।",
+        "इन्हें प्रतिवर्ती कोण कहते हैं।"
+      ],
+      "A reflex angle lies between 180° and 360°.",
+      "प्रतिवर्ती कोण 180° और 360° के बीच होता है।",
+      "medium",
+      960
+    ],
+
+    [
+      "7-math-la-17",
+      ["olympiad", "parallel-lines"],
+      "If a transversal intersects two parallel lines and one corresponding angle measures 72°, the corresponding angle on the other line measures:",
+      "यदि एक छेदक दो समांतर रेखाओं को काटती है और एक संगत कोण 72° है, तो दूसरी रेखा पर संगत कोण कितना होगा?",
+      ["72°", "108°", "36°", "144°"],
+      ["72°", "108°", "36°", "144°"],
+      0,
+      [
+        "Corresponding angles are equal.",
+        "Use the parallel line property."
+      ],
+      [
+        "संगत कोण बराबर होते हैं।",
+        "समांतर रेखाओं का गुण प्रयोग करें।"
+      ],
+      "Corresponding angles are equal, so it is 72°.",
+      "संगत कोण बराबर होते हैं, इसलिए उत्तर 72° है।",
+      "hard",
+      1010
+    ],
+
+    [
+      "7-math-la-18",
+      ["olympiad", "geometry"],
+      "How many right angles are formed when two perpendicular lines intersect?",
+      "जब दो लंबवत रेखाएँ प्रतिच्छेद करती हैं, तो कितने समकोण बनते हैं?",
+      ["4", "2", "1", "8"],
+      ["4", "2", "1", "8"],
+      0,
+      [
+        "Each intersection creates four angles.",
+        "All are equal."
+      ],
+      [
+        "प्रतिच्छेदन पर चार कोण बनते हैं।",
+        "सभी समान होते हैं।"
+      ],
+      "Four right angles are formed.",
+      "चार समकोण बनते हैं।",
+      "medium",
+      970
+    ],
+
+    [
+      "7-math-la-19",
+      ["olympiad", "challenge"],
+      "The difference between two supplementary angles is 40°. Find the larger angle.",
+      "दो संपूरक कोणों का अंतर 40° है। बड़ा कोण ज्ञात कीजिए।",
+      ["110°", "70°", "140°", "100°"],
+      ["110°", "70°", "140°", "100°"],
+      0,
+      [
+        "Let angles be x and y.",
+        "Use x + y = 180° and x − y = 40°."
+      ],
+      [
+        "कोणों को x और y मानिए।",
+        "x + y = 180° तथा x − y = 40° का उपयोग कीजिए।"
+      ],
+      "Solving gives x = 110° and y = 70°.",
+      "हल करने पर x = 110° तथा y = 70° मिलता है।",
+      "hard",
+      1030
+    ],
+
+    [
+      "7-math-la-20",
+      ["olympiad", "challenge"],
+      "An angle is four times its complementary angle. Find the larger angle.",
+      "एक कोण अपने पूरक कोण का चार गुना है। बड़ा कोण ज्ञात कीजिए।",
+      ["72°", "18°", "60°", "75°"],
+      ["72°", "18°", "60°", "75°"],
+      0,
+      [
+        "Let the smaller angle be x.",
+        "x + 4x = 90°."
+      ],
+      [
+        "छोटे कोण को x मानिए।",
+        "x + 4x = 90° बनाइए।"
+      ],
+      "5x = 90°, x = 18°, larger angle = 72°.",
+      "5x = 90°, x = 18°, बड़ा कोण = 72°।",
+      "hard",
+      1050
+    ]
+
+  ])
 },
 
 ];
