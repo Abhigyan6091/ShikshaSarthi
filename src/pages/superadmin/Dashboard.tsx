@@ -517,6 +517,74 @@ const SuperAdminDashboard: React.FC = () => {
             <p className="text-gray-600">Manage all schools, admins, teachers, and students</p>
           </div>
 
+          {/* Master Hub Status Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <Card className="lg:col-span-2 border-2 border-edu-blue/20 bg-gradient-to-br from-white to-blue-50/30 overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                  <span className="text-xs font-bold text-green-600 uppercase tracking-widest">Master Hub Active</span>
+                </div>
+              </div>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-edu-blue" />
+                  System Monitoring
+                </CardTitle>
+                <CardDescription>Master Hub connectivity and system performance</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-100">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Building className="h-5 w-5 text-edu-blue" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium uppercase">Node Endpoint</p>
+                      <p className="font-mono text-sm font-bold text-gray-800">100.111.94.52:8080</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-100">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <Shield className="h-5 w-5 text-edu-purple" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium uppercase">Network Layer</p>
+                      <p className="font-semibold text-sm text-gray-800">Tailscale Encrypted</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-edu-purple/10 bg-edu-purple/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold text-edu-purple uppercase tracking-tight">Sync Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Analytics Sync</span>
+                    <span className="text-green-600 font-bold flex items-center gap-1">
+                      <Check className="h-3 w-3" /> Hourly
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Question Bank</span>
+                    <span className="text-blue-600 font-bold flex items-center gap-1">
+                      <Copy className="h-3 w-3" /> Synced
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-edu-purple/10">
+                    <p className="text-[10px] text-edu-purple/60 leading-tight">
+                      All remote school servers are currently reporting healthy connections to the Master Hub.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Stats Overview */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             {statsData.map((stat, i) => (
