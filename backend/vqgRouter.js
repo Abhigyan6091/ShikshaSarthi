@@ -61,6 +61,12 @@ async function startVqgBackend() {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
+  vqgProcess.on('error', (err) => {
+    console.warn(`[VQG] Failed to start uvicorn: ${err.message}. VQG features will be disabled.`);
+    vqgProcess = null;
+    vqgPort = null;
+  });
+
   vqgProcess.stdout.on('data', (data) => {
     process.stdout.write(`[VQG] ${data}`);
   });
