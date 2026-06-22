@@ -12,6 +12,7 @@ RUN npm ci
 COPY . .
 # Exclude folders that shouldn't be in the build context
 RUN rm -rf QuestionGenerator
+ENV VITE_API_URL=""
 RUN npm run build
 
 # ─── Stage 2: Production image (nginx + Node backend) ──────────────────────
