@@ -4,7 +4,10 @@ const bcrypt = require("bcrypt");
 const schoolAdminSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   name: { type: String, required: true },
+  email: { type: String, unique: true, sparse: true },
   password: { type: String, required: true },
+  must_change_password: { type: Boolean, default: false },
+  profilePhoto: { type: String },
   schoolId: { type: String, ref: "School", required: true },
   phone: String,
   teachers: [{ type: String, ref: "Teacher" }],
@@ -13,7 +16,7 @@ const schoolAdminSchema = new mongoose.Schema({
 });
 
 // Pre-save hook to hash password
-schoolAdminSchema.pre('save', async function(next) {
+schoolAdminSchema.pre('save', async function (next) {
   // Hash password if it's modified or new
   if (this.isModified('password')) {
     try {
@@ -23,12 +26,12 @@ schoolAdminSchema.pre('save', async function(next) {
       return next(error);
     }
   }
-  
+
   next();
 });
 
 // Method to compare password for login
-schoolAdminSchema.methods.comparePassword = async function(candidatePassword) {
+schoolAdminSchema.methods.comparePassword = async function (candidatePassword) {
   try {
     return await bcrypt.compare(candidatePassword, this.password);
   } catch (error) {

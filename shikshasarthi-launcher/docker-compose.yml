@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  db:
+    image: mongo:latest
+    container_name: shikshasarthi-db
+    restart: always
+    volumes:
+      - ./data/db:/data/db
+    networks:
+      - shikshasarthi-net
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile.lean
+    container_name: shikshasarthi-app
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      - MONGO_URI=mongodb://db:27017/app
+      - USE_LOCAL_DB=true
+    depends_on:
+      - db
+    networks:
+      - shikshasarthi-net
+
+  sync-agent:
+    build: ./sync-agent
+    container_name: shikshasarthi-sync-agent
+    restart: always
+    environment:
+      - HUB_URL=http://100.70.80.90:4000
+      - MONGO_URI=mongodb://db:27017/app
+    depends_on:
+      - db
+    networks:
+      - shikshasarthi-net
+
+  update-agent:
+    build: ./update-agent
+    container_name: shikshasarthi-update-agent
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/launcher_root:ro
+    environment:
+      - COMPOSE_FILE=/launcher_root/docker-compose.yml
+      - ENV_FILE=/launcher_root/.env
+    networks:
+      - shikshasarthi-net
+
+networks:
+  shikshasarthi-net:
+    driver: bridge

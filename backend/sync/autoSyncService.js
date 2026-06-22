@@ -11,15 +11,18 @@ const {
 } = require("./syncService");
 const { SYNC_MODELS } = require("./modelRegistry");
 const { syncCloudMediaToLocal } = require("./mediaSyncService");
+const { repairAllLocalAuthPasswordsFromAtlas } = require("./authPasswordRepair");
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const STATE_FILE = path.join(DATA_DIR, "sync-state.json");
 
 const AUTO_SYNC_ENABLED = String(process.env.SYNC_AUTO_ENABLED || "true").toLowerCase() !== "false";
-const AUTO_SYNC_INTERVAL_MS = Number(process.env.SYNC_AUTO_INTERVAL_MS || 60_000);
+const AUTO_SYNC_INTERVAL_MS = Number(process.env.SYNC_AUTO_INTERVAL_MS || 1_200_000);
 const AUTO_SYNC_START_DELAY_MS = Number(process.env.SYNC_AUTO_START_DELAY_MS || 5_000);
 const REMOTE_TIMEOUT_MS = Number(process.env.SYNC_REMOTE_TIMEOUT_MS || 10_000);
 const ATLAS_DELTA_LIMIT = Number(process.env.SYNC_INCREMENTAL_LIMIT || 500);
+const ALLOW_LOOPBACK_REMOTE_API =
+  String(process.env.SYNC_ALLOW_LOOPBACK_REMOTE_API || "false").toLowerCase() === "true";
 
 let autoSyncInterval = null;
 let cycleInProgress = false;
@@ -83,6 +86,28 @@ function getAutoSyncState() {
 
 function normalizeRemoteUrl(url) {
   return String(url || "").trim().replace(/\/$/, "");
+}
+
+function shouldIgnoreLoopbackRemote(remoteBaseUrl) {
+  const normalized = normalizeRemoteUrl(remoteBaseUrl);
+  if (!normalized || ALLOW_LOOPBACK_REMOTE_API) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(normalized);
+    const hostname = String(parsed.hostname || "").toLowerCase();
+
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "0.0.0.0" ||
+      hostname === "::1" ||
+      hostname.startsWith("127.")
+    );
+  } catch (_error) {
+    return false;
+  }
 }
 
 function hasAnyRecords(collections = {}) {
@@ -255,11 +280,33 @@ async function bootstrapFromAtlas({ sourceUri, sourceDbName, collections }) {
   }
 }
 
+function resolveAtlasRecordUpdatedAt(record = {}) {
+  const parsedUpdatedAt = parseDate(record.updatedAt);
+  if (parsedUpdatedAt) {
+    return parsedUpdatedAt;
+  }
+
+  const parsedCreatedAt = parseDate(record.createdAt);
+  if (parsedCreatedAt) {
+    return parsedCreatedAt;
+  }
+
+  // ObjectId embeds a creation timestamp; use it as stable fallback for manual Atlas inserts.
+  if (record && record._id && typeof record._id.getTimestamp === "function") {
+    const idTimestamp = parseDate(record._id.getTimestamp());
+    if (idTimestamp) {
+      return idTimestamp;
+    }
+  }
+
+  return new Date();
+}
+
 function normalizeAtlasRecord(record = {}) {
   return {
     ...record,
     isDeleted: typeof record.isDeleted === "boolean" ? record.isDeleted : false,
-    updatedAt: parseDate(record.updatedAt) || parseDate(record.createdAt) || new Date(),
+    updatedAt: resolveAtlasRecordUpdatedAt(record),
     synced: true,
   };
 }
@@ -346,7 +393,15 @@ async function uploadPendingToAtlas({ sourceUri, sourceDbName, collections }) {
 async function downloadAtlasDelta({ sourceUri, sourceDbName, collections, lastSync }) {
   const client = new MongoClient(sourceUri, { serverSelectionTimeoutMS: REMOTE_TIMEOUT_MS });
   const parsedLastSync = parseDate(lastSync);
-  const query = parsedLastSync ? { updatedAt: { $gt: parsedLastSync } } : {};
+  const query = parsedLastSync
+    ? {
+        $or: [
+          { updatedAt: { $gt: parsedLastSync } },
+          { updatedAt: { $exists: false } },
+          { updatedAt: null },
+        ],
+      }
+    : {};
   const payload = {};
   let totalRecords = 0;
 
@@ -367,8 +422,28 @@ async function downloadAtlasDelta({ sourceUri, sourceDbName, collections, lastSy
         .limit(ATLAS_DELTA_LIMIT)
         .toArray();
 
-      payload[logicalCollection] = records.map((record) => normalizeAtlasRecord(record));
-      totalRecords += records.length;
+      const normalizedRecords = [];
+
+      for (const record of records) {
+        const normalized = normalizeAtlasRecord(record);
+        normalizedRecords.push(normalized);
+
+        // Backfill missing updatedAt in Atlas so incremental pulls remain reliable.
+        if (!parseDate(record.updatedAt)) {
+          await sourceCollection.updateOne(
+            { _id: record._id },
+            {
+              $set: {
+                updatedAt: normalized.updatedAt,
+                isDeleted: normalized.isDeleted,
+              },
+            }
+          );
+        }
+      }
+
+      payload[logicalCollection] = normalizedRecords;
+      totalRecords += normalizedRecords.length;
     }
 
     return {
@@ -410,7 +485,9 @@ async function runAutoSyncCycle(options = {}) {
     };
   }
 
-  const configuredRemoteUrl = normalizeRemoteUrl(options.remoteUrl || process.env.SYNC_REMOTE_URL);
+  const originalRemoteUrl = normalizeRemoteUrl(options.remoteUrl || process.env.SYNC_REMOTE_URL);
+  const ignoreLoopbackRemote = shouldIgnoreLoopbackRemote(originalRemoteUrl);
+  const configuredRemoteUrl = ignoreLoopbackRemote ? "" : originalRemoteUrl;
   const sourceUri = String(process.env.MONGO_URI || "").trim();
   const sourceDbName = String(process.env.SYNC_SOURCE_DB_NAME || "test").trim();
 
@@ -429,9 +506,13 @@ async function runAutoSyncCycle(options = {}) {
     remoteBaseUrl: configuredRemoteUrl || null,
     sourceDbName: sourceUri ? sourceDbName : null,
     remote: {
-      configured: Boolean(configuredRemoteUrl),
+      configured: Boolean(originalRemoteUrl),
       available: false,
-      reason: configuredRemoteUrl ? null : "remote-url-not-configured",
+      reason: configuredRemoteUrl
+        ? null
+        : ignoreLoopbackRemote
+        ? "remote-url-points-to-local-node"
+        : "remote-url-not-configured",
       probePath: null,
       candidatesTried: [],
     },
@@ -444,6 +525,14 @@ async function runAutoSyncCycle(options = {}) {
       foundUrls: 0,
       downloadedFiles: 0,
       failedUrls: 0,
+    },
+    authPasswords: {
+      attempted: false,
+      repaired: 0,
+      scannedRemote: 0,
+      failed: 0,
+      skipped: false,
+      reason: null,
     },
     bootstrap: null,
   };
@@ -470,6 +559,42 @@ async function runAutoSyncCycle(options = {}) {
           ...cycleSummary.media,
           attempted: true,
           error: mediaError.message,
+        };
+      }
+    };
+
+    const runAuthPasswordRepair = async ({ force = false } = {}) => {
+      const shouldAttempt =
+        force ||
+        Boolean(cycleSummary.pull.downloadedRecords > 0) ||
+        Boolean(cycleSummary.bootstrap && !cycleSummary.bootstrap.error);
+
+      if (!shouldAttempt) {
+        cycleSummary.authPasswords = {
+          ...cycleSummary.authPasswords,
+          attempted: false,
+          skipped: true,
+          reason: "no-fresh-pull-data",
+        };
+        return;
+      }
+
+      cycleSummary.authPasswords.attempted = true;
+      try {
+        const repairSummary = await repairAllLocalAuthPasswordsFromAtlas();
+        cycleSummary.authPasswords = {
+          ...cycleSummary.authPasswords,
+          ...repairSummary,
+        };
+
+        if ((repairSummary.repaired || 0) > 0) {
+          console.log(`🔐 Auth hash repair: repaired=${repairSummary.repaired}`);
+        }
+      } catch (repairError) {
+        cycleSummary.authPasswords = {
+          ...cycleSummary.authPasswords,
+          attempted: true,
+          error: repairError.message,
         };
       }
     };
@@ -599,6 +724,7 @@ async function runAutoSyncCycle(options = {}) {
 
       const nextLastSync = remoteDelta.serverTime || new Date().toISOString();
       await runMediaSync();
+      await runAuthPasswordRepair({ force: localEmpty || Boolean(options.forceBootstrap) });
       updateState({
         status: "success",
         lastSuccessAt: new Date().toISOString(),
@@ -659,6 +785,7 @@ async function runAutoSyncCycle(options = {}) {
 
       const nextLastSync = atlasDelta.serverTime || new Date().toISOString();
       await runMediaSync();
+      await runAuthPasswordRepair({ force: localEmpty || Boolean(options.forceBootstrap) });
       updateState({
         status: "success",
         lastSuccessAt: new Date().toISOString(),

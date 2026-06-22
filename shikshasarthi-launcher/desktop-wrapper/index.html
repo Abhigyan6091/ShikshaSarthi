@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShikshaSarthi Launcher</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+            --error: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            width: 80%;
+            max-width: 500px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.75rem;
+            background-color: var(--text-muted);
+        }
+
+        .status-dot.running {
+            background-color: var(--success);
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .status-dot.starting {
+            background-color: #eab308;
+            animation: blink 1s infinite;
+        }
+
+        .status-dot.error {
+            background-color: var(--error);
+        }
+
+        @keyframes blink {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .info-card {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            margin-top: 1rem;
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .label {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .ip-address {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.25rem;
+            color: var(--primary);
+            font-weight: 700;
+            word-break: break-all;
+        }
+
+        .instruction {
+            margin-top: 1.5rem;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .footer {
+            margin-top: 2rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            opacity: 0.5;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="logo">ShikshaSarthi</div>
+        <div class="status-badge">
+            <div id="status-dot" class="status-dot starting"></div>
+            <span id="status-text">Starting Services...</span>
+        </div>
+
+        <div class="info-card">
+            <span class="label">Server LAN Access URL</span>
+            <div id="server-url" class="ip-address">Loading...</div>
+        </div>
+
+        <p class="instruction">
+            Ensure students are on the same Wi-Fi/LAN network. They can access the platform by entering the URL above in
+            their web browsers.
+        </p>
+
+        <div class="footer">
+            ShikshaSarthi Server v1.0.0
+        </div>
+    </div>
+
+    <script>
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const serverUrl = document.getElementById('server-url');
+
+        async function updateInfo() {
+            const info = await window.electronAPI.getServerInfo();
+            serverUrl.textContent = `http://${info.ip}:${info.port}`;
+        }
+
+        window.electronAPI.onDockerStatus((status) => {
+            if (status === 'running') {
+                statusDot.className = 'status-dot running';
+                statusText.textContent = 'Server is Running';
+            } else if (status === 'error') {
+                statusDot.className = 'status-dot error';
+                statusText.textContent = 'Critical Error';
+                serverUrl.textContent = 'Check Docker installation';
+            }
+        });
+
+        updateInfo();
+    </script>
+</body>
+
+</html>

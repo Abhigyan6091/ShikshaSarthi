@@ -2,8 +2,8 @@ const express = require("express");
 const router = express.Router();
 const Question = require("../models/Question");
 require("dotenv").config();
- 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
+
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
@@ -110,6 +110,31 @@ router.delete("/:id", async (req, res) => {
 });
 
 
+router.get("/all/topics/:subject", async (req, res) => {
+  try {
+    const { subject } = req.params;
+    const topics = await Question.distinct("topic", {
+      subject: decodeURIComponent(subject),
+    });
+    res.status(200).json({ subject, topics });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/all/questions/:subject/:topic", async (req, res) => {
+  try {
+    const { subject, topic } = req.params;
+    const questions = await Question.find({
+      subject: decodeURIComponent(subject),
+      topic: decodeURIComponent(topic),
+    });
+    res.status(200).json(questions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get("/topics/:class/:subject", async (req, res) => {
   try {
     const { class: className, subject } = req.params;
@@ -137,4 +162,6 @@ router.get("/:class/:subject/:topic", async (req, res) => {
   }
 });
 
+
 module.exports = router;
+

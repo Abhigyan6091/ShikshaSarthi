@@ -1,0 +1,7 @@
+# ─── ShikshaSarthi – Namespace ─────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shiksha
+  labels:
+    app: shiksha-sarthi

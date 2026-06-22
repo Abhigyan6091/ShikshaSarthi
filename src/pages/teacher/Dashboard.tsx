@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/contexts/AuthContext';
 import Cookies from 'js-cookie';
-const API_URL= import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL;
 import {
   BookOpen,
   ListChecks,
@@ -14,7 +14,9 @@ import {
   PlusCircle,
   Users,
   Layers,
-  MessageSquare
+  MessageSquare,
+  Video,
+  Database
 } from 'lucide-react';
 import SubjectIcon from '@/components/SubjectIcon';
 
@@ -23,7 +25,7 @@ const TeacherDashboard: React.FC = () => {
   const [teacherQuizzes, setTeacherQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // Teacher data from cookies
   const [teacherId, setTeacherId] = useState("");
   const [teacherName, setTeacherName] = useState("");
@@ -34,29 +36,55 @@ const TeacherDashboard: React.FC = () => {
   useEffect(() => {
     const fetchTeacherQuizzes = async () => {
       const teacherCookie = Cookies.get("teacher");
-      if (!teacherCookie) {
-        setError('Teacher cookie not found');
+      let teacherInfo: any = null;
+
+      if (teacherCookie) {
+        try {
+          const parsedCookie = JSON.parse(teacherCookie);
+          teacherInfo = parsedCookie?.teacher || parsedCookie || null;
+        } catch (cookieParseError) {
+          console.warn('Failed to parse teacher cookie, trying localStorage fallback.', cookieParseError);
+        }
+      }
+
+      if (!teacherInfo) {
+        const teacherFromStorage = localStorage.getItem('teacher');
+        const currentUser = localStorage.getItem('currentUser');
+
+        try {
+          if (teacherFromStorage) {
+            const parsedTeacherStorage = JSON.parse(teacherFromStorage);
+            teacherInfo = parsedTeacherStorage?.teacher || parsedTeacherStorage || null;
+          } else if (currentUser) {
+            const parsedCurrentUser = JSON.parse(currentUser);
+            if (parsedCurrentUser?.role === 'teacher' || parsedCurrentUser?.teacherId) {
+              teacherInfo = parsedCurrentUser;
+            }
+          }
+        } catch (storageParseError) {
+          console.warn('Failed to parse teacher data from localStorage.', storageParseError);
+        }
+      }
+
+      if (!teacherInfo) {
+        setError('Teacher session not found. Please login again.');
         setLoading(false);
         return;
       }
 
       try {
-        const parsed = JSON.parse(teacherCookie);
-        const teacherInfo = parsed.teacher;
-        
-        // Extract all teacher information from cookie
+        // Extract all teacher information from available session data
         setTeacherId(teacherInfo.teacherId || teacherInfo.id || "");
         setTeacherName(teacherInfo.name || teacherInfo.teacherName || "");
         setSchoolId(teacherInfo.schoolId || teacherInfo.instituteId || "");
         setTeacherData(teacherInfo);
-        
-        console.log('Teacher data from cookie:', teacherInfo); // Debug log
-        console.log(teacherInfo);
+
+        console.log('Teacher data from session:', teacherInfo);
 
         const teacherIdFromCookie = teacherInfo.teacherId || teacherInfo.id;
-        
+
         if (!teacherIdFromCookie) {
-          throw new Error('Teacher ID not found in cookie');
+          throw new Error('Teacher ID not found in session data');
         }
 
         const response = await fetch(`${API_URL}/teachers/${teacherIdFromCookie}/quizzes`);
@@ -64,7 +92,7 @@ const TeacherDashboard: React.FC = () => {
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
         console.log('API Response:', data); // Debug log to see the structure
         setTeacherQuizzes(Array.isArray(data) ? data : []);
@@ -78,35 +106,35 @@ const TeacherDashboard: React.FC = () => {
 
     fetchTeacherQuizzes();
   }, []);
-  
+
   // Mock data for the dashboard
   const statsData = [
-    { 
+    {
       title: "Total Students",
       value: "42",
       icon: <Users className="h-8 w-8 text-edu-blue" />,
       description: "From your institute",
     },
-    { 
-      title: "Total Quizzes", 
+    {
+      title: "Total Quizzes",
       value: loading ? "..." : teacherQuizzes.length.toString(),
       icon: <ListChecks className="h-8 w-8 text-edu-green" />,
       description: "Created by you",
     },
-    { 
-      title: "Quiz Attempts", 
+    {
+      title: "Quiz Attempts",
       value: "15",
       icon: <BookOpen className="h-8 w-8 text-edu-yellow" />,
       description: "By your students",
     },
-    { 
-      title: "Avg. Score", 
+    {
+      title: "Avg. Score",
       value: "76%",
       icon: <BarChart className="h-8 w-8 text-edu-purple" />,
       description: "Overall performance",
     },
   ];
-  
+
   // Mock data for subject stats
   const subjectStats = [
     { subject: 'mathematics', name: 'Mathematics', attempted: 25, avgScore: 72 },
@@ -114,11 +142,11 @@ const TeacherDashboard: React.FC = () => {
     { subject: 'social', name: 'Social Science', attempted: 12, avgScore: 80 },
     { subject: 'mat', name: 'Mental Ability', attempted: 8, avgScore: 60 },
   ];
-  
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      
+
       <main className="flex-1 py-6 md:py-8 bg-gray-50">
         <div className="edu-container">
           <div className="mb-8">
@@ -127,7 +155,7 @@ const TeacherDashboard: React.FC = () => {
             </h1>
           </div>
 
-          
+
           {/* Stats Overview Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             {statsData.map((stat, i) => (
@@ -147,30 +175,10 @@ const TeacherDashboard: React.FC = () => {
               </Card>
             ))}
           </div>
-          
+
           {/* Main Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            <Card className="border-2 border-edu-blue/20 hover:border-edu-blue/40 transition-colors">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-xl mb-1">Create New Quiz</CardTitle>
-                    <CardDescription>Design a custom quiz for your students</CardDescription>
-                  </div>
-                  <PlusCircle className="h-8 w-8 text-edu-blue" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-500">
-                  Create a subject-specific quiz with custom questions. After creating, share the quiz ID with your students.
-                </p>
-              </CardContent>
-              <CardFooter>
-                <Link to="/teacher/create-quiz" className="w-full">
-                  <Button className="w-full">Create Quiz</Button>
-                </Link>
-              </CardFooter>
-            </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+
 
             <Card className="border-2 border-edu-green/20 hover:border-edu-green/40 transition-colors">
               <CardHeader>
@@ -243,8 +251,32 @@ const TeacherDashboard: React.FC = () => {
                 </Link>
               </CardFooter>
             </Card>
+
+            <Card className="border-2 border-teal-500/20 hover:border-teal-500/40 transition-colors">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-xl mb-1">Question Bank</CardTitle>
+                    <CardDescription>Browse all questions in the database</CardDescription>
+                  </div>
+                  <Database className="h-8 w-8 text-teal-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-500">
+                  View all questions stored in the database along with their options and correct answers.
+                </p>
+              </CardContent>
+              <CardFooter>
+                <Link to="/teacher/all-questions" className="w-full">
+                  <Button variant="outline" className="w-full border-teal-600 text-teal-600 hover:bg-teal-50">
+                    View Questions
+                  </Button>
+                </Link>
+              </CardFooter>
+            </Card>
           </div>
-          
+
           {/* Enhanced Quiz System - New Features */}
           <div className="mb-6">
             <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
@@ -252,44 +284,40 @@ const TeacherDashboard: React.FC = () => {
               Enhanced Quiz System
             </h2>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-            <Card className="border-2 border-blue-500/30 hover:border-blue-500/50 transition-colors bg-gradient-to-br from-blue-50 to-white">
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <Card className="border-2 border-blue-500/30 hover:border-blue-500/50 transition-colors bg-gradient-to-br from-blue-50 to-white shadow-sm">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-xl mb-1 flex items-center gap-2">
                       <PlusCircle className="h-6 w-6 text-blue-600" />
-                      Advanced Quiz Creator
+                      Quiz Creator
                     </CardTitle>
-                    <CardDescription>Create comprehensive quizzes with multiple question types</CardDescription>
+                    <CardDescription>Comprehensive quizzes with multiple question types</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <ul className="text-sm text-gray-600 space-y-2">
                   <li className="flex items-center gap-2">
-                    <span className="text-green-500">✓</span>
+                    <span className="text-green-500 font-bold">✓</span>
+                    Access 1000s of bank questions
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-500 font-bold">✓</span>
                     Contest-style with start/end times
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="text-green-500">✓</span>
+                    <span className="text-green-500 font-bold">✓</span>
                     Mix MCQ, Audio, Video, Puzzle questions
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-green-500">✓</span>
-                    Question ordering & filtering
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-green-500">✓</span>
-                    Update existing quizzes
                   </li>
                 </ul>
               </CardContent>
               <CardFooter>
                 <Link to="/teacher/create-quiz-new" className="w-full">
                   <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                    Create Advanced Quiz
+                    Create Quiz
                   </Button>
                 </Link>
               </CardFooter>
@@ -335,8 +363,49 @@ const TeacherDashboard: React.FC = () => {
                 </Link>
               </CardFooter>
             </Card>
+
+            <Card className="border-2 border-emerald-500/30 hover:border-emerald-500/50 transition-colors bg-gradient-to-br from-emerald-50 to-white">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-xl mb-1 flex items-center gap-2">
+                      <Video className="h-6 w-6 text-emerald-600" />
+                      Question Generator
+                    </CardTitle>
+                    <CardDescription>AI-powered video question generation</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="text-sm text-gray-600 space-y-2">
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-500">✓</span>
+                    Upload videos & auto-analyze scenes
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-500">✓</span>
+                    AI generates MCQ questions from content
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-500">✓</span>
+                    8 question categories (temporal, causal, etc.)
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-500">✓</span>
+                    Export as JSON/CSV with TTS explanations
+                  </li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Link to="/teacher/question-generator" className="w-full">
+                  <Button className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white">
+                    Open Generator
+                  </Button>
+                </Link>
+              </CardFooter>
+            </Card>
           </div>
-          
+
           {/* Subject Stats */}
           {/* <div className="mb-12">
             <h2 className="text-2xl font-bold mb-4">Subject Performance</h2>
@@ -370,19 +439,19 @@ const TeacherDashboard: React.FC = () => {
               ))}
             </div>
           </div> */}
-          
+
           {/* Recent Quizzes */}
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <h2 className="text-2xl font-bold">Your Quizzes</h2>
-              <Link to="/teacher/create-quiz">
+              <Link to="/teacher/create-quiz-new">
                 <Button size="sm">
                   <PlusCircle className="h-4 w-4 mr-2" />
                   New Quiz
                 </Button>
               </Link>
             </div>
-            
+
             {loading ? (
               <Card>
                 <CardContent className="py-12">
@@ -440,8 +509,8 @@ const TeacherDashboard: React.FC = () => {
                         <Link to={`/teacher/quiz-analytics/${quiz.quizId}`}>
                           <Button variant="outline" size="sm" className="w-full sm:w-auto">
                             <BarChart className="h-4 w-4 mr-2" />
-                                Analytics
-                           </Button>
+                            Analytics
+                          </Button>
                         </Link>
 
                         <Link to={`/teacher/quiz-details/${quiz.quizId || quiz.id || quiz._id}`}>
@@ -463,7 +532,7 @@ const TeacherDashboard: React.FC = () => {
                     <p className="text-muted-foreground mb-6">
                       Create your first quiz to get started
                     </p>
-                    <Link to="/teacher/create-quiz">
+                    <Link to="/teacher/create-quiz-new">
                       <Button>Create Your First Quiz</Button>
                     </Link>
                   </div>
@@ -473,7 +542,7 @@ const TeacherDashboard: React.FC = () => {
           </div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   );

@@ -1,0 +1,33 @@
+# ─── ShikshaSarthi – Kubernetes Services ───────────────────────────────────
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shiksha-app
+  namespace: shiksha
+  labels:
+    app: shiksha-sarthi
+spec:
+  type: ClusterIP
+  selector:
+    app: shiksha-sarthi
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: shiksha
+  labels:
+    app: mongodb
+spec:
+  type: ClusterIP
+  selector:
+    app: mongodb
+  ports:
+    - name: mongo
+      port: 27017
+      targetPort: mongo

@@ -21,7 +21,9 @@
     "mongodb": "^6.16.0",
     "mongoose": "^8.14.3",
     "node-fetch": "^2.7.0",
+    "nodemailer": "^9.0.1",
     "nodemon": "^3.1.10",
+    "rate-limiter-flexible": "^11.2.0",
     "uuid": "^13.0.0"
   }
 }

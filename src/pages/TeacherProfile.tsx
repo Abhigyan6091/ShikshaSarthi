@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Phone, BookOpen, Calendar, IdCard, Building, Users } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 // Interface matching Teacher schema exactly
 interface TeacherData {
   _id: string;
@@ -10,6 +12,7 @@ interface TeacherData {
   name: string;
   phone: string;
   schoolId: string;
+  profilePhoto?: string;
   classes: string[];
   quizzesCreated: string[];
   questionAdded: any[];
@@ -65,6 +68,7 @@ const TeacherProfile: React.FC = () => {
                 name: teacherInfo.name || 'Teacher Name',
                 phone: teacherInfo.phone || 'N/A',
                 schoolId: teacherInfo.schoolId || 'N/A',
+                profilePhoto: teacherInfo.profilePhoto || '',
                 classes: teacherInfo.classes || [],
                 quizzesCreated: teacherInfo.quizzesCreated || [],
                 questionAdded: teacherInfo.questionAdded || [],
@@ -123,8 +127,20 @@ const TeacherProfile: React.FC = () => {
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-8">
             <div className="flex items-center space-x-6">
-              <div className="bg-white p-4 rounded-full">
-                <User className="h-20 w-20 text-blue-600" />
+              <div className="bg-white p-1 rounded-full">
+                <div className="h-20 w-20 rounded-full overflow-hidden">
+                  {teacherData?.profilePhoto ? (
+                    <img
+                      src={`${API_URL}/${teacherData.profilePhoto.replace(/^\//, '')}`}
+                      alt={teacherData.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center">
+                      <User className="h-12 w-12 text-blue-600" />
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="text-white">
                 <h1 className="text-3xl font-bold">{teacherData?.name}</h1>

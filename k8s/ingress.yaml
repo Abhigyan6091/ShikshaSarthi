@@ -1,0 +1,28 @@
+# ─── ShikshaSarthi – Kubernetes Ingress ────────────────────────────────────
+# Uncomment and configure for your domain / ingress controller.
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shiksha-ingress
+  namespace: shiksha
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 100m
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"   # uncomment for TLS
+spec:
+  ingressClassName: nginx
+  # tls:                                                       # uncomment for TLS
+  #   - hosts:
+  #       - shiksha.example.com
+  #     secretName: shiksha-tls
+  rules:
+    - host: shiksha.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: shiksha-app
+                port:
+                  number: 80

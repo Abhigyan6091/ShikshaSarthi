@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Home,
   User,
@@ -18,13 +18,23 @@ import {
   UserPlus,
   Menu,
   Wifi,
-  WifiOff
+  WifiOff,
+  Settings
 } from 'lucide-react';
+
+const API_URL = import.meta.env.VITE_API_URL;
+
+const getPhotoUrl = (photo: string) => {
+  if (!photo) return '';
+  if (photo.startsWith('data:') || photo.startsWith('http')) return photo;
+  return `${API_URL}${photo.startsWith('/') ? '' : '/'}${photo}`;
+};
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('');
+  const [profilePhoto, setProfilePhoto] = useState<string>('');
   const [studentId, setStudentId] = useState<string>('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean>(() => {
@@ -33,42 +43,59 @@ const Header: React.FC = () => {
     }
     return window.navigator.onLine;
   });
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    // Check for logged in user
+  const readUserData = () => {
     const role = localStorage.getItem('userRole');
     const currentUser = localStorage.getItem('currentUser');
     const studentData = localStorage.getItem('student');
-    
+    let name = '';
+    let photo = '';
+    let sId = '';
+
     if (role) {
       setUserRole(role);
     }
-    
+
     if (currentUser) {
       try {
         const user = JSON.parse(currentUser);
-        setUserName(user.name || user.username || '');
-        
-        // Try to get studentId from currentUser
+        name = user.name || user.username || '';
+        photo = user.profilePhoto || '';
         if (user.studentId) {
-          setStudentId(user.studentId);
+          sId = user.studentId;
         }
       } catch (e) {
         console.error('Error parsing user data', e);
       }
     }
-    
-    // For students, also check the 'student' localStorage entry
+
     if (role === 'student' && studentData) {
       try {
         const student = JSON.parse(studentData);
         if (student.student && student.student.studentId) {
-          setStudentId(student.student.studentId);
+          sId = student.student.studentId;
         }
       } catch (e) {
         console.error('Error parsing student data', e);
       }
     }
+
+    setUserName(name);
+    setProfilePhoto(photo);
+    setStudentId(sId);
+  };
+
+  useEffect(() => {
+    readUserData();
+  }, [refreshKey]);
+
+  useEffect(() => {
+    const handleUserDataChanged = () => {
+      setRefreshKey(k => k + 1);
+    };
+    window.addEventListener('userDataChanged', handleUserDataChanged);
+    return () => window.removeEventListener('userDataChanged', handleUserDataChanged);
   }, []);
 
   useEffect(() => {
@@ -85,15 +112,15 @@ const Header: React.FC = () => {
   }, []);
 
   const handleLogout = () => {
-    // Clear all storage
+    window.dispatchEvent(new CustomEvent('userLoggedOut'));
+
     localStorage.removeItem('userRole');
     localStorage.removeItem('currentUser');
     localStorage.removeItem('student');
     localStorage.removeItem('schooladmin');
     localStorage.removeItem('superadmin');
-    localStorage.clear();
-    
-    // Clear cookies
+    localStorage.removeItem('teacher');
+
     document.cookie.split(";").forEach((c) => {
       document.cookie = c
         .replace(/^ +/, "")
@@ -102,6 +129,7 @@ const Header: React.FC = () => {
 
     setUserRole(null);
     setUserName('');
+    setProfilePhoto('');
     setMobileMenuOpen(false);
     navigate('/login');
   };
@@ -115,6 +143,19 @@ const Header: React.FC = () => {
       default: return '/';
     }
   };
+
+  const renderAvatar = (sizeClass = 'h-8 w-8', textSize = 'text-sm') => (
+    <Avatar className={`${sizeClass} ring-2 ring-edu-blue/20`}>
+      {profilePhoto ? (
+        <AvatarImage src={getPhotoUrl(profilePhoto)} alt={userName} className="object-cover" />
+      ) : null}
+      <AvatarFallback className="bg-gradient-to-br from-edu-blue to-edu-purple text-white">
+        <span className={textSize}>
+          {userName ? userName.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
+        </span>
+      </AvatarFallback>
+    </Avatar>
+  );
 
   return (
     <header className="bg-white shadow">
@@ -145,17 +186,14 @@ const Header: React.FC = () => {
                 </Button>
               </Link>
               
-              {/* User Profile Button - Navigates to profile for students */}
+              {/* User Profile Button */}
               {userRole === 'student' && studentId ? (
-                <>
-                
                 <Link to={`/student/profile/${studentId}`}>
                   <Button variant="ghost" size="sm">
-                    <User className="h-4 w-4 mr-2" />
-                    {userName} ({userRole})
+                    {renderAvatar('h-6 w-6', 'text-xs')}
+                    <span className="ml-2">{userName} ({userRole})</span>
                   </Button>
                 </Link>
-                </>
               ) : (
                 <></>
               )}
@@ -165,11 +203,21 @@ const Header: React.FC = () => {
                 <>
                   <Link to={userRole === 'teacher' ? "/teacher/profile" : "/schooladmin/profile"}>
                     <Button variant="ghost" size="sm">
-                      <User className="h-4 w-4 mr-2" />
-                      Profile
+                      {renderAvatar('h-6 w-6', 'text-xs')}
+                      <span className="ml-2">{userName}</span>
                     </Button>
                   </Link>
                 </>
+              )}
+
+              {/* Settings button for all logged-in users */}
+              {userRole !== 'superadmin' && (
+                <Link to={`/${userRole}/settings`}>
+                  <Button variant="ghost" size="sm">
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Button>
+                </Link>
               )}
 
               {/* Show Register button for admins and teachers */}
@@ -229,6 +277,14 @@ const Header: React.FC = () => {
               <div className="mt-6 space-y-2">
                 {userRole ? (
                   <>
+                    <div className="flex items-center gap-3 px-3 py-4 border-b mb-2">
+                      {renderAvatar('h-12 w-12', 'text-lg')}
+                      <div>
+                        <p className="font-medium text-sm">{userName || 'User'}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{userRole}</p>
+                      </div>
+                    </div>
+
                     <SheetClose asChild>
                       <Link to={getDashboardPath()}>
                         <Button variant="ghost" className="w-full justify-start">
@@ -260,6 +316,17 @@ const Header: React.FC = () => {
                       </SheetClose>
                     )}
 
+                    {userRole !== 'superadmin' && (
+                      <SheetClose asChild>
+                        <Link to={`/${userRole}/settings`}>
+                          <Button variant="ghost" className="w-full justify-start">
+                            <Settings className="h-4 w-4 mr-2" />
+                            Settings
+                          </Button>
+                        </Link>
+                      </SheetClose>
+                    )}
+
                     {(userRole === 'superadmin' || userRole === 'schooladmin' || userRole === 'teacher') && (
                       <SheetClose asChild>
                         <Link to="/register">
@@ -284,12 +351,6 @@ const Header: React.FC = () => {
                   </SheetClose>
                 )}
               </div>
-
-              {userRole && (
-                <p className="mt-6 text-sm text-muted-foreground">
-                  Signed in as {userName || 'User'} ({userRole})
-                </p>
-              )}
             </SheetContent>
           </Sheet>
         </div>

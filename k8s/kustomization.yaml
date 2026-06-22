@@ -1,0 +1,17 @@
+# ─── ShikshaSarthi – Kustomize ─────────────────────────────────────────────
+# Deploy everything with:
+#   kubectl apply -k k8s/
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: shiksha
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml

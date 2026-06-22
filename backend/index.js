@@ -30,6 +30,9 @@ const feedbackFormRoutes = require("./routes/feedbackForm");
 const feedbackResponseRoutes = require("./routes/feedbackResponse");
 const syncRoutes = require("./routes/sync");
 const mediaRoutes = require("./routes/media");
+const authRoutes = require('./routes/auth');
+const updateRoutes = require('./routes/updates');
+const vqgRouter = require("./vqgRouter");
 const backendPackageJson = require("./package.json");
 
 const app = express();
@@ -83,6 +86,14 @@ app.use("/api/feedback-forms", feedbackFormRoutes);
 app.use("/api/feedback-responses", feedbackResponseRoutes);
 app.use("/sync", syncRoutes);
 app.use("/media", mediaRoutes);
+app.use("/api/auth", authRoutes);
+app.use('/api/updates', updateRoutes);
+
+// ── VQG (Video Question Generator) ────────────────────────────
+// Mounts the VQG router which manages the FastAPI subprocess and
+// serves the VQG frontend + API under /vqg/*
+app.use("/vqg", vqgRouter);
+
 // https://shiksha-sarthi-nmms-prep-cn64.vercel.app
 
 app.get("/app/version", (_req, res) => {
@@ -93,6 +104,13 @@ app.get("/app/version", (_req, res) => {
   });
 });
 
+app.get("/hi", (req, res) => {
+  res.send("Welcome to the NMMS Prep API!");
+});
+
+app.get("/", (req, res) => {
+  res.send("Backend is working ✅");
+});
 
 const PORT = process.env.PORT || 5000;
 

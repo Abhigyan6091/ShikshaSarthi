@@ -11,6 +11,7 @@ import EmbeddableMemoryMatch from '@/components/puzzles/EmbeddableMemoryMatch';
 import EmbeddableMatchPieces from '@/components/puzzles/EmbeddableMatchPieces';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { clearAdvancedQuizDraft, setAdvancedQuizDraft } from '@/store/slices/advancedQuizDraftSlice';
+import { defaultProctoringState, type ProctoringState, requestFullscreen, useProctoring } from '@/hooks/useProctoring';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -68,6 +69,8 @@ interface AdvancedQuizPlayerLocationState {
   studentId?: string;
 }
 
+const PROCTORING_LOG_LIMIT = 30;
+
 const AdvancedQuizPlayer: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -93,6 +96,9 @@ const AdvancedQuizPlayer: React.FC = () => {
   const [showResults, setShowResults] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true);
   const [countdownToStart, setCountdownToStart] = useState(0);
+  const [proctoringState, setProctoringState] = useState<ProctoringState>(defaultProctoringState);
+  const [fullscreenRequired, setFullscreenRequired] = useState(false);
+  const [browserSupportsStrictProctoring, setBrowserSupportsStrictProctoring] = useState(true);
   
   // Puzzle results tracking — maps questionId to puzzle result data
   const [puzzleResults, setPuzzleResults] = useState<{[key: string]: any}>({});
@@ -114,6 +120,7 @@ const AdvancedQuizPlayer: React.FC = () => {
   const questionStartTimeRef = useRef<number>(Date.now());
   const answersRef = useRef<Answer[]>([]);
   const questionsRef = useRef<QuestionData[]>([]);
+  const proctoringStateRef = useRef<ProctoringState>(defaultProctoringState());
   const draftRestoreCompletedRef = useRef<boolean>(false);
   const lastServerDraftSaveRef = useRef<number>(0);
   const initialPersistedDraftRef = useRef(persistedDraft);
@@ -208,6 +215,12 @@ const AdvancedQuizPlayer: React.FC = () => {
       console.error('Failed to sync advanced quiz draft to database:', error);
     }
   };
+
+  useEffect(() => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isFirefox = userAgent.includes('firefox');
+    setBrowserSupportsStrictProctoring(!isFirefox);
+  }, []);
 
   useEffect(() => {
     if (!quizInfo) {
@@ -329,6 +342,10 @@ const AdvancedQuizPlayer: React.FC = () => {
   }, [questions]);
 
   useEffect(() => {
+    proctoringStateRef.current = proctoringState;
+  }, [proctoringState]);
+
+  useEffect(() => {
     if (questions.length > 0 && currentIndex >= questions.length) {
       setCurrentIndex(questions.length - 1);
     }
@@ -357,6 +374,7 @@ const AdvancedQuizPlayer: React.FC = () => {
     answers,
     puzzleResults,
     videoAnalytics,
+    proctoringState,
     localDraftTimeCheckpoint,
     initialTimeLimit,
     quizStarted,
@@ -388,7 +406,8 @@ const AdvancedQuizPlayer: React.FC = () => {
     currentIndex,
     answers,
     puzzleResults,
-    videoAnalytics
+    videoAnalytics,
+    proctoringState
   ]);
 
   // Countdown timer before quiz starts
@@ -514,14 +533,44 @@ const AdvancedQuizPlayer: React.FC = () => {
   };
 
   const handleStartQuiz = () => {
+    if (!browserSupportsStrictProctoring) {
+      toast({
+        title: 'Unsupported Browser',
+        description: 'Use Chrome or Edge for this proctored quiz. Firefox cannot securely block Esc fullscreen exit.',
+        variant: 'destructive',
+        duration: 5000
+      });
+      return;
+    }
+
     setShowInstructions(false);
     setQuizStarted(true);
+    setFullscreenRequired(false);
+    requestFullscreen().then((entered) => {
+      setFullscreenRequired(!entered);
+    });
+    setProctoringState((prev) => ({
+      ...prev,
+      isEnabled: true,
+      activityLog: [
+        {
+          eventType: 'quiz_started',
+          message: 'Proctored advanced quiz started.',
+          timestamp: new Date().toISOString()
+        },
+        ...prev.activityLog
+      ].slice(0, PROCTORING_LOG_LIMIT)
+    }));
     startTimeRef.current = Date.now();
     questionStartTimeRef.current = Date.now();
   };
 
   const handleTimeUp = () => {
     console.log('⏰ TIME UP! Auto-submitting quiz...');
+    setProctoringState((prev) => ({
+      ...prev,
+      terminationReason: prev.terminationReason || "Quiz auto-submitted because time ran out."
+    }));
     setQuizEnded(true);
     if (timerRef.current) clearInterval(timerRef.current);
     
@@ -996,6 +1045,39 @@ const AdvancedQuizPlayer: React.FC = () => {
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  useProctoring({
+    enabled: true,
+    quizStarted,
+    quizEnded,
+    state: proctoringState,
+    onStateChange: setProctoringState,
+    onFullscreenRequiredChange: setFullscreenRequired,
+    onWarning: (message) => {
+      toast({
+        title: 'Proctoring Warning',
+        description: message,
+        variant: 'destructive',
+        duration: 3500
+      });
+    },
+    onAutoSubmit: (reason) => {
+      const nextProctoringState = {
+        ...proctoringStateRef.current,
+        autoSubmitted: true,
+        terminationReason: reason
+      };
+      proctoringStateRef.current = nextProctoringState;
+      setProctoringState(nextProctoringState);
+      toast({
+        title: 'Exam Auto-Submitted',
+        description: reason,
+        variant: 'destructive',
+        duration: 5000
+      });
+      handleSubmitQuiz(true);
+    }
+  });
 
   const getQuestionIcon = (type: string) => {
     switch (type) {
@@ -1550,6 +1632,22 @@ const AdvancedQuizPlayer: React.FC = () => {
               </ul>
             </div>
 
+            <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-4">
+              <h4 className="text-lg font-semibold text-amber-900 mb-2">Proctored Test Note</h4>
+              <div className="space-y-2 text-sm text-amber-900">
+                <p>This advanced quiz is a proctored test and will open in fullscreen when you start.</p>
+                <p>Do not switch tabs, minimize the browser, or exit fullscreen during the exam.</p>
+                <p>Copy, cut, paste, text selection, right click, and restricted shortcuts are disabled.</p>
+                <p>If you leave the exam window 3 times, the quiz will be auto-submitted.</p>
+                <p>Fullscreen will close automatically only after you submit the quiz or the test ends.</p>
+                {!browserSupportsStrictProctoring && (
+                  <p className="font-semibold text-red-700">
+                    This browser is not supported for strict proctoring. Please open this quiz in Chrome or Edge.
+                  </p>
+                )}
+              </div>
+            </div>
+
             {/* Loading State */}
             {loading && (
               <div className="text-center py-4">
@@ -1562,11 +1660,17 @@ const AdvancedQuizPlayer: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-4">
               <Button 
                 onClick={handleStartQuiz} 
-                disabled={!canStartNow || loading}
+                disabled={!canStartNow || loading || !browserSupportsStrictProctoring}
                 className="flex-1 bg-green-600 hover:bg-green-700" 
                 size="lg"
               >
-                {loading ? 'Loading...' : canStartNow ? 'I\'m Ready - Start Quiz' : 'Please Wait...'}
+                {loading
+                  ? 'Loading...'
+                  : !browserSupportsStrictProctoring
+                  ? 'Use Chrome or Edge'
+                  : canStartNow
+                  ? 'I\'m Ready - Start Quiz'
+                  : 'Please Wait...'}
               </Button>
               <Button 
                 onClick={() => navigate('/student/take-advanced-quiz')} 
@@ -1643,7 +1747,44 @@ const AdvancedQuizPlayer: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-3 sm:p-6 max-w-6xl">
+    <div
+      className="container mx-auto p-3 sm:p-6 max-w-6xl select-none"
+      style={{ WebkitUserSelect: 'none', userSelect: 'none' }}
+      onDragStart={(event) => event.preventDefault()}
+    >
+      {fullscreenRequired && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg border-2 border-red-300 shadow-2xl">
+            <CardHeader>
+              <CardTitle className="text-xl text-center text-red-700">Fullscreen Required</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-center">
+              <p className="text-gray-700">
+                This proctored exam must stay in fullscreen until submission. Return to fullscreen to continue the test.
+              </p>
+              <p className="text-sm text-gray-600">
+                Browser note: we can try to block <code>Esc</code>, but some browsers always reserve it. If fullscreen exits, press the button below to continue.
+              </p>
+              <Button
+                className="w-full bg-red-600 hover:bg-red-700"
+                onClick={async () => {
+                  const entered = await requestFullscreen();
+                  setFullscreenRequired(!entered);
+                  if (!entered) {
+                    toast({
+                      title: 'Fullscreen Needed',
+                      description: 'Please allow fullscreen access to continue the quiz.',
+                      variant: 'destructive'
+                    });
+                  }
+                }}
+              >
+                Return to Fullscreen
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Question Palette Sidebar */}
         <div className="lg:col-span-1">

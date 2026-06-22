@@ -2,10 +2,8 @@ const LOCAL_API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").
 const SYNC_ENABLED = String(import.meta.env.VITE_SYNC_ENABLED || "true").toLowerCase() !== "false";
 const SYNC_INTERVAL_MS = 60_000;
 
-const LAST_SYNC_KEY = "offlineSync.lastSync";
-const FIRST_BOOTSTRAP_KEY = "offlineSync.bootstrapRequested";
-
 let syncInProgress = false;
+let syncIntervalId: ReturnType<typeof setInterval> | null = null;
 
 interface SyncRunResponse {
   ok?: boolean;
@@ -20,6 +18,19 @@ interface SyncRunResponse {
 
 function hasWindow() {
   return typeof window !== "undefined";
+}
+
+function getUserKey(): string | null {
+  try {
+    const user = window.localStorage.getItem('currentUser');
+    const role = window.localStorage.getItem('userRole');
+    if (!user || !role) return null;
+    const parsed = JSON.parse(user);
+    const id = parsed.studentId || parsed.teacherId || parsed.username || parsed._id;
+    return id ? `${role}_${id}` : null;
+  } catch {
+    return null;
+  }
 }
 
 async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T> {
@@ -40,29 +51,33 @@ async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T
 }
 
 function setLastSync(lastSync?: string | null) {
-  if (!hasWindow() || !lastSync) {
+  const userKey = getUserKey();
+  if (!userKey || !lastSync) {
     return;
   }
-
-  window.localStorage.setItem(LAST_SYNC_KEY, lastSync);
+  window.localStorage.setItem(`offlineSync.lastSync_${userKey}`, lastSync);
 }
 
 function shouldForceBootstrap() {
-  if (!hasWindow()) {
-    return false;
-  }
+  const userKey = getUserKey();
+  if (!userKey) return false;
 
-  const alreadyRequested = window.localStorage.getItem(FIRST_BOOTSTRAP_KEY) === "true";
+  const key = `offlineSync.bootstrapRequested_${userKey}`;
+  const alreadyRequested = window.localStorage.getItem(key) === "true";
   if (alreadyRequested) {
     return false;
   }
 
-  window.localStorage.setItem(FIRST_BOOTSTRAP_KEY, "true");
+  window.localStorage.setItem(key, "true");
   return true;
 }
 
 export async function runDeltaSync() {
   if (!SYNC_ENABLED || !hasWindow()) {
+    return;
+  }
+
+  if (!getUserKey()) {
     return;
   }
 
@@ -97,25 +112,50 @@ export async function runDeltaSync() {
   }
 }
 
+function triggerSync() {
+  runDeltaSync();
+}
+
+function startInterval() {
+  if (syncIntervalId !== null) return;
+  syncIntervalId = setInterval(triggerSync, SYNC_INTERVAL_MS);
+}
+
+function stopInterval() {
+  if (syncIntervalId !== null) {
+    clearInterval(syncIntervalId);
+    syncIntervalId = null;
+  }
+}
+
 export function startSyncManager() {
   if (!SYNC_ENABLED || !hasWindow()) {
     return () => {};
   }
 
-  const triggerSync = () => {
-    runDeltaSync();
-  };
+  const onlineHandler = () => triggerSync();
+  window.addEventListener("online", onlineHandler);
 
-  window.addEventListener("online", triggerSync);
-
-  triggerSync();
-
-  const intervalId = window.setInterval(() => {
+  const loginHandler = () => {
+    startInterval();
     triggerSync();
-  }, SYNC_INTERVAL_MS);
+  };
+  window.addEventListener("userLoggedIn", loginHandler);
+
+  const logoutHandler = () => {
+    stopInterval();
+  };
+  window.addEventListener("userLoggedOut", logoutHandler);
+
+  if (getUserKey()) {
+    startInterval();
+    triggerSync();
+  }
 
   return () => {
-    window.removeEventListener("online", triggerSync);
-    window.clearInterval(intervalId);
+    stopInterval();
+    window.removeEventListener("online", onlineHandler);
+    window.removeEventListener("userLoggedIn", loginHandler);
+    window.removeEventListener("userLoggedOut", logoutHandler);
   };
 }

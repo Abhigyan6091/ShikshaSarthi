@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { useEffect, useState } from "react";
-import { Calendar, Clock, Plus, Edit, Save, CheckCircle } from "lucide-react";
+import { Calendar, Clock, Plus, Edit, Save, CheckCircle, List } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -26,10 +26,10 @@ interface Question {
   questionImage?: string;
   difficulty?: string;
   type?: 'mcq' | 'audio' | 'video' | 'puzzle';
-  
+
   // Audio question specific fields
   audio?: string;
-  
+
   // Video question specific fields
   videoUrl?: string;
   videoTitle?: string;
@@ -44,7 +44,7 @@ interface Question {
       image?: string;
     };
   }>;
-  
+
   // Individual video question fields (for hierarchical selection)
   parentVideoId?: string;
   questionIndex?: number;
@@ -78,7 +78,7 @@ export default function CreateQuizNew() {
     if (!url) return false;
     return url.includes('youtube.com') || url.includes('youtu.be');
   };
-  
+
   const getYouTubeVideoId = (url: string): string | null => {
     const patterns = [
       /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
@@ -92,7 +92,7 @@ export default function CreateQuizNew() {
     }
     return null;
   };
-  
+
   const getYouTubeEmbedUrl = (url: string): string => {
     const videoId = getYouTubeVideoId(url);
     if (!videoId) return url;
@@ -111,11 +111,11 @@ export default function CreateQuizNew() {
     startTime: '',
     endTime: ''
   });
-  
+
   const [questionSlots, setQuestionSlots] = useState<QuestionSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
-  
+
   // Filter states
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [filteredQuestions, setFilteredQuestions] = useState<Question[]>([]);
@@ -126,7 +126,7 @@ export default function CreateQuizNew() {
     class: '',
     difficulty: ''
   });
-  
+
   // Video question hierarchical selection states
   const [videoSelectionStep, setVideoSelectionStep] = useState<'subject' | 'topic' | 'questions'>('subject');
   const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
@@ -134,7 +134,7 @@ export default function CreateQuizNew() {
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [selectedTopic, setSelectedTopic] = useState<string>('');
   const [videoQuestionSets, setVideoQuestionSets] = useState<any[]>([]);
-  
+
   // MCQ and Audio question hierarchical selection states
   const [mcqAudioSelectionStep, setMcqAudioSelectionStep] = useState<'subject' | 'topic' | 'questions'>('subject');
   const [mcqAudioAvailableSubjects, setMcqAudioAvailableSubjects] = useState<string[]>([]);
@@ -142,24 +142,28 @@ export default function CreateQuizNew() {
   const [mcqAudioSelectedSubject, setMcqAudioSelectedSubject] = useState<string>('');
   const [mcqAudioSelectedTopic, setMcqAudioSelectedTopic] = useState<string>('');
   const [currentQuestionType, setCurrentQuestionType] = useState<'mcq' | 'audio' | null>(null);
-  
+
   const [teacherId, setTeacherId] = useState('');
   const [isUpdateMode, setIsUpdateMode] = useState(false);
   const [quizToUpdate, setQuizToUpdate] = useState<string>('');
-  
+  const [previousQuizzes, setPreviousQuizzes] = useState<any[]>([]);
+  const [isPrevQuizzesDialogOpen, setIsPrevQuizzesDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingQuizzes, setLoadingQuizzes] = useState(false);
+
   const { toast } = useToast();
 
   useEffect(() => {
     // Get teacher info from localStorage and cookies
     const currentUser = localStorage.getItem('currentUser');
     const teacherCookie = Cookies.get('teacher');
-    
+
     let teacherData = null;
-    
+
     console.log('=== TEACHER ID DEBUG ===');
     console.log('Raw currentUser:', currentUser);
     console.log('Raw teacherCookie:', teacherCookie);
-    
+
     // Try to get from localStorage first
     if (currentUser) {
       try {
@@ -169,7 +173,7 @@ export default function CreateQuizNew() {
         console.error('Error parsing currentUser', e);
       }
     }
-    
+
     // Fallback to cookie if needed
     if (teacherCookie && (!teacherData || !teacherData.teacherId)) {
       try {
@@ -182,7 +186,7 @@ export default function CreateQuizNew() {
         console.error('Error parsing teacher cookie', e);
       }
     }
-    
+
     if (teacherData) {
       // Use teacherId first, fallback to _id, then username
       const id = teacherData.teacherId || teacherData._id || teacherData.username || '';
@@ -191,7 +195,7 @@ export default function CreateQuizNew() {
       console.log('Teacher ID extracted:', id);
       console.log('Teacher ID type:', typeof id);
       console.log('Teacher ID length:', id.length);
-      
+
       if (!id || id.trim() === '') {
         console.error('❌ Teacher ID is empty!');
         toast({
@@ -219,21 +223,21 @@ export default function CreateQuizNew() {
     if (config.startTime && config.timeLimit > 0) {
       // Parse the datetime-local value which is already in local timezone
       const startDate = new Date(config.startTime);
-      
+
       // Add time limit in minutes
       const endDate = new Date(startDate.getTime() + config.timeLimit * 60000);
-      
+
       // Convert to IST (UTC+5:30)
       const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
       const endDateIST = new Date(endDate.getTime());
-      
+
       // Format for datetime-local input (YYYY-MM-DDTHH:mm) in local timezone
       const year = endDateIST.getFullYear();
       const month = String(endDateIST.getMonth() + 1).padStart(2, '0');
       const day = String(endDateIST.getDate()).padStart(2, '0');
       const hours = String(endDateIST.getHours()).padStart(2, '0');
       const minutes = String(endDateIST.getMinutes()).padStart(2, '0');
-      
+
       const endTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
       setConfig(prev => ({ ...prev, endTime: endTimeString }));
     }
@@ -242,34 +246,34 @@ export default function CreateQuizNew() {
   // Validate quiz configuration
   const validateConfig = () => {
     const { quizId, timeLimit, totalQuestions, mcqCount, audioCount, videoCount, puzzleCount, startTime } = config;
-    
+
     if (!quizId.trim()) {
       toast({ title: "Error", description: "Quiz ID is required", variant: "destructive" });
       return false;
     }
-    
+
     if (timeLimit <= 0) {
       toast({ title: "Error", description: "Time limit must be greater than 0", variant: "destructive" });
       return false;
     }
-    
+
     // Calculate total from individual counts (1 video = 1 question slot)
     const calculatedTotal = mcqCount + audioCount + puzzleCount + videoCount;
-    
+
     if (totalQuestions !== calculatedTotal) {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: `Total questions (${totalQuestions}) must equal MCQ + Audio + Puzzles + Videos = ${calculatedTotal}`,
-        variant: "destructive" 
+        variant: "destructive"
       });
       return false;
     }
-    
+
     if (!startTime) {
       toast({ title: "Error", description: "Start time is required", variant: "destructive" });
       return false;
     }
-    
+
     return true;
   };
 
@@ -287,49 +291,58 @@ export default function CreateQuizNew() {
   const initializeSlots = () => {
     const slots: QuestionSlot[] = [];
     let index = 0;
-    
+
+    const preserveQuestion = (targetIndex: number, type: string) => {
+      const existing = questionSlots.find(s => s.index === targetIndex && s.type === type);
+      return existing ? existing.question : null;
+    };
+
     // First: MCQ questions
     for (let i = 0; i < config.mcqCount; i++) {
-      slots.push({ index: index++, type: 'mcq', question: null });
+      slots.push({ index: index, type: 'mcq', question: preserveQuestion(index, 'mcq') });
+      index++;
     }
-    
+
     // Second: Audio questions
     for (let i = 0; i < config.audioCount; i++) {
-      slots.push({ index: index++, type: 'audio', question: null });
+      slots.push({ index: index, type: 'audio', question: preserveQuestion(index, 'audio') });
+      index++;
     }
-    
-    // Third: Video questions (1 video = 1 question slot)
+
+    // Third: Video questions
     for (let i = 0; i < config.videoCount; i++) {
-      slots.push({ index: index++, type: 'video', question: null });
+      slots.push({ index: index, type: 'video', question: preserveQuestion(index, 'video') });
+      index++;
     }
-    
+
     // Fourth: Puzzle questions
     for (let i = 0; i < config.puzzleCount; i++) {
-      slots.push({ index: index++, type: 'puzzle', question: null });
+      slots.push({ index: index, type: 'puzzle', question: preserveQuestion(index, 'puzzle') });
+      index++;
     }
-    
+
     setQuestionSlots(slots);
   };
 
   const handleConfigSubmit = async () => {
     if (!validateConfig()) return;
-    
+
     // Check if quiz ID already exists (unless in update mode)
     if (!isUpdateMode) {
       const exists = await checkQuizIdExists(config.quizId);
       if (exists) {
-        toast({ 
-          title: "Error", 
+        toast({
+          title: "Error",
           description: "Quiz ID already exists. Please use a unique ID or use Update mode.",
-          variant: "destructive" 
+          variant: "destructive"
         });
         return;
       }
     }
-    
+
     initializeSlots();
     setShowQuestionPalette(true);
-    
+
     toast({
       title: "Configuration Saved",
       description: `Now select questions for your quiz (${config.totalQuestions} questions needed)`
@@ -340,7 +353,7 @@ export default function CreateQuizNew() {
   const loadQuestionsForSlot = async (slotIndex: number) => {
     const slot = questionSlots[slotIndex];
     setSelectedSlot(slotIndex);
-    
+
     try {
       switch (slot.type) {
         case 'mcq': {
@@ -348,69 +361,69 @@ export default function CreateQuizNew() {
           // For MCQ questions, load all subjects first (similar to video questions)
           const subjectsResponse = await axios.get(`${API_URL}/questions/`);
           const allQuestions = subjectsResponse.data;
-          
+
           // Extract unique subjects
           const subjects = [...new Set(allQuestions.map((q: any) => q.subject))].filter(Boolean) as string[];
           setMcqAudioAvailableSubjects(subjects);
-          
+
           // Reset selection state
           setMcqAudioSelectionStep('subject');
           setMcqAudioSelectedSubject('');
           setMcqAudioSelectedTopic('');
           setMcqAudioAvailableTopics([]);
           setFilteredQuestions([]);
-          
+
           setIsFilterDialogOpen(true);
           console.log('MCQ subjects loaded:', subjects);
           break;
         }
-          
+
         case 'audio': {
           setCurrentQuestionType('audio');
           // For audio questions, load all subjects first (similar to video questions)
           const subjectsResponse = await axios.get(`${API_URL}/audio-questions/`);
           const allQuestions = subjectsResponse.data;
-          
+
           // Extract unique subjects
           const subjects = [...new Set(allQuestions.map((q: any) => q.subject))].filter(Boolean) as string[];
           setMcqAudioAvailableSubjects(subjects);
-          
+
           // Reset selection state
           setMcqAudioSelectionStep('subject');
           setMcqAudioSelectedSubject('');
           setMcqAudioSelectedTopic('');
           setMcqAudioAvailableTopics([]);
           setFilteredQuestions([]);
-          
+
           setIsFilterDialogOpen(true);
           console.log('Audio subjects loaded:', subjects);
           break;
         }
-          
+
         case 'video': {
           // For video questions, load all data and start hierarchical selection
           const endpoint = `${API_URL}/video-questions/`;
           const videoResponse = await axios.get(endpoint);
-          
+
           // Store all video question sets
           setVideoQuestionSets(videoResponse.data);
-          
+
           // Extract unique subjects
           const subjects = [...new Set(videoResponse.data.map((vq: any) => vq.subject))].filter(Boolean) as string[];
           setAvailableSubjects(subjects);
-          
+
           // Reset selection state
           setVideoSelectionStep('subject');
           setSelectedSubject('');
           setSelectedTopic('');
           setAvailableTopics([]);
           setFilteredQuestions([]);
-          
+
           setIsFilterDialogOpen(true);
           console.log('Video subjects loaded:', subjects);
           break;
         }
-          
+
         case 'puzzle': {
           const endpoint = `${API_URL}/puzzles/`;
           const puzzleResponse = await axios.get(endpoint);
@@ -441,7 +454,7 @@ export default function CreateQuizNew() {
           break;
         }
       }
-      
+
       console.log(`Started loading ${slot.type} questions`);
     } catch (error: any) {
       console.error('Error loading questions:', error);
@@ -456,7 +469,7 @@ export default function CreateQuizNew() {
   // Apply filters
   const applyFilters = () => {
     let filtered = [...availableQuestions];
-    
+
     if (filters.subject && filters.subject !== '') {
       filtered = filtered.filter(q => q.subject && q.subject.toLowerCase().includes(filters.subject.toLowerCase()));
     }
@@ -472,35 +485,35 @@ export default function CreateQuizNew() {
     if (filters.difficulty && filters.difficulty !== '') {
       filtered = filtered.filter(q => q.difficulty && q.difficulty.toLowerCase().includes(filters.difficulty.toLowerCase()));
     }
-    
+
     setFilteredQuestions(filtered);
   };
 
   // Handle subject selection for video questions
   const handleSubjectSelect = (subject: string) => {
     setSelectedSubject(subject);
-    
+
     // Get topics for this subject
     const topics = [...new Set(
       videoQuestionSets
         .filter((vq: any) => vq.subject === subject)
         .map((vq: any) => vq.topic)
     )].filter(Boolean);
-    
+
     setAvailableTopics(topics);
     setVideoSelectionStep('topic');
     console.log('Topics for subject', subject, ':', topics);
   };
-  
+
   // Handle topic selection for video questions
   const handleTopicSelect = (topic: string) => {
     setSelectedTopic(topic);
-    
+
     // Get the video question set for this subject + topic
     const videoSet = videoQuestionSets.find(
       (vq: any) => vq.subject === selectedSubject && vq.topic === topic
     );
-    
+
     if (videoSet && videoSet.questions) {
       // Flatten individual questions for selection
       const individualQuestions = videoSet.questions.map((q: any, idx: number) => ({
@@ -520,13 +533,13 @@ export default function CreateQuizNew() {
         hint: q.hint,
         type: 'video'
       }));
-      
+
       setFilteredQuestions(individualQuestions);
       setVideoSelectionStep('questions');
       console.log('Individual questions loaded:', individualQuestions.length);
     }
   };
-  
+
   // Go back in video selection hierarchy
   const handleVideoSelectionBack = () => {
     if (videoSelectionStep === 'questions') {
@@ -542,28 +555,29 @@ export default function CreateQuizNew() {
 
   // Handle subject selection for MCQ/Audio questions
   const handleMcqAudioSubjectSelect = async (subject: string) => {
-    console.log('handleMcqAudioSubjectSelect called with:', subject, 'type:', currentQuestionType);
-    setMcqAudioSelectedSubject(subject);
-    
+    const trimmedSubject = subject.trim();
+    console.log('handleMcqAudioSubjectSelect called with:', trimmedSubject, 'type:', currentQuestionType);
+    setMcqAudioSelectedSubject(trimmedSubject);
+
     try {
       let topics: string[] = [];
-      
+
       if (currentQuestionType === 'mcq') {
-        // Get topics for MCQ questions - use NMMS class as default
-        const apiUrl = `${API_URL}/questions/topics/NMMS/${encodeURIComponent(subject)}`;
+        // Get topics for MCQ questions - fetch across all classes
+        const apiUrl = `${API_URL}/questions/all/topics/${encodeURIComponent(subject)}`;
         console.log('Calling MCQ API:', apiUrl);
         const topicsResponse = await axios.get(apiUrl);
         console.log('MCQ API response:', topicsResponse.data);
         topics = topicsResponse.data.topics || [];
       } else if (currentQuestionType === 'audio') {
-        // Get topics for audio questions - use NMMS class
-        const apiUrl = `${API_URL}/audio-questions/topics/NMMS/${encodeURIComponent(subject)}`;
+        // Get topics for audio questions - fetch across all classes
+        const apiUrl = `${API_URL}/audio-questions/all/topics/${encodeURIComponent(subject)}`;
         console.log('Calling Audio API:', apiUrl);
         const topicsResponse = await axios.get(apiUrl);
         console.log('Audio API response:', topicsResponse.data);
         topics = topicsResponse.data.topics || [];
       }
-      
+
       console.log('Setting topics:', topics);
       setMcqAudioAvailableTopics(topics);
       setMcqAudioSelectionStep('topic');
@@ -578,17 +592,37 @@ export default function CreateQuizNew() {
       });
     }
   };
-  
+
+  // Load all quizzes for the teacher
+  const loadTeacherQuizzes = async () => {
+    if (!teacherId) {
+      toast({ title: "Error", description: "Teacher ID not found. Please log in again.", variant: "destructive" });
+      return;
+    }
+
+    setLoadingQuizzes(true);
+    try {
+      const response = await axios.get(`${API_URL}/quizzes/teacher/${teacherId}`);
+      setPreviousQuizzes(response.data || []);
+      setIsPrevQuizzesDialogOpen(true);
+    } catch (error) {
+      console.error('Error loading teacher quizzes:', error);
+      toast({ title: "Error", description: "Failed to load your quizzes", variant: "destructive" });
+    } finally {
+      setLoadingQuizzes(false);
+    }
+  };
+
   // Handle topic selection for MCQ/Audio questions
   const handleMcqAudioTopicSelect = async (topic: string) => {
     setMcqAudioSelectedTopic(topic);
-    
+
     try {
       let questions: Question[] = [];
-      
+
       if (currentQuestionType === 'mcq') {
-        // Get questions for MCQ - use NMMS class
-        const questionsResponse = await axios.get(`${API_URL}/questions/NMMS/${encodeURIComponent(mcqAudioSelectedSubject)}/${encodeURIComponent(topic)}`);
+        // Get questions for MCQ - fetch across all classes
+        const questionsResponse = await axios.get(`${API_URL}/questions/all/questions/${encodeURIComponent(mcqAudioSelectedSubject)}/${encodeURIComponent(topic)}`);
         questions = questionsResponse.data.map((q: any) => ({
           _id: q._id || q.id,
           questionId: q.questionId || q.id,
@@ -604,8 +638,8 @@ export default function CreateQuizNew() {
           type: 'mcq'
         }));
       } else if (currentQuestionType === 'audio') {
-        // Get questions for audio - use NMMS class
-        const questionsResponse = await axios.get(`${API_URL}/audio-questions/NMMS/${encodeURIComponent(mcqAudioSelectedSubject)}/${encodeURIComponent(topic)}`);
+        // Get questions for audio - fetch across all classes
+        const questionsResponse = await axios.get(`${API_URL}/audio-questions/all/questions/${encodeURIComponent(mcqAudioSelectedSubject)}/${encodeURIComponent(topic)}`);
         questions = questionsResponse.data.map((q: any) => ({
           _id: q._id || q.id,
           questionId: q.questionId || q.id,
@@ -622,7 +656,7 @@ export default function CreateQuizNew() {
           type: 'audio'
         }));
       }
-      
+
       setFilteredQuestions(questions);
       setMcqAudioSelectionStep('questions');
       console.log('Questions loaded:', questions.length);
@@ -650,19 +684,19 @@ export default function CreateQuizNew() {
       setFilteredQuestions([]);
     }
   };
-  
+
   // Select question for a slot
   const selectQuestion = (question: Question) => {
     if (selectedSlot === null) return;
-    
+
     const newSlots = [...questionSlots];
     newSlots[selectedSlot].question = question;
     setQuestionSlots(newSlots);
-    
+
     setIsFilterDialogOpen(false);
     setSelectedSlot(null);
     setFilters({ subject: '', topic: '', subtopic: '', class: '', difficulty: '' });
-    
+
     // Reset video selection states
     setVideoSelectionStep('subject');
     setSelectedSubject('');
@@ -670,7 +704,7 @@ export default function CreateQuizNew() {
     setAvailableSubjects([]);
     setAvailableTopics([]);
     setVideoQuestionSets([]);
-    
+
     // Reset MCQ/Audio selection states
     setMcqAudioSelectionStep('subject');
     setMcqAudioSelectedSubject('');
@@ -678,7 +712,7 @@ export default function CreateQuizNew() {
     setMcqAudioAvailableSubjects([]);
     setMcqAudioAvailableTopics([]);
     setCurrentQuestionType(null);
-    
+
     toast({
       title: "Question Selected",
       description: `Question assigned to slot ${selectedSlot + 1}`
@@ -696,14 +730,14 @@ export default function CreateQuizNew() {
       });
       return;
     }
-    
+
     console.log('Creating/Updating quiz with teacherId:', teacherId);
-    
+
     // For update mode, allow partial slots to be filled
     // For create mode, all slots must be filled
     const filledSlots = questionSlots.filter(slot => slot.question);
     const unfilledSlots = questionSlots.filter(slot => !slot.question);
-    
+
     if (!isUpdateMode && unfilledSlots.length > 0) {
       toast({
         title: "Error",
@@ -712,12 +746,12 @@ export default function CreateQuizNew() {
       });
       return;
     }
-    
+
     // In update mode, warn but allow submission with only filled slots
     if (isUpdateMode && unfilledSlots.length > 0) {
       console.log(`Update mode: ${filledSlots.length} slots filled, ${unfilledSlots.length} slots empty`);
     }
-    
+
     try {
       // Process questions - for video questions, use parent ID
       const questionIds = filledSlots.map(slot => {
@@ -728,7 +762,7 @@ export default function CreateQuizNew() {
         }
         return q._id;
       });
-      
+
       // Store question metadata for video questions (to know which specific question was selected)
       const videoQuestionMetadata = filledSlots
         .filter(slot => slot.type === 'video' && slot.question?.parentVideoId)
@@ -738,7 +772,7 @@ export default function CreateQuizNew() {
           questionIndex: slot.question!.questionIndex,
           questionText: slot.question!.question
         }));
-      
+
       const quizData = {
         quizId: config.quizId,
         teacherId,
@@ -755,10 +789,10 @@ export default function CreateQuizNew() {
         startTime: config.startTime, // Send as ISO string, backend will parse
         endTime: config.endTime
       };
-      
+
       console.log('Quiz data being sent:', quizData);
       console.log('Video question metadata:', videoQuestionMetadata);
-      
+
       if (isUpdateMode && quizToUpdate) {
         await axios.put(`${API_URL}/quizzes/update/${quizToUpdate}`, quizData);
         toast({
@@ -772,7 +806,7 @@ export default function CreateQuizNew() {
           description: `Quiz "${config.quizId}" created with ${config.totalQuestions} questions`
         });
       }
-      
+
       // Reset form
       setConfig({
         quizId: '',
@@ -789,7 +823,7 @@ export default function CreateQuizNew() {
       setShowQuestionPalette(false);
       setIsUpdateMode(false);
       setQuizToUpdate('');
-      
+
     } catch (error: any) {
       toast({
         title: "Error",
@@ -800,21 +834,23 @@ export default function CreateQuizNew() {
   };
 
   // Load existing quiz for update
-  const loadQuizForUpdate = async () => {
-    if (!quizToUpdate.trim()) {
+  const loadQuizForUpdate = async (idToUse?: string) => {
+    const targetId = typeof idToUse === 'string' ? idToUse : quizToUpdate;
+    if (!targetId.trim()) {
       toast({ title: "Error", description: "Please enter a quiz ID", variant: "destructive" });
       return;
     }
-    
+
     try {
-      console.log('Loading quiz with ID:', quizToUpdate);
-      const response = await axios.get(`${API_URL}/quizzes/by-id/${quizToUpdate}`);
+      setLoading(true);
+      console.log('Loading quiz with ID:', targetId);
+      const response = await axios.get(`${API_URL}/quizzes/by-id/${targetId}`);
       const quiz = response.data;
-      
+
       console.log('Quiz loaded:', quiz);
       console.log('Questions in quiz:', quiz.questions);
       console.log('Question types:', quiz.questionTypes);
-      
+
       // Format dates for datetime-local input
       const formatDateForInput = (dateString: string) => {
         const date = new Date(dateString);
@@ -825,45 +861,56 @@ export default function CreateQuizNew() {
         const minutes = String(date.getMinutes()).padStart(2, '0');
         return `${year}-${month}-${day}T${hours}:${minutes}`;
       };
-      
+
+      const legacyQuestionsCount = (quiz.questions || []).length;
+      let qTypes = quiz.questionTypes || { mcq: legacyQuestionsCount, audio: 0, video: 0, puzzle: 0 };
+
+      // If we have questions but the types are all zero (legacy quiz), default to MCQ
+      const totalInTypes = (qTypes.mcq || 0) + (qTypes.audio || 0) + (qTypes.video || 0) + (qTypes.puzzle || 0);
+      if (legacyQuestionsCount > 0 && totalInTypes === 0) {
+        qTypes = { mcq: legacyQuestionsCount, audio: 0, video: 0, puzzle: 0 };
+      }
+
+      const totalQs = quiz.totalQuestions || legacyQuestionsCount || 0;
+
       setConfig({
         quizId: quiz.quizId,
-        timeLimit: quiz.timeLimit,
-        totalQuestions: quiz.totalQuestions,
-        mcqCount: quiz.questionTypes.mcq,
-        audioCount: quiz.questionTypes.audio,
-        videoCount: quiz.questionTypes.video,
-        puzzleCount: quiz.questionTypes.puzzle,
-        startTime: formatDateForInput(quiz.startTime),
-        endTime: formatDateForInput(quiz.endTime)
+        timeLimit: quiz.timeLimit || 30, // Default 30 mins for legacy
+        totalQuestions: totalQs,
+        mcqCount: qTypes.mcq || 0,
+        audioCount: qTypes.audio || 0,
+        videoCount: qTypes.video || 0,
+        puzzleCount: qTypes.puzzle || 0,
+        startTime: quiz.startTime ? formatDateForInput(quiz.startTime) : '',
+        endTime: quiz.endTime ? formatDateForInput(quiz.endTime) : ''
       });
-      
+
       // Initialize slots based on question types
       const slots: QuestionSlot[] = [];
       let slotIndex = 0;
-      
+
       // Add MCQ slots
-      for (let i = 0; i < quiz.questionTypes.mcq; i++) {
+      for (let i = 0; i < (qTypes.mcq || 0); i++) {
         slots.push({ index: slotIndex++, type: 'mcq', question: null });
       }
-      
+
       // Add Audio slots
-      for (let i = 0; i < quiz.questionTypes.audio; i++) {
+      for (let i = 0; i < (qTypes.audio || 0); i++) {
         slots.push({ index: slotIndex++, type: 'audio', question: null });
       }
-      
+
       // Add Video slots
-      for (let i = 0; i < quiz.questionTypes.video; i++) {
+      for (let i = 0; i < (qTypes.video || 0); i++) {
         slots.push({ index: slotIndex++, type: 'video', question: null });
       }
-      
+
       // Add Puzzle slots
-      for (let i = 0; i < quiz.questionTypes.puzzle; i++) {
+      for (let i = 0; i < (qTypes.puzzle || 0); i++) {
         slots.push({ index: slotIndex++, type: 'puzzle', question: null });
       }
-      
+
       console.log('Created slots:', slots);
-      
+
       // Load existing questions into slots
       if (quiz.questions && quiz.questions.length > 0) {
         console.log('Loading questions into slots...');
@@ -871,12 +918,12 @@ export default function CreateQuizNew() {
           slots.map(async (slot) => {
             const questionId = quiz.questions[slot.index];
             console.log(`Slot ${slot.index} (${slot.type}): Loading question ${questionId}`);
-            
+
             if (!questionId) {
               console.log(`Slot ${slot.index}: No question ID`);
               return slot;
             }
-            
+
             let endpoint = '';
             switch (slot.type) {
               case 'mcq':
@@ -885,16 +932,29 @@ export default function CreateQuizNew() {
               case 'audio':
                 endpoint = `${API_URL}/audio-questions/question/${questionId}`;
                 break;
-              case 'video':
-                endpoint = `${API_URL}/video-questions/single/${questionId}`;
+              case 'video': {
+                // Find metadata for this specific slot
+                const metadata = quiz.videoQuestionMetadata?.find((m: any) => m.slotIndex === slot.index);
+                if (metadata) {
+                  endpoint = `${API_URL}/video-questions/single/${metadata.parentVideoId}/question/${metadata.questionIndex}`;
+                } else if (questionId) {
+                  // Fallback to first question if no metadata
+                  endpoint = `${API_URL}/video-questions/single/${questionId}/question/0`;
+                }
                 break;
+              }
               case 'puzzle':
                 endpoint = `${API_URL}/puzzles/single/${questionId}`;
                 break;
             }
 
+            if (!endpoint) {
+              console.log(`Slot ${slot.index}: No endpoint found`);
+              return slot;
+            }
+
             console.log(`Fetching from: ${endpoint}`);
-            
+
             try {
               const qResponse = await axios.get(endpoint);
               console.log(`Successfully loaded question ${questionId}:`, qResponse.data);
@@ -913,22 +973,31 @@ export default function CreateQuizNew() {
             }
           })
         );
-        
+
         console.log('All slots loaded:', loadedSlots);
         setQuestionSlots(loadedSlots);
       } else {
         console.log('No questions to load, using empty slots');
         setQuestionSlots(slots);
       }
-      
+
       setIsUpdateMode(true);
-      setShowQuestionPalette(true); // Show question palette
-      
-      toast({
-        title: "Quiz Loaded",
-        description: `Loaded ${quiz.questions?.length || 0} existing questions. You can modify them now.`
-      });
-      
+
+      // Only show palette if we actually have questions/slots
+      if (slots.length > 0) {
+        setShowQuestionPalette(true);
+        toast({
+          title: "Quiz Loaded",
+          description: `Loaded ${quiz.questions?.length || 0} existing questions. You can modify them now.`
+        });
+      } else {
+        setShowQuestionPalette(false);
+        toast({
+          title: "Quiz Loaded (Empty)",
+          description: "This quiz is currently empty. Please configure the question counts below."
+        });
+      }
+
     } catch (error: any) {
       console.error('Error loading quiz:', error);
       console.error('Error response:', error.response?.data);
@@ -937,6 +1006,8 @@ export default function CreateQuizNew() {
         description: error.response?.data?.message || "Quiz not found or failed to load",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -964,7 +1035,7 @@ export default function CreateQuizNew() {
     <div className="container mx-auto p-3 sm:p-4 lg:p-6 max-w-7xl">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4 mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold">Create Quiz</h1>
-        
+
         <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
           <Input
             placeholder="Enter Quiz ID to Update"
@@ -972,12 +1043,53 @@ export default function CreateQuizNew() {
             onChange={(e) => setQuizToUpdate(e.target.value)}
             className="w-full sm:w-64"
           />
-          <Button onClick={loadQuizForUpdate} variant="outline" className="w-full sm:w-auto">
-            <Edit className="mr-2 h-4 w-4" />
-            Load Quiz
-          </Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button onClick={() => loadQuizForUpdate()} variant="outline" className="flex-1 sm:flex-none">
+              <Edit className="mr-2 h-4 w-4" />
+              Load Quiz
+            </Button>
+            <Button onClick={loadTeacherQuizzes} variant="secondary" className="flex-1 sm:flex-none" disabled={loadingQuizzes}>
+              <List className="mr-2 h-4 w-4" />
+              {loadingQuizzes ? 'Loading...' : 'Browse'}
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Previous Quizzes Dialog */}
+      <Dialog open={isPrevQuizzesDialogOpen} onOpenChange={setIsPrevQuizzesDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Your Quizzes</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-4 py-4">
+            {previousQuizzes.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">No quizzes found.</p>
+            ) : (
+              previousQuizzes.map((quiz) => (
+                <Card key={quiz._id} className="hover:bg-blue-50 transition-colors cursor-pointer" onClick={() => {
+                  setQuizToUpdate(quiz.quizId);
+                  setIsPrevQuizzesDialogOpen(false);
+                  loadQuizForUpdate(quiz.quizId);
+                }}>
+                  <CardContent className="p-4 flex justify-between items-center">
+                    <div>
+                      <div className="font-bold text-lg">{quiz.quizId}</div>
+                      <div className="text-sm text-gray-500">
+                        {quiz.totalQuestions} Questions | {quiz.timeLimit} mins
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        Created: {new Date(quiz.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <Button size="sm" variant="ghost">Select →</Button>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Main Content - Two Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1166,637 +1278,638 @@ export default function CreateQuizNew() {
               </CardContent>
             </Card>
 
-          {/* Question Filter Dialog */}
-          <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
-            <DialogContent className="w-[95vw] sm:w-full max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
-              <DialogHeader>
-                <DialogTitle>
-                  Select Question for Slot {selectedSlot !== null ? selectedSlot + 1 : ''} 
-                  {selectedSlot !== null && (
-                    <Badge className={`ml-2 ${getTypeColor(questionSlots[selectedSlot].type)}`}>
-                      {getTypeLabel(questionSlots[selectedSlot].type)}
-                    </Badge>
-                  )}
-                </DialogTitle>
-              </DialogHeader>
+            {/* Question Filter Dialog */}
+            <Dialog open={isFilterDialogOpen} onOpenChange={setIsFilterDialogOpen}>
+              <DialogContent className="w-[95vw] sm:w-full max-w-4xl max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+                <DialogHeader>
+                  <DialogTitle>
+                    Select Question for Slot {selectedSlot !== null ? selectedSlot + 1 : ''}
+                    {selectedSlot !== null && (
+                      <Badge className={`ml-2 ${getTypeColor(questionSlots[selectedSlot].type)}`}>
+                        {getTypeLabel(questionSlots[selectedSlot].type)}
+                      </Badge>
+                    )}
+                  </DialogTitle>
+                </DialogHeader>
 
-              <div className="space-y-4">
-                {/* Puzzle Question Selection */}
-                {selectedSlot !== null && questionSlots[selectedSlot].type === 'puzzle' ? (
-                  <div className="space-y-3">
-                    <h3 className="text-base sm:text-lg font-semibold text-orange-700">पहेली गेम चुनें</h3>
-                    <p className="text-sm text-gray-600 mb-4">क्विज़ में जोड़ने के लिए एक पहेली गेम चुनें। छात्र क्विज़ के दौरान यह गेम खेलेंगे।</p>
-                    <div className="grid grid-cols-1 gap-4">
-                      {filteredQuestions.map((puzzle: any) => (
-                        <Card
-                          key={puzzle._id}
-                          className="cursor-pointer hover:bg-orange-50 hover:border-orange-400 transition-all border-2"
-                          onClick={() => selectQuestion(puzzle)}
-                        >
-                          <CardContent className="p-5">
-                            <div className="flex items-start gap-4">
-                              <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                                puzzle.puzzleType === 'memory_match'
+                <div className="space-y-4">
+                  {/* Puzzle Question Selection */}
+                  {selectedSlot !== null && questionSlots[selectedSlot].type === 'puzzle' ? (
+                    <div className="space-y-3">
+                      <h3 className="text-base sm:text-lg font-semibold text-orange-700">पहेली गेम चुनें</h3>
+                      <p className="text-sm text-gray-600 mb-4">क्विज़ में जोड़ने के लिए एक पहेली गेम चुनें। छात्र क्विज़ के दौरान यह गेम खेलेंगे।</p>
+                      <div className="grid grid-cols-1 gap-4">
+                        {filteredQuestions.map((puzzle: any) => (
+                          <Card
+                            key={puzzle._id}
+                            className="cursor-pointer hover:bg-orange-50 hover:border-orange-400 transition-all border-2"
+                            onClick={() => selectQuestion(puzzle)}
+                          >
+                            <CardContent className="p-5">
+                              <div className="flex items-start gap-4">
+                                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${puzzle.puzzleType === 'memory_match'
                                   ? 'bg-gradient-to-br from-indigo-500 to-purple-500'
                                   : 'bg-gradient-to-br from-cyan-500 to-teal-500'
-                              }`}>
-                                <span className="text-white text-xl font-bold">
-                                  {puzzle.puzzleType === 'memory_match' ? 'MM' : 'MP'}
-                                </span>
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h4 className="font-bold text-base sm:text-lg text-gray-900">{puzzle.puzzleTitle || puzzle.question}</h4>
-                                  <Badge className="bg-orange-100 text-orange-700 text-xs">{puzzle.puzzleDuration}</Badge>
+                                  }`}>
+                                  <span className="text-white text-xl font-bold">
+                                    {puzzle.puzzleType === 'memory_match' ? 'MM' : 'MP'}
+                                  </span>
                                 </div>
-                                <p className="text-sm text-gray-600 mb-3">{puzzle.puzzleDescription}</p>
-                                
-                                {/* Modes */}
-                                {puzzle.puzzleModes && (
-                                  <div className="flex flex-wrap gap-2">
-                                    {puzzle.puzzleModes.map((mode: any) => (
-                                      <div key={mode.id} className="bg-gray-100 rounded-lg px-3 py-1.5 text-xs">
-                                        <span className="font-medium text-gray-700">{mode.label}</span>
-                                        {mode.pairs && <span className="text-gray-500 ml-1">({mode.pairs} जोड़ियाँ)</span>}
-                                        {mode.images && <span className="text-gray-500 ml-1">({mode.images} चित्र)</span>}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                    {filteredQuestions.length === 0 && (
-                      <div className="text-center text-gray-500 py-8">
-                        कोई पहेली गेम उपलब्ध नहीं है।
-                      </div>
-                    )}
-                  </div>
-                ) : selectedSlot !== null && (questionSlots[selectedSlot].type === 'mcq' || questionSlots[selectedSlot].type === 'audio') ? (
-                  <>
-                    {/* Breadcrumb for MCQ/Audio */}
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-                      <span className="cursor-pointer hover:text-blue-600" onClick={() => {
-                        if (mcqAudioSelectionStep !== 'subject') handleMcqAudioSelectionBack();
-                      }}>
-                        📚 Subject
-                      </span>
-                      {mcqAudioSelectionStep !== 'subject' && (
-                        <>
-                          <span>→</span>
-                          <span className={`${mcqAudioSelectionStep === 'topic' ? 'font-bold text-blue-700' : 'cursor-pointer hover:text-blue-600'}`}
-                                onClick={() => {
-                                  if (mcqAudioSelectionStep === 'questions') handleMcqAudioSelectionBack();
-                                }}>
-                            📖 {mcqAudioSelectedSubject || 'Topic'}
-                          </span>
-                        </>
-                      )}
-                      {mcqAudioSelectionStep === 'questions' && (
-                        <>
-                          <span>→</span>
-                          <span className="font-bold text-blue-700">📝 {mcqAudioSelectedTopic}</span>
-                        </>
-                      )}
-                    </div>
-                    
-                    {/* Step 1: Subject Selection for MCQ/Audio */}
-                    {mcqAudioSelectionStep === 'subject' && (
-                      <div className="space-y-3">
-                        <h3 className="text-base sm:text-lg font-semibold text-blue-700">Select Subject</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {mcqAudioAvailableSubjects.map((subject) => (
-                            <Card 
-                              key={subject}
-                              className="cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all"
-                              onClick={() => handleMcqAudioSubjectSelect(subject)}
-                            >
-                              <CardContent className="p-6 text-center">
-                                <div className="text-2xl mb-2">📚</div>
-                                <div className="font-bold text-lg">{subject}</div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Step 2: Topic Selection for MCQ/Audio */}
-                    {mcqAudioSelectionStep === 'topic' && (
-                      <div className="space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                          <h3 className="text-base sm:text-lg font-semibold text-blue-700">Select Topic from {mcqAudioSelectedSubject}</h3>
-                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handleMcqAudioSelectionBack}>← Back</Button>
-                        </div>
-                        <div className="grid grid-cols-1 gap-3">
-                          {mcqAudioAvailableTopics.map((topic) => (
-                            <Card 
-                              key={topic}
-                              className="cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all"
-                              onClick={() => handleMcqAudioTopicSelect(topic)}
-                            >
-                              <CardContent className="p-4">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xl">📖</span>
-                                  <span className="font-bold text-lg">{topic}</span>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Step 3: Question Selection for MCQ/Audio */}
-                    {mcqAudioSelectionStep === 'questions' && (
-                      <div className="space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                          <h3 className="text-base sm:text-lg font-semibold text-blue-700">
-                            Select {questionSlots[selectedSlot].type.toUpperCase()} Question from {mcqAudioSelectedTopic}
-                          </h3>
-                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handleMcqAudioSelectionBack}>← Back</Button>
-                        </div>
-                        <div className="max-h-96 overflow-y-auto space-y-3">
-                          {filteredQuestions.map((question) => (
-                            <Card 
-                              key={question._id}
-                              className="cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all"
-                              onClick={() => selectQuestion(question)}
-                            >
-                              <CardContent className="p-4">
-                                <div className="flex items-start gap-3">
-                                  <div className="flex-1">
-                                    {/* Question Text */}
-                                    <div className="font-medium text-gray-900 mb-2">
-                                      {question.question || 'No question text'}
-                                    </div>
-                                    
-                                    {/* Audio for audio questions */}
-                                    {question.type === 'audio' && question.audio && (
-                                      <div className="mb-2">
-                                        <audio controls className="w-full">
-                                          <source src={question.audio} type="audio/mpeg" />
-                                          <source src={question.audio} type="audio/mp3" />
-                                          Your browser does not support audio playback.
-                                        </audio>
-                                      </div>
-                                    )}
-                                    
-                                    {/* Options */}
-                                    {question.options && question.options.length > 0 && (
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 mb-2">
-                                        {question.options.map((opt, optIdx) => (
-                                          <div
-                                            key={optIdx} 
-                                            className={`text-sm px-3 py-2 rounded-md flex items-center gap-2 ${
-                                              opt === question.correctAnswer 
-                                                ? 'bg-green-100 text-green-900 font-semibold border-2 border-green-400' 
-                                                : 'bg-gray-50 text-gray-700 border border-gray-200'
-                                            }`}
-                                          >
-                                            <span className="font-bold bg-white px-2 py-0.5 rounded">
-                                              {String.fromCharCode(65 + optIdx)}
-                                            </span>
-                                            <span>{opt}</span>
-                                            {opt === question.correctAnswer && (
-                                              <span className="ml-auto text-green-700">✓</span>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                    
-                                    {/* Hint */}
-                                    {question.hint && (question.hint as any).text && (
-                                      <div className="mt-2 p-2 bg-amber-50 border-l-3 border-amber-400 rounded">
-                                        <p className="text-xs text-amber-900">
-                                          <span className="font-semibold">💡 Hint:</span> {(question.hint as any).text}
-                                        </p>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : selectedSlot !== null && questionSlots[selectedSlot].type === 'video' ? (
-                  <>
-                    {/* Breadcrumb */}
-                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-                      <span className="cursor-pointer hover:text-purple-600" onClick={() => {
-                        if (videoSelectionStep !== 'subject') handleVideoSelectionBack();
-                      }}>
-                        📚 Subject
-                      </span>
-                      {videoSelectionStep !== 'subject' && (
-                        <>
-                          <span>→</span>
-                          <span className={`${videoSelectionStep === 'topic' ? 'font-bold text-purple-700' : 'cursor-pointer hover:text-purple-600'}`}
-                                onClick={() => {
-                                  if (videoSelectionStep === 'questions') handleVideoSelectionBack();
-                                }}>
-                            📖 {selectedSubject || 'Topic'}
-                          </span>
-                        </>
-                      )}
-                      {videoSelectionStep === 'questions' && (
-                        <>
-                          <span>→</span>
-                          <span className="font-bold text-purple-700">📝 {selectedTopic}</span>
-                        </>
-                      )}
-                    </div>
-                    
-                    {/* Step 1: Subject Selection */}
-                    {videoSelectionStep === 'subject' && (
-                      <div className="space-y-3">
-                        <h3 className="text-base sm:text-lg font-semibold text-purple-700">Select Subject</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {availableSubjects.map((subject) => (
-                            <Card 
-                              key={subject}
-                              className="cursor-pointer hover:bg-purple-50 hover:border-purple-400 transition-all"
-                              onClick={() => handleSubjectSelect(subject)}
-                            >
-                              <CardContent className="p-6 text-center">
-                                <div className="text-2xl mb-2">📚</div>
-                                <div className="font-bold text-lg">{subject}</div>
-                                <div className="text-sm text-gray-600 mt-1">
-                                  {videoQuestionSets.filter((vq: any) => vq.subject === subject).length} topics
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Step 2: Topic Selection */}
-                    {videoSelectionStep === 'topic' && (
-                      <div className="space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                          <h3 className="text-base sm:text-lg font-semibold text-purple-700">Select Topic from {selectedSubject}</h3>
-                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handleVideoSelectionBack}>← Back</Button>
-                        </div>
-                        <div className="grid grid-cols-1 gap-3">
-                          {availableTopics.map((topic) => {
-                            const videoSet = videoQuestionSets.find(
-                              (vq: any) => vq.subject === selectedSubject && vq.topic === topic
-                            );
-                            return (
-                              <Card 
-                                key={topic}
-                                className="cursor-pointer hover:bg-purple-50 hover:border-purple-400 transition-all"
-                                onClick={() => handleTopicSelect(topic)}
-                              >
-                                <CardContent className="p-4">
-                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-xl">📖</span>
-                                        <span className="font-bold text-lg">{topic}</span>
-                                      </div>
-                                      {videoSet?.videoTitle && (
-                                        <div className="text-sm text-gray-600">📹 {videoSet.videoTitle}</div>
-                                      )}
-                                      {videoSet?.videoDuration && (
-                                        <div className="text-xs text-gray-500">⏱️ {videoSet.videoDuration}</div>
-                                      )}
-                                    </div>
-                                    <div className="text-left sm:text-right">
-                                      <Badge className="bg-purple-500 text-white text-lg px-3 py-1">
-                                        {videoSet?.questions?.length || 0} Questions
-                                      </Badge>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Step 3: Individual Question Selection */}
-                    {videoSelectionStep === 'questions' && (
-                      <div className="space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                          <h3 className="text-base sm:text-lg font-semibold text-purple-700">
-                            Select Question from {selectedTopic}
-                          </h3>
-                          <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handleVideoSelectionBack}>← Back to Topics</Button>
-                        </div>
-                        <div className="space-y-3 max-h-96 overflow-y-auto">
-                          {filteredQuestions.map((question, qIdx) => (
-                            <Card 
-                              key={question._id}
-                              className="cursor-pointer hover:bg-purple-50 hover:border-purple-400 transition-all"
-                              onClick={() => selectQuestion(question)}
-                            >
-                              <CardContent className="p-4">
-                                <div className="flex items-start gap-3">
-                                  <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 font-bold px-3 py-1 text-base">
-                                    Q{qIdx + 1}
-                                  </Badge>
-                                  <div className="flex-1">
-                                    <p className="font-medium text-base mb-3 text-gray-800 leading-relaxed">
-                                      {question.question}
-                                    </p>
-                                    
-                                    {/* Options */}
-                                    {question.options && question.options.length > 0 && (
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                                        {question.options.map((opt: string, optIdx: number) => (
-                                          <div 
-                                            key={optIdx} 
-                                            className={`text-sm px-3 py-2 rounded-md flex items-center gap-2 ${
-                                              opt === question.correctAnswer 
-                                                ? 'bg-green-100 text-green-900 font-semibold border-2 border-green-400' 
-                                                : 'bg-gray-50 text-gray-700 border border-gray-200'
-                                            }`}
-                                          >
-                                            <span className="font-bold bg-white px-2 py-0.5 rounded">
-                                              {String.fromCharCode(65 + optIdx)}
-                                            </span>
-                                            <span>{opt}</span>
-                                            {opt === question.correctAnswer && (
-                                              <span className="ml-auto text-green-700">✓</span>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                    
-                                    {/* Hint */}
-                                    {question.hint && (question.hint as any).text && (
-                                      <div className="mt-2 p-2 bg-amber-50 border-l-3 border-amber-400 rounded">
-                                        <p className="text-xs text-amber-900">
-                                          <span className="font-semibold">💡 Hint:</span> {(question.hint as any).text}
-                                        </p>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {/* Regular Filters for MCQ, Audio, Puzzle */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
-                      <Input
-                        placeholder="Subject"
-                        value={filters.subject}
-                        onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
-                      />
-                      <Input
-                        placeholder="Topic"
-                        value={filters.topic}
-                        onChange={(e) => setFilters({ ...filters, topic: e.target.value })}
-                      />
-                      <Input
-                        placeholder="Subtopic"
-                        value={filters.subtopic}
-                        onChange={(e) => setFilters({ ...filters, subtopic: e.target.value })}
-                      />
-                      <Input
-                        placeholder="Class"
-                        value={filters.class}
-                        onChange={(e) => setFilters({ ...filters, class: e.target.value })}
-                      />
-                      <Button onClick={applyFilters}>Apply Filters</Button>
-                    </div>
-
-                    {/* Questions List */}
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {filteredQuestions.map((question) => {
-                        // Determine question type and render accordingly
-                        const isVideoQuestion = question.type === 'video' || question.videoUrl;
-                        const isAudioQuestion = question.type === 'audio' || question.audio;
-                        
-                        return (
-                          <Card 
-                            key={question._id} 
-                            className="cursor-pointer hover:bg-gray-50 transition-colors"
-                            onClick={() => selectQuestion(question)}
-                          >
-                            <CardContent className="p-4">
-                              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                                 <div className="flex-1">
-                                  {/* Audio Question Display */}
-                                  {isAudioQuestion && (
-                                <>
-                                  <div className="flex items-center gap-2 mb-3">
-                                    <Badge className="bg-purple-500 text-white">📹 Video Set</Badge>
-                                    <p className="font-bold text-lg">{question.videoTitle || 'Video Question Set'}</p>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="font-bold text-base sm:text-lg text-gray-900">{puzzle.puzzleTitle || puzzle.question}</h4>
+                                    <Badge className="bg-orange-100 text-orange-700 text-xs">{puzzle.puzzleDuration}</Badge>
                                   </div>
-                                  
-                                  {/* Video Preview */}
-                                  {question.videoUrl && (
-                                    <div className="mb-3">
-                                      {isYouTubeUrl(question.videoUrl) ? (
-                                        <div className="relative w-full rounded-lg overflow-hidden mb-3" style={{ paddingBottom: '56.25%' }}>
-                                          <iframe
-                                            className="absolute top-0 left-0 w-full h-full rounded-lg"
-                                            src={getYouTubeEmbedUrl(question.videoUrl)}
-                                            title={question.videoTitle || 'Video Question'}
-                                            frameBorder="0"
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                            allowFullScreen
-                                          />
-                                        </div>
-                                      ) : (
-                                        <video controls className="w-full rounded-lg mb-3">
-                                          <source src={question.videoUrl} type="video/mp4" />
-                                          Your browser does not support the video tag.
-                                        </video>
-                                      )}
-                                    </div>
-                                  )}
-                                  
-                                  {/* Video Metadata */}
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
-                                    <div className="text-sm">
-                                      <span className="font-semibold text-purple-700">Duration:</span> 
-                                      <span className="ml-1">{question.videoDuration || 'N/A'}</span>
-                                    </div>
-                                    <div className="text-sm">
-                                      <span className="font-semibold text-purple-700">Total Questions:</span> 
-                                      <span className="ml-1 font-bold text-purple-900">{question.questions?.length || 0}</span>
-                                    </div>
-                                  </div>
-                                  
-                                  {question.videoDescription && (
-                                    <div className="mb-3 p-2 bg-blue-50 rounded border-l-4 border-blue-400">
-                                      <p className="text-sm text-gray-700 italic">
-                                        📝 {question.videoDescription}
-                                      </p>
-                                    </div>
-                                  )}
-                                  
-                                  {/* All Questions in this Video Set */}
-                                  {question.questions && question.questions.length > 0 && (
-                                    <div className="mt-4 border-2 border-purple-300 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-white">
-                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                                        <p className="text-sm font-bold text-purple-800 flex items-center gap-2">
-                                          <span className="bg-purple-200 px-2 py-1 rounded">
-                                            📚 All {question.questions.length} Questions in this Video
-                                          </span>
-                                        </p>
-                                      </div>
-                                      
-                                      <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
-                                        {question.questions.map((q: any, idx: number) => (
-                                          <div 
-                                            key={idx} 
-                                            className="border-l-4 border-purple-500 pl-4 py-3 bg-white rounded-r-lg shadow-sm hover:shadow-md transition-shadow"
-                                          >
-                                            <div className="flex items-start gap-3">
-                                              <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 font-bold px-3 py-1">
-                                                Q{idx + 1}
-                                              </Badge>
-                                              <div className="flex-1">
-                                                <p className="font-medium text-sm mb-2 text-gray-800 leading-relaxed">
-                                                  {q.question}
-                                                </p>
-                                                
-                                                {/* Options */}
-                                                {q.options && q.options.length > 0 && (
-                                                  <div className="grid grid-cols-1 gap-2 mt-3">
-                                                    {q.options.map((opt: string, optIdx: number) => (
-                                                      <div 
-                                                        key={optIdx} 
-                                                        className={`text-xs px-3 py-2 rounded-md flex items-center gap-2 ${
-                                                          opt === q.correctAnswer 
-                                                            ? 'bg-green-100 text-green-900 font-semibold border-2 border-green-400' 
-                                                            : 'bg-gray-50 text-gray-700 border border-gray-200'
-                                                        }`}
-                                                      >
-                                                        <span className="font-bold bg-white px-2 py-0.5 rounded">
-                                                          {String.fromCharCode(65 + optIdx)}
-                                                        </span>
-                                                        <span>{opt}</span>
-                                                        {opt === q.correctAnswer && (
-                                                          <span className="ml-auto text-green-700">✓ Correct</span>
-                                                        )}
-                                                      </div>
-                                                    ))}
-                                                  </div>
-                                                )}
-                                                
-                                                {/* Hint if available */}
-                                                {q.hint && q.hint.text && (
-                                                  <div className="mt-3 p-2 bg-amber-50 border-l-3 border-amber-400 rounded">
-                                                    <p className="text-xs text-amber-900">
-                                                      <span className="font-semibold">💡 Hint:</span> {q.hint.text}
-                                                    </p>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                  
-                                  <div className="mt-4 p-3 bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-300 rounded-lg">
-                                    <p className="text-sm text-yellow-900 flex items-start gap-2">
-                                      <span className="font-bold text-lg">⚠️</span>
-                                      <span>
-                                        <span className="font-semibold">Important:</span> Selecting this video will include 
-                                        <span className="font-bold text-yellow-900"> all {question.questions?.length || 0} questions</span> in your quiz.
-                                        Students will watch the video first, then answer these questions.
-                                      </span>
-                                    </p>
-                                  </div>
-                                </>
-                              )}
-                              
-                              {/* Audio Question Display */}
-                              {isAudioQuestion && !isVideoQuestion && (
-                                <>
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Badge className="bg-green-500">Audio</Badge>
-                                  </div>
-                                  <p className="font-medium">{question.question || 'Audio Question'}</p>
-                                  {question.audio && (
-                                    <div className="text-xs text-green-600 mb-2 flex items-center gap-1">
-                                      🔊 Audio file attached
-                                    </div>
-                                  )}
-                                  {question.questionImage && (
-                                    <img src={question.questionImage} alt="Question" className="mt-2 w-full sm:max-w-xs rounded" />
-                                  )}
-                                  {question.options && question.options.length > 0 && (
-                                    <div className="mt-2 space-y-1">
-                                      {question.options.map((opt: string, i: number) => (
-                                        <div key={i} className="text-sm text-gray-600">
-                                          {String.fromCharCode(65 + i)}. {opt}
+                                  <p className="text-sm text-gray-600 mb-3">{puzzle.puzzleDescription}</p>
+
+                                  {/* Modes */}
+                                  {puzzle.puzzleModes && (
+                                    <div className="flex flex-wrap gap-2">
+                                      {puzzle.puzzleModes.map((mode: any) => (
+                                        <div key={mode.id} className="bg-gray-100 rounded-lg px-3 py-1.5 text-xs">
+                                          <span className="font-medium text-gray-700">{mode.label}</span>
+                                          {mode.pairs && <span className="text-gray-500 ml-1">({mode.pairs} जोड़ियाँ)</span>}
+                                          {mode.images && <span className="text-gray-500 ml-1">({mode.images} चित्र)</span>}
                                         </div>
                                       ))}
                                     </div>
                                   )}
-                                </>
-                              )}
-                              
-                                  {/* MCQ/Regular Question Display */}
-                                  {!isVideoQuestion && !isAudioQuestion && (
-                                <>
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Badge className="bg-blue-500">MCQ</Badge>
-                                  </div>
-                                  <p className="font-medium">{question.question || 'No question text'}</p>
-                                  {question.questionImage && (
-                                    <img src={question.questionImage} alt="Question" className="mt-2 w-full sm:max-w-xs rounded" />
-                                  )}
-                                  {question.options && question.options.length > 0 && (
-                                    <div className="mt-2 space-y-1">
-                                      {question.options.map((opt: string, i: number) => (
-                                        <div key={i} className="text-sm text-gray-600">
-                                          {String.fromCharCode(65 + i)}. {opt}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                    </>
-                                  )}
-                                </div>
-                                <div className="sm:ml-4 text-left sm:text-right text-sm text-gray-500">
-                                  <div>Subject: {question.subject || 'N/A'}</div>
-                                  <div>Topic: {question.topic || 'N/A'}</div>
-                                  <div>Class: {question.class || 'N/A'}</div>
-                                  {question.subtopic && <div>Subtopic: {question.subtopic}</div>}
-                                  {question.difficulty && <div>Difficulty: {question.difficulty}</div>}
                                 </div>
                               </div>
                             </CardContent>
                           </Card>
-                        );
-                      })}
-                      
+                        ))}
+                      </div>
                       {filteredQuestions.length === 0 && (
                         <div className="text-center text-gray-500 py-8">
-                          No questions found. Try adjusting your filters.
+                          कोई पहेली गेम उपलब्ध नहीं है।
                         </div>
                       )}
                     </div>
-                  </>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
+                  ) : selectedSlot !== null && (questionSlots[selectedSlot].type === 'mcq' || questionSlots[selectedSlot].type === 'audio') ? (
+                    <>
+                      {/* Breadcrumb for MCQ/Audio */}
+                      <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+                        <span className="cursor-pointer hover:text-blue-600" onClick={() => {
+                          if (mcqAudioSelectionStep !== 'subject') handleMcqAudioSelectionBack();
+                        }}>
+                          📚 Subject
+                        </span>
+                        {mcqAudioSelectionStep !== 'subject' && (
+                          <>
+                            <span>→</span>
+                            <span className={`${mcqAudioSelectionStep === 'topic' ? 'font-bold text-blue-700' : 'cursor-pointer hover:text-blue-600'}`}
+                              onClick={() => {
+                                if (mcqAudioSelectionStep === 'questions') handleMcqAudioSelectionBack();
+                              }}>
+                              📖 {mcqAudioSelectedSubject || 'Topic'}
+                            </span>
+                          </>
+                        )}
+                        {mcqAudioSelectionStep === 'questions' && (
+                          <>
+                            <span>→</span>
+                            <span className="font-bold text-blue-700">📝 {mcqAudioSelectedTopic}</span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Step 1: Subject Selection for MCQ/Audio */}
+                      {mcqAudioSelectionStep === 'subject' && (
+                        <div className="space-y-3">
+                          <h3 className="text-base sm:text-lg font-semibold text-blue-700">Select Subject</h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {mcqAudioAvailableSubjects.map((subject) => (
+                              <Card
+                                key={subject}
+                                className="cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all"
+                                onClick={() => handleMcqAudioSubjectSelect(subject)}
+                              >
+                                <CardContent className="p-6 text-center">
+                                  <div className="text-2xl mb-2">📚</div>
+                                  <div className="font-bold text-lg">{subject}</div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Step 2: Topic Selection for MCQ/Audio */}
+                      {mcqAudioSelectionStep === 'topic' && (
+                        <div className="space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <h3 className="text-base sm:text-lg font-semibold text-blue-700">Select Topic from {mcqAudioSelectedSubject}</h3>
+                            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handleMcqAudioSelectionBack}>← Back</Button>
+                          </div>
+                          <div className="grid grid-cols-1 gap-3">
+                            {mcqAudioAvailableTopics.map((topic) => (
+                              <Card
+                                key={topic}
+                                className="cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all"
+                                onClick={() => handleMcqAudioTopicSelect(topic)}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xl">📖</span>
+                                    <span className="font-bold text-lg">{topic}</span>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                            {mcqAudioAvailableTopics.length === 0 && (
+                              <div className="text-center text-gray-500 py-8 border-2 border-dashed rounded-lg">
+                                इस विषय के लिए कोई विषय (Topic) नहीं मिला।
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Step 3: Question Selection for MCQ/Audio */}
+                      {mcqAudioSelectionStep === 'questions' && (
+                        <div className="space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <h3 className="text-base sm:text-lg font-semibold text-blue-700">
+                              Select {questionSlots[selectedSlot].type.toUpperCase()} Question from {mcqAudioSelectedTopic}
+                            </h3>
+                            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handleMcqAudioSelectionBack}>← Back</Button>
+                          </div>
+                          <div className="max-h-96 overflow-y-auto space-y-3">
+                            {filteredQuestions.map((question) => (
+                              <Card
+                                key={question._id}
+                                className="cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-all"
+                                onClick={() => selectQuestion(question)}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-start gap-3">
+                                    <div className="flex-1">
+                                      {/* Question Text */}
+                                      <div className="font-medium text-gray-900 mb-2">
+                                        {question.question || 'No question text'}
+                                      </div>
+
+                                      {/* Audio for audio questions */}
+                                      {question.type === 'audio' && question.audio && (
+                                        <div className="mb-2">
+                                          <audio controls className="w-full">
+                                            <source src={question.audio} type="audio/mpeg" />
+                                            <source src={question.audio} type="audio/mp3" />
+                                            Your browser does not support audio playback.
+                                          </audio>
+                                        </div>
+                                      )}
+
+                                      {/* Options */}
+                                      {question.options && question.options.length > 0 && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 mb-2">
+                                          {question.options.map((opt, optIdx) => (
+                                            <div
+                                              key={optIdx}
+                                              className={`text-sm px-3 py-2 rounded-md flex items-center gap-2 ${opt === question.correctAnswer
+                                                ? 'bg-green-100 text-green-900 font-semibold border-2 border-green-400'
+                                                : 'bg-gray-50 text-gray-700 border border-gray-200'
+                                                }`}
+                                            >
+                                              <span className="font-bold bg-white px-2 py-0.5 rounded">
+                                                {String.fromCharCode(65 + optIdx)}
+                                              </span>
+                                              <span>{opt}</span>
+                                              {opt === question.correctAnswer && (
+                                                <span className="ml-auto text-green-700">✓</span>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {/* Hint */}
+                                      {question.hint && (question.hint as any).text && (
+                                        <div className="mt-2 p-2 bg-amber-50 border-l-3 border-amber-400 rounded">
+                                          <p className="text-xs text-amber-900">
+                                            <span className="font-semibold">💡 Hint:</span> {(question.hint as any).text}
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : selectedSlot !== null && questionSlots[selectedSlot].type === 'video' ? (
+                    <>
+                      {/* Breadcrumb */}
+                      <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+                        <span className="cursor-pointer hover:text-purple-600" onClick={() => {
+                          if (videoSelectionStep !== 'subject') handleVideoSelectionBack();
+                        }}>
+                          📚 Subject
+                        </span>
+                        {videoSelectionStep !== 'subject' && (
+                          <>
+                            <span>→</span>
+                            <span className={`${videoSelectionStep === 'topic' ? 'font-bold text-purple-700' : 'cursor-pointer hover:text-purple-600'}`}
+                              onClick={() => {
+                                if (videoSelectionStep === 'questions') handleVideoSelectionBack();
+                              }}>
+                              📖 {selectedSubject || 'Topic'}
+                            </span>
+                          </>
+                        )}
+                        {videoSelectionStep === 'questions' && (
+                          <>
+                            <span>→</span>
+                            <span className="font-bold text-purple-700">📝 {selectedTopic}</span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Step 1: Subject Selection */}
+                      {videoSelectionStep === 'subject' && (
+                        <div className="space-y-3">
+                          <h3 className="text-base sm:text-lg font-semibold text-purple-700">Select Subject</h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {availableSubjects.map((subject) => (
+                              <Card
+                                key={subject}
+                                className="cursor-pointer hover:bg-purple-50 hover:border-purple-400 transition-all"
+                                onClick={() => handleSubjectSelect(subject)}
+                              >
+                                <CardContent className="p-6 text-center">
+                                  <div className="text-2xl mb-2">📚</div>
+                                  <div className="font-bold text-lg">{subject}</div>
+                                  <div className="text-sm text-gray-600 mt-1">
+                                    {videoQuestionSets.filter((vq: any) => vq.subject === subject).length} topics
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Step 2: Topic Selection */}
+                      {videoSelectionStep === 'topic' && (
+                        <div className="space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <h3 className="text-base sm:text-lg font-semibold text-purple-700">Select Topic from {selectedSubject}</h3>
+                            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handleVideoSelectionBack}>← Back</Button>
+                          </div>
+                          <div className="grid grid-cols-1 gap-3">
+                            {availableTopics.map((topic) => {
+                              const videoSet = videoQuestionSets.find(
+                                (vq: any) => vq.subject === selectedSubject && vq.topic === topic
+                              );
+                              return (
+                                <Card
+                                  key={topic}
+                                  className="cursor-pointer hover:bg-purple-50 hover:border-purple-400 transition-all"
+                                  onClick={() => handleTopicSelect(topic)}
+                                >
+                                  <CardContent className="p-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className="text-xl">📖</span>
+                                          <span className="font-bold text-lg">{topic}</span>
+                                        </div>
+                                        {videoSet?.videoTitle && (
+                                          <div className="text-sm text-gray-600">📹 {videoSet.videoTitle}</div>
+                                        )}
+                                        {videoSet?.videoDuration && (
+                                          <div className="text-xs text-gray-500">⏱️ {videoSet.videoDuration}</div>
+                                        )}
+                                      </div>
+                                      <div className="text-left sm:text-right">
+                                        <Badge className="bg-purple-500 text-white text-lg px-3 py-1">
+                                          {videoSet?.questions?.length || 0} Questions
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Step 3: Individual Question Selection */}
+                      {videoSelectionStep === 'questions' && (
+                        <div className="space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <h3 className="text-base sm:text-lg font-semibold text-purple-700">
+                              Select Question from {selectedTopic}
+                            </h3>
+                            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={handleVideoSelectionBack}>← Back to Topics</Button>
+                          </div>
+                          <div className="space-y-3 max-h-96 overflow-y-auto">
+                            {filteredQuestions.map((question, qIdx) => (
+                              <Card
+                                key={question._id}
+                                className="cursor-pointer hover:bg-purple-50 hover:border-purple-400 transition-all"
+                                onClick={() => selectQuestion(question)}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-start gap-3">
+                                    <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 font-bold px-3 py-1 text-base">
+                                      Q{qIdx + 1}
+                                    </Badge>
+                                    <div className="flex-1">
+                                      <p className="font-medium text-base mb-3 text-gray-800 leading-relaxed">
+                                        {question.question}
+                                      </p>
+
+                                      {/* Options */}
+                                      {question.options && question.options.length > 0 && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                                          {question.options.map((opt: string, optIdx: number) => (
+                                            <div
+                                              key={optIdx}
+                                              className={`text-sm px-3 py-2 rounded-md flex items-center gap-2 ${opt === question.correctAnswer
+                                                ? 'bg-green-100 text-green-900 font-semibold border-2 border-green-400'
+                                                : 'bg-gray-50 text-gray-700 border border-gray-200'
+                                                }`}
+                                            >
+                                              <span className="font-bold bg-white px-2 py-0.5 rounded">
+                                                {String.fromCharCode(65 + optIdx)}
+                                              </span>
+                                              <span>{opt}</span>
+                                              {opt === question.correctAnswer && (
+                                                <span className="ml-auto text-green-700">✓</span>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {/* Hint */}
+                                      {question.hint && (question.hint as any).text && (
+                                        <div className="mt-2 p-2 bg-amber-50 border-l-3 border-amber-400 rounded">
+                                          <p className="text-xs text-amber-900">
+                                            <span className="font-semibold">💡 Hint:</span> {(question.hint as any).text}
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {/* Regular Filters for MCQ, Audio, Puzzle */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+                        <Input
+                          placeholder="Subject"
+                          value={filters.subject}
+                          onChange={(e) => setFilters({ ...filters, subject: e.target.value })}
+                        />
+                        <Input
+                          placeholder="Topic"
+                          value={filters.topic}
+                          onChange={(e) => setFilters({ ...filters, topic: e.target.value })}
+                        />
+                        <Input
+                          placeholder="Subtopic"
+                          value={filters.subtopic}
+                          onChange={(e) => setFilters({ ...filters, subtopic: e.target.value })}
+                        />
+                        <Input
+                          placeholder="Class"
+                          value={filters.class}
+                          onChange={(e) => setFilters({ ...filters, class: e.target.value })}
+                        />
+                        <Button onClick={applyFilters}>Apply Filters</Button>
+                      </div>
+
+                      {/* Questions List */}
+                      <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {filteredQuestions.map((question) => {
+                          // Determine question type and render accordingly
+                          const isVideoQuestion = question.type === 'video' || question.videoUrl;
+                          const isAudioQuestion = question.type === 'audio' || question.audio;
+
+                          return (
+                            <Card
+                              key={question._id}
+                              className="cursor-pointer hover:bg-gray-50 transition-colors"
+                              onClick={() => selectQuestion(question)}
+                            >
+                              <CardContent className="p-4">
+                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                                  <div className="flex-1">
+                                    {/* Audio Question Display */}
+                                    {isAudioQuestion && (
+                                      <>
+                                        <div className="flex items-center gap-2 mb-3">
+                                          <Badge className="bg-purple-500 text-white">📹 Video Set</Badge>
+                                          <p className="font-bold text-lg">{question.videoTitle || 'Video Question Set'}</p>
+                                        </div>
+
+                                        {/* Video Preview */}
+                                        {question.videoUrl && (
+                                          <div className="mb-3">
+                                            {isYouTubeUrl(question.videoUrl) ? (
+                                              <div className="relative w-full rounded-lg overflow-hidden mb-3" style={{ paddingBottom: '56.25%' }}>
+                                                <iframe
+                                                  className="absolute top-0 left-0 w-full h-full rounded-lg"
+                                                  src={getYouTubeEmbedUrl(question.videoUrl)}
+                                                  title={question.videoTitle || 'Video Question'}
+                                                  frameBorder="0"
+                                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                  allowFullScreen
+                                                />
+                                              </div>
+                                            ) : (
+                                              <video controls className="w-full rounded-lg mb-3">
+                                                <source src={question.videoUrl} type="video/mp4" />
+                                                Your browser does not support the video tag.
+                                              </video>
+                                            )}
+                                          </div>
+                                        )}
+
+                                        {/* Video Metadata */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                          <div className="text-sm">
+                                            <span className="font-semibold text-purple-700">Duration:</span>
+                                            <span className="ml-1">{question.videoDuration || 'N/A'}</span>
+                                          </div>
+                                          <div className="text-sm">
+                                            <span className="font-semibold text-purple-700">Total Questions:</span>
+                                            <span className="ml-1 font-bold text-purple-900">{question.questions?.length || 0}</span>
+                                          </div>
+                                        </div>
+
+                                        {question.videoDescription && (
+                                          <div className="mb-3 p-2 bg-blue-50 rounded border-l-4 border-blue-400">
+                                            <p className="text-sm text-gray-700 italic">
+                                              📝 {question.videoDescription}
+                                            </p>
+                                          </div>
+                                        )}
+
+                                        {/* All Questions in this Video Set */}
+                                        {question.questions && question.questions.length > 0 && (
+                                          <div className="mt-4 border-2 border-purple-300 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-white">
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                                              <p className="text-sm font-bold text-purple-800 flex items-center gap-2">
+                                                <span className="bg-purple-200 px-2 py-1 rounded">
+                                                  📚 All {question.questions.length} Questions in this Video
+                                                </span>
+                                              </p>
+                                            </div>
+
+                                            <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
+                                              {question.questions.map((q: any, idx: number) => (
+                                                <div
+                                                  key={idx}
+                                                  className="border-l-4 border-purple-500 pl-4 py-3 bg-white rounded-r-lg shadow-sm hover:shadow-md transition-shadow"
+                                                >
+                                                  <div className="flex items-start gap-3">
+                                                    <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 font-bold px-3 py-1">
+                                                      Q{idx + 1}
+                                                    </Badge>
+                                                    <div className="flex-1">
+                                                      <p className="font-medium text-sm mb-2 text-gray-800 leading-relaxed">
+                                                        {q.question}
+                                                      </p>
+
+                                                      {/* Options */}
+                                                      {q.options && q.options.length > 0 && (
+                                                        <div className="grid grid-cols-1 gap-2 mt-3">
+                                                          {q.options.map((opt: string, optIdx: number) => (
+                                                            <div
+                                                              key={optIdx}
+                                                              className={`text-xs px-3 py-2 rounded-md flex items-center gap-2 ${opt === q.correctAnswer
+                                                                ? 'bg-green-100 text-green-900 font-semibold border-2 border-green-400'
+                                                                : 'bg-gray-50 text-gray-700 border border-gray-200'
+                                                                }`}
+                                                            >
+                                                              <span className="font-bold bg-white px-2 py-0.5 rounded">
+                                                                {String.fromCharCode(65 + optIdx)}
+                                                              </span>
+                                                              <span>{opt}</span>
+                                                              {opt === q.correctAnswer && (
+                                                                <span className="ml-auto text-green-700">✓ Correct</span>
+                                                              )}
+                                                            </div>
+                                                          ))}
+                                                        </div>
+                                                      )}
+
+                                                      {/* Hint if available */}
+                                                      {q.hint && q.hint.text && (
+                                                        <div className="mt-3 p-2 bg-amber-50 border-l-3 border-amber-400 rounded">
+                                                          <p className="text-xs text-amber-900">
+                                                            <span className="font-semibold">💡 Hint:</span> {q.hint.text}
+                                                          </p>
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        <div className="mt-4 p-3 bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-300 rounded-lg">
+                                          <p className="text-sm text-yellow-900 flex items-start gap-2">
+                                            <span className="font-bold text-lg">⚠️</span>
+                                            <span>
+                                              <span className="font-semibold">Important:</span> Selecting this video will include
+                                              <span className="font-bold text-yellow-900"> all {question.questions?.length || 0} questions</span> in your quiz.
+                                              Students will watch the video first, then answer these questions.
+                                            </span>
+                                          </p>
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {/* Audio Question Display */}
+                                    {isAudioQuestion && !isVideoQuestion && (
+                                      <>
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Badge className="bg-green-500">Audio</Badge>
+                                        </div>
+                                        <p className="font-medium">{question.question || 'Audio Question'}</p>
+                                        {question.audio && (
+                                          <div className="text-xs text-green-600 mb-2 flex items-center gap-1">
+                                            🔊 Audio file attached
+                                          </div>
+                                        )}
+                                        {question.questionImage && (
+                                          <img src={question.questionImage} alt="Question" className="mt-2 w-full sm:max-w-xs rounded" />
+                                        )}
+                                        {question.options && question.options.length > 0 && (
+                                          <div className="mt-2 space-y-1">
+                                            {question.options.map((opt: string, i: number) => (
+                                              <div key={i} className="text-sm text-gray-600">
+                                                {String.fromCharCode(65 + i)}. {opt}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
+
+                                    {/* MCQ/Regular Question Display */}
+                                    {!isVideoQuestion && !isAudioQuestion && (
+                                      <>
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Badge className="bg-blue-500">MCQ</Badge>
+                                        </div>
+                                        <p className="font-medium">{question.question || 'No question text'}</p>
+                                        {question.questionImage && (
+                                          <img src={question.questionImage} alt="Question" className="mt-2 w-full sm:max-w-xs rounded" />
+                                        )}
+                                        {question.options && question.options.length > 0 && (
+                                          <div className="mt-2 space-y-1">
+                                            {question.options.map((opt: string, i: number) => (
+                                              <div key={i} className="text-sm text-gray-600">
+                                                {String.fromCharCode(65 + i)}. {opt}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                  <div className="sm:ml-4 text-left sm:text-right text-sm text-gray-500">
+                                    <div>Subject: {question.subject || 'N/A'}</div>
+                                    <div>Topic: {question.topic || 'N/A'}</div>
+                                    <div>Class: {question.class || 'N/A'}</div>
+                                    {question.subtopic && <div>Subtopic: {question.subtopic}</div>}
+                                    {question.difficulty && <div>Difficulty: {question.difficulty}</div>}
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+
+                        {filteredQuestions.length === 0 && (
+                          <div className="text-center text-gray-500 py-8">
+                            No questions found. Try adjusting your filters.
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
       </div>

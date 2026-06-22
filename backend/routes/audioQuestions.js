@@ -16,15 +16,50 @@ function toAbsoluteUploadUrl(value, req) {
     return value;
   }
 
-  if (value.startsWith("/uploads/")) {
-    return `${req.protocol}://${req.get("host")}${value}`;
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return trimmed;
   }
 
-  if (value.startsWith("uploads/")) {
-    return `${req.protocol}://${req.get("host")}/${value}`;
+  const requestOrigin = `${req.protocol}://${req.get("host")}`;
+
+  if (trimmed.startsWith("/uploads/") || trimmed.startsWith("/videos/")) {
+    return `${requestOrigin}${trimmed}`;
   }
 
-  return value;
+  if (trimmed.startsWith("uploads/") || trimmed.startsWith("videos/")) {
+    return `${requestOrigin}/${trimmed}`;
+  }
+
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    const hostname = String(parsed.hostname || "")
+      .replace(/^\[|\]$/g, "")
+      .toLowerCase();
+
+    if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") {
+      return `${requestOrigin}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+  } catch (_error) {
+    return trimmed;
+  }
+
+  return trimmed;
+}
+
+function normalizeAudioQuestionForResponse(question, req) {
+  if (!question) {
+    return question;
+  }
+
+  const plainQuestion =
+    typeof question.toObject === "function" ? question.toObject() : { ...question };
+  plainQuestion.audio = toAbsoluteUploadUrl(plainQuestion.audio, req);
+  return plainQuestion;
 }
 
 // Test route to create a sample attempt
@@ -72,9 +107,37 @@ router.post("/test-attempt", async (req, res) => {
 router.get("/", async (req, res) => {
   try {
     const audioQuestions = await AudioQuestion.find();
-    res.status(200).json(audioQuestions);
+    const normalizedQuestions = audioQuestions.map((question) =>
+      normalizeAudioQuestionForResponse(question, req)
+    );
+    res.status(200).json(normalizedQuestions);
   } catch (error) {
     console.error("Error fetching all audio questions:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/all/topics/:subject", async (req, res) => {
+  try {
+    const { subject } = req.params;
+    const topics = await AudioQuestion.distinct("topic", {
+      subject: decodeURIComponent(subject)
+    });
+    res.json({ topics });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/all/questions/:subject/:topic", async (req, res) => {
+  try {
+    const { subject, topic } = req.params;
+    const questions = await AudioQuestion.find({
+      subject: decodeURIComponent(subject),
+      topic: decodeURIComponent(topic)
+    });
+    res.json(questions.map(q => normalizeAudioQuestionForResponse(q, req)));
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
@@ -148,12 +211,12 @@ router.get("/topics/:class/:subject", async (req, res) => {
 router.get("/question/:id", async (req, res) => {
   try {
     const question = await AudioQuestion.findById(req.params.id);
-    
+
     if (!question) {
       return res.status(404).json({ message: "Audio question not found" });
     }
 
-    res.json(question);
+    res.json(normalizeAudioQuestionForResponse(question, req));
   } catch (error) {
     console.error("Error fetching audio question:", error);
     res.status(500).json({ message: "Error fetching audio question", error: error.message });
@@ -179,7 +242,7 @@ router.get("/:class/:subject/:topic", async (req, res) => {
     const audioUrls = questions
       .map((q) => toAbsoluteUploadUrl(q.audio, req))
       .filter((url) => isHttpUrl(url));
-    
+
     // Start caching in background (don't wait for it)
     if (audioUrls.length > 0) {
       audioCache.batchDownload(audioUrls).then(results => {
@@ -204,8 +267,9 @@ router.get("/:class/:subject/:topic", async (req, res) => {
         try {
           const localized = await ensureCloudUrlLocalized(normalizedAudio);
           if (localized && localized.localUrl) {
+            const storedAudioUrl = localized.relativeUrl || localized.localUrl;
             questionObj.audioOriginal = normalizedAudio;
-            questionObj.audio = localized.localUrl;
+            questionObj.audio = toAbsoluteUploadUrl(storedAudioUrl, req);
             questionObj.localPath = localized.relativePath;
             questionObj.cloudUrl = questionObj.cloudUrl || normalizedAudio;
 
@@ -214,7 +278,7 @@ router.get("/:class/:subject/:topic", async (req, res) => {
               { _id: questionObj._id },
               {
                 $set: {
-                  audio: localized.localUrl,
+                  audio: storedAudioUrl,
                   localPath: localized.relativePath,
                   cloudUrl: questionObj.cloudUrl,
                 },
@@ -388,13 +452,13 @@ router.post("/attempt", async (req, res) => {
 router.get("/attempts", async (req, res) => {
   try {
     console.log("🔍 Fetching all audio quiz attempts from database");
-    
+
     const attempts = await AudioQuizAttempt.find({})
       .sort({ attemptedAt: -1 })
       .limit(100); // Limit to most recent 100 attempts
 
     console.log("✅ Found total attempts in DB:", attempts.length);
-    
+
     if (attempts.length > 0) {
       console.log("📊 Sample data:", {
         firstAttempt: {
@@ -436,7 +500,7 @@ router.get("/attempts/:studentId", async (req, res) => {
       .limit(50);
 
     console.log("✅ Found attempts:", attempts.length);
-    
+
     // Also check ALL attempts in database
     const allAttempts = await AudioQuizAttempt.find({});
     console.log("📊 Total attempts in DB:", allAttempts.length);
@@ -489,7 +553,7 @@ router.get("/audio/:filename", (req, res) => {
   try {
     const { filename } = req.params;
     const filePath = require('path').join(audioCache.CACHE_DIR, filename);
-    
+
     // Check if file exists in cache
     if (require('fs').existsSync(filePath)) {
       res.setHeader('Content-Type', 'audio/mpeg');
@@ -528,4 +592,7 @@ router.delete("/cache/clear", (req, res) => {
   }
 });
 
+
+
 module.exports = router;
+

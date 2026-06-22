@@ -1,0 +1,22 @@
+# ─── ShikshaSarthi – Kubernetes ConfigMap ──────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shiksha-config
+  namespace: shiksha
+  labels:
+    app: shiksha-sarthi
+data:
+  # ── MongoDB ──
+  MONGO_URI: "mongodb://mongo:27017/app"
+  MONGO_URI_LOCAL: "mongodb://mongo:27017/app"
+  USE_LOCAL_DB: "false"
+
+  # ── Backend ──
+  BACKEND_HOST: "127.0.0.1"
+  BACKEND_PORT: "5000"
+  NODE_ENV: "production"
+  APP_VERSION: "1.0.0"
+  SYNC_AUTO_ENABLED: "false"
+  AUDIO_CACHE_TTL_MS: "1296000000"
+  CLOUDINARY_SYNC_FOLDER: "offline_sync"

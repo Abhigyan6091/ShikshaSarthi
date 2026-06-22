@@ -184,7 +184,9 @@ const Register: React.FC = () => {
 
       toast({
         title: "Success",
-        description: `${roleToRegister} registered successfully`,
+        description: roleToRegister === 'school'
+          ? 'School and its admin registered successfully'
+          : `${roleToRegister} registered successfully`,
       });
 
       // Reset form
@@ -208,6 +210,12 @@ const Register: React.FC = () => {
       case 'school':
         return (
           <>
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-700 font-medium">Register a new school with its admin. Each school can have only one admin.</p>
+            </div>
+
+            <h3 className="font-semibold text-md text-gray-800 border-b pb-1 mb-3">School Details</h3>
+
             <div className="space-y-2">
               <Label htmlFor="schoolId">School ID</Label>
               <Input
@@ -239,6 +247,54 @@ const Register: React.FC = () => {
                 value={formData.location || ''}
                 onChange={(e) => handleInputChange('location', e.target.value)}
                 required
+              />
+            </div>
+
+            <div className="my-4 border-t border-gray-200" />
+
+            <h3 className="font-semibold text-md text-gray-800 border-b pb-1 mb-3">School Admin Details</h3>
+
+            <div className="space-y-2">
+              <Label htmlFor="adminName">Admin Name</Label>
+              <Input
+                id="adminName"
+                type="text"
+                placeholder="Enter admin name"
+                value={formData.adminName || ''}
+                onChange={(e) => handleInputChange('adminName', e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="adminUsername">Admin Username</Label>
+              <Input
+                id="adminUsername"
+                type="text"
+                placeholder="Enter admin username"
+                value={formData.adminUsername || ''}
+                onChange={(e) => handleInputChange('adminUsername', e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="adminPassword">Admin Password</Label>
+              <Input
+                id="adminPassword"
+                type="password"
+                placeholder="Enter admin password"
+                value={formData.adminPassword || ''}
+                onChange={(e) => handleInputChange('adminPassword', e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="adminPhone">Admin Phone</Label>
+              <Input
+                id="adminPhone"
+                type="tel"
+                placeholder="Enter admin phone number"
+                value={formData.adminPhone || ''}
+                onChange={(e) => handleInputChange('adminPhone', e.target.value)}
               />
             </div>
           </>

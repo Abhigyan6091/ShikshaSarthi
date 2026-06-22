@@ -4,12 +4,14 @@ const bcrypt = require("bcrypt");
 const superAdminSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   name: { type: String, required: true },
+  email: { type: String, unique: true, sparse: true },
   password: { type: String, required: true },
+  must_change_password: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 
 // Pre-save hook to hash password
-superAdminSchema.pre('save', async function(next) {
+superAdminSchema.pre('save', async function (next) {
   // Hash password if it's modified or new
   if (this.isModified('password')) {
     try {
@@ -19,12 +21,12 @@ superAdminSchema.pre('save', async function(next) {
       return next(error);
     }
   }
-  
+
   next();
 });
 
 // Method to compare password for login
-superAdminSchema.methods.comparePassword = async function(candidatePassword) {
+superAdminSchema.methods.comparePassword = async function (candidatePassword) {
   try {
     return await bcrypt.compare(candidatePassword, this.password);
   } catch (error) {

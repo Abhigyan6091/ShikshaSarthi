@@ -11,6 +11,7 @@ interface SchoolAdminData {
   name: string;
   phone?: string;
   schoolId: string;
+  profilePhoto?: string;
   teachers: string[];
   students: string[];
   createdAt: string;
@@ -55,6 +56,7 @@ const SchoolAdminProfile: React.FC = () => {
           name: admin.name,
           phone: admin.phone || 'N/A',
           schoolId: admin.schoolId,
+          profilePhoto: admin.profilePhoto || '',
           teachers: admin.teachers || [],
           students: admin.students || [],
           createdAt: admin.createdAt || new Date().toISOString()
@@ -103,8 +105,20 @@ const SchoolAdminProfile: React.FC = () => {
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-8">
             <div className="flex items-center space-x-6">
-              <div className="bg-white p-4 rounded-full">
-                <User className="h-20 w-20 text-blue-600" />
+              <div className="bg-white p-1 rounded-full">
+                <div className="h-20 w-20 rounded-full overflow-hidden">
+                  {profile.profilePhoto ? (
+                    <img
+                      src={`${API_URL}/${profile.profilePhoto.replace(/^\//, '')}`}
+                      alt={profile.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center">
+                      <User className="h-12 w-12 text-blue-600" />
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="text-white">
                 <h1 className="text-3xl font-bold">{profile.name}</h1>

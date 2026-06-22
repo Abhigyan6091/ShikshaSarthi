@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { QuizProvider } from "@/contexts/QuizContext";
 import { startSyncManager } from "@/services/syncManager";
@@ -15,6 +15,9 @@ import Register from "./pages/Register";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 import NotAuthorized from "./pages/NotAuthorized";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import ForceChangePassword from "./pages/ForceChangePassword";
 
 // Student Pages
 import StudentDashboard from "./pages/student/Dashboard";
@@ -52,6 +55,7 @@ import ExperimentList from "./pages/student/experimentSimulation/ExperimentList"
 import ExperimentPage from "./pages/student/experimentSimulation/ExperimentPage";
 import LabQuiz from "./pages/student/experimentSimulation/LabQuiz";
 import ExperimentAnalytics from "./pages/student/experimentSimulation/ExperimentAnalytics";
+import GyanKiYatra from "./pages/student/GyanKiYatra";
 
 // Question Page
 import Upload_question from "./components/questions/Upload_question";
@@ -65,6 +69,7 @@ import QuizAnalytics from "./pages/teacher/QuizAnalyticsFinal"; // Updated to fi
 import Analytics from "./pages/teacher/Analytics";
 import AddMyQuestion from "./pages/teacher/AddMyquestion";
 import QuizDetails from "./pages/teacher/QuizDetails";
+import QuestionGenerator from "./pages/teacher/QuestionGenerator";
 import QuizAnalyticsPage from "./pages/teacher/QuizAnalyticsPage";
 import ManageClasses from "./pages/teacher/ManageClasses";
 import ClassStudents from "./pages/teacher/ClassStudents";
@@ -80,9 +85,13 @@ import CreateFeedbackForm from "./pages/schooladmin/CreateFeedbackForm";
 import EditFeedbackForm from "./pages/schooladmin/EditFeedbackForm";
 import AnalyzeFeedback from "./pages/schooladmin/AnalyzeFeedback";
 import GiveFeedback from "./pages/teacher/GiveFeedback";
+import AllQuestions from "./pages/teacher/AllQuestions";
+
+// Settings
+import Settings from "./pages/Settings";
 
 //Quiz
-import AttemptQuiz from "./pages/student/AttemptQuiz";
+
 import Authorization from "./pages/Authorization";
 import MemoryMatchGrid from "./components/puzzles/memoryMatchGrid/MemoryMatchGrid";
 import MatchPieces from "./components/puzzles/matchPieces/MatchPieces";
@@ -96,11 +105,14 @@ const AppRoutes = () => {
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/authorization" element={<Authorization/>} />
+      <Route path="/authorization" element={<Authorization />} />
       <Route path="/about" element={<About />} />
       <Route path="/not-authorized" element={<NotAuthorized />} />
       <Route path="/uploadquestion" element={<Upload_question />} />
       <Route path="/demo-test" element={<DemoTest />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/change-password" element={<ForceChangePassword />} />
 
 
       {/* Admin Routes */}
@@ -112,6 +124,11 @@ const AppRoutes = () => {
       <Route path="/schooladmin/create-feedback-form" element={<CreateFeedbackForm />} />
       <Route path="/schooladmin/edit-feedback-form/:formId" element={<EditFeedbackForm />} />
       <Route path="/schooladmin/analyze-feedback" element={<AnalyzeFeedback />} />
+
+      {/* Settings Routes */}
+      <Route path="/student/settings" element={<Settings />} />
+      <Route path="/teacher/settings" element={<Settings />} />
+      <Route path="/schooladmin/settings" element={<Settings />} />
 
       {/* Student Routes */}
       <Route path="/student" element={<StudentDashboard />} />
@@ -140,8 +157,8 @@ const AppRoutes = () => {
       <Route path="/student/video-quiz/:subject/:topic" element={<VideoQuizPlayer />} />
       <Route path="/student/multimedia/puzzles" element={<Puzzles />} />
       <Route path="/student/puzzle-history" element={<PuzzleHistory />} />
-      <Route path="/student/puzzles/memory-match" element={<MemoryMatchGrid/>} />
-      <Route path="/student/puzzles/match-pieces" element={<MatchPieces/>} />
+      <Route path="/student/puzzles/memory-match" element={<MemoryMatchGrid />} />
+      <Route path="/student/puzzles/match-pieces" element={<MatchPieces />} />
       <Route path="/student/multimedia/miscellaneous" element={<MAT />} />
       <Route path="/student/mat" element={<MAT />} />
       <Route path="/student/mat/:module" element={<MATPractice />} />
@@ -155,23 +172,26 @@ const AppRoutes = () => {
       <Route path='/studentreport/:id' element={<StudentReport></StudentReport>}></Route>
       <Route path='/singlequiz/:id' element={<SingleQuizReport></SingleQuizReport>}></Route>
       <Route path='/login/student' element={<LoginStudent></LoginStudent>}></Route>
+      <Route path="/student/puzzles/gyan-ki-yatra" element={<GyanKiYatra />} />
 
-      {/* Quiz */}
-      <Route path="/attemptquiz/:id" element={<AttemptQuiz></AttemptQuiz>}></Route>
+      {/* Quiz - redirect old route to merged Take Quiz page */}
+      <Route path="/attemptquiz/:id" element={<Navigate to={"/student/take-advanced-quiz?quizId=" + window.location.pathname.split('/').pop()} replace />} />
 
       {/* Teacher Routes */}
       <Route path="/teacher" element={<TeacherDashboard />} />
       <Route path="/teacher/profile" element={<TeacherProfile />} />
-      <Route path="/teacher/create-quiz" element={<CreateQuiz />} />
+      <Route path="/teacher/create-quiz" element={<Navigate to="/teacher/create-quiz-new" replace />} />
       <Route path="/teacher/create-quiz-new" element={<CreateQuizNew />} />
       <Route path="/teacher/quiz-analytics" element={<QuizAnalytics />} />
       <Route path="/teacher/analytics" element={<Analytics />} />
       <Route path="/teacher/manage-classes" element={<ManageClasses />} />
       <Route path="/teacher/class/:classId/students" element={<ClassStudents />} />
       <Route path="/teacher/give-feedback" element={<GiveFeedback />} />
-      <Route path="/addmyquestion"element={<AddMyQuestion></AddMyQuestion>}></Route>
+      <Route path="/addmyquestion" element={<AddMyQuestion></AddMyQuestion>}></Route>
       <Route path="/teacher/quiz-details/:quizId" element={<QuizDetails />} />
       <Route path="/teacher/quiz-analytics/:quizId" element={<QuizAnalyticsPage />} />
+      <Route path="/teacher/question-generator" element={<QuestionGenerator />} />
+      <Route path="/teacher/all-questions" element={<AllQuestions />} />
 
 
       {/* 404 - Not Found */}

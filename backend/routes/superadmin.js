@@ -51,7 +51,8 @@ router.post("/login", async (req, res) => {
         _id: superAdmin._id,
         username: superAdmin.username,
         name: superAdmin.name,
-        role: "superadmin"
+        role: "superadmin",
+        must_change_password: superAdmin.must_change_password || false
       },
     });
   } catch (err) {
@@ -70,22 +71,56 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Register School
+// Register School with its admin (1 school = 1 admin)
 router.post("/register/school", async (req, res) => {
   try {
-    const school = new School(req.body);
+    const { schoolId, schoolName, location, adminName, adminUsername, adminPassword, adminPhone } = req.body;
+
+    if (!schoolId || !schoolName || !location) {
+      return res.status(400).json({ error: "School ID, name, and location are required" });
+    }
+
+    if (!adminName || !adminUsername || !adminPassword) {
+      return res.status(400).json({ error: "Admin name, username, and password are required" });
+    }
+
+    // Check if schoolId already exists
+    const existingSchool = await School.findOne({ schoolId });
+    if (existingSchool) {
+      return res.status(409).json({ error: "A school with this ID already exists" });
+    }
+
+    // Check if adminUsername is taken
+    const existingAdmin = await SchoolAdmin.findOne({ username: adminUsername });
+    if (existingAdmin) {
+      return res.status(409).json({ error: "A school admin with this username already exists" });
+    }
+
+    // Create school
+    const school = new School({ schoolId, schoolName, location });
     await school.save();
-    res.status(201).json(school);
+
+    // Create school admin for this school (enforce 1 admin per school)
+    const schoolAdmin = new SchoolAdmin({
+      username: adminUsername,
+      name: adminName,
+      password: adminPassword,
+      phone: adminPhone,
+      schoolId
+    });
+    await schoolAdmin.save();
+
+    res.status(201).json({ school, schoolAdmin });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// Register SchoolAdmin
+// Register SchoolAdmin (enforce 1 admin per school)
 router.post("/register/schooladmin", async (req, res) => {
   try {
     const { username, name, password, phone, schoolId } = req.body;
-    
+
     if (!username || !name || !password || !schoolId) {
       return res.status(400).json({ error: "Missing required fields" });
     }
@@ -94,6 +129,12 @@ router.post("/register/schooladmin", async (req, res) => {
     const school = await School.findOne({ schoolId });
     if (!school) {
       return res.status(404).json({ error: "School not found" });
+    }
+
+    // Enforce 1 admin per school
+    const existingAdmin = await SchoolAdmin.findOne({ schoolId });
+    if (existingAdmin) {
+      return res.status(409).json({ error: "This school already has an admin. Each school can have only one admin." });
     }
 
     // Create the school admin
@@ -196,7 +237,7 @@ router.get("/schools/:schoolId/admins", async (req, res) => {
 // Get students by school and class
 router.get("/schools/:schoolId/class/:className/students", async (req, res) => {
   try {
-    const students = await Student.find({ 
+    const students = await Student.find({
       schoolId: req.params.schoolId,
       class: req.params.className
     });

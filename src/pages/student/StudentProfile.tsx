@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   User,
   BookOpen,
@@ -47,6 +48,7 @@ interface StudentData {
   phone?: string;
   schoolId: string;
   class: string;
+  profilePhoto?: string;
   quizAttempted: QuizAttempt[];
   createdAt?: string;
 }
@@ -224,9 +226,12 @@ const StudentProfile: React.FC = () => {
             </Button>
             
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="h-20 w-20 bg-gradient-to-br from-edu-blue to-edu-purple rounded-full flex items-center justify-center text-white text-3xl font-bold">
-                {student.name.charAt(0).toUpperCase()}
-              </div>
+              <Avatar className="h-20 w-20 ring-4 ring-edu-blue/20">
+                <AvatarImage src={student.profilePhoto ? `${API_URL}/${student.profilePhoto.replace(/^\//, '')}` : ''} alt={student.name} className="object-cover" />
+                <AvatarFallback className="bg-gradient-to-br from-edu-blue to-edu-purple text-white text-3xl font-bold">
+                  {student.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{student.name}</h1>
                 <p className="text-gray-600">Student Profile</p>

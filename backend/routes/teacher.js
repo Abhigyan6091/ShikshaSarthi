@@ -8,6 +8,7 @@ const School = require("../models/School");
 const Student = require("../models/Student");
 const { ensureRecordWithBootstrap } = require("../sync/bootstrapGuard");
 const { repairLocalPasswordFromAtlas } = require("../sync/authPasswordRepair");
+const { saveBase64Media } = require("../utils/localMediaStore");
 
 // Create a new teacher
 router.post("/", async (req, res) => {
@@ -103,7 +104,9 @@ router.post("/login", async (req, res) => {
         name: teacher.name,
         schoolId: teacher.schoolId,
         phone: teacher.phone,
-        classes: teacher.classes
+        classes: teacher.classes,
+        profilePhoto: teacher.profilePhoto,
+        must_change_password: teacher.must_change_password || false
       },
     });
   } catch (err) {
@@ -214,7 +217,7 @@ router.get("/:teacherId/quizzes", async (req, res) => {
 router.post("/register/student", async (req, res) => {
   try {
     const { teacherId, ...studentData } = req.body;
-    
+
     const teacher = await findTeacherByIdentifier(teacherId);
     if (!teacher) {
       return res.status(404).json({ error: "Teacher not found" });
@@ -237,6 +240,55 @@ router.get("/:teacherId/classes", async (req, res) => {
     res.status(200).json(classes);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Update teacher profile (name, schoolId, profilePhoto)
+router.patch("/:id/profile", async (req, res) => {
+  try {
+    const { name, schoolId, profilePhoto } = req.body;
+    const updateFields = {};
+
+    if (name !== undefined && name.trim()) updateFields.name = name.trim();
+    if (schoolId !== undefined && schoolId.trim()) updateFields.schoolId = schoolId.trim();
+    if (profilePhoto !== undefined) {
+      if (profilePhoto.startsWith("data:")) {
+        const mimeMatch = profilePhoto.match(/^data:(image\/\w+);base64,/);
+        if (mimeMatch) {
+          const base64Data = profilePhoto;
+          const ext = mimeMatch[1].split("/")[1];
+          const saved = saveBase64Media({
+            base64Data,
+            fileName: `profile_${req.params.id}.${ext}`,
+            mimeType: mimeMatch[1],
+            mediaType: "images",
+          });
+          updateFields.profilePhoto = saved.localUrl;
+        } else {
+          return res.status(400).json({ error: "Invalid image format" });
+        }
+      } else {
+        updateFields.profilePhoto = profilePhoto;
+      }
+    }
+
+    const identifier = req.params.id;
+    const query = mongoose.isValidObjectId(identifier)
+      ? { _id: identifier }
+      : { teacherId: identifier };
+
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ error: "No valid fields to update" });
+    }
+
+    const updated = await Teacher.findOneAndUpdate(query, { $set: updateFields }, {
+      new: true,
+      runValidators: true,
+    });
+    if (!updated) return res.status(404).json({ message: "Teacher not found" });
+    res.status(200).json(updated);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 

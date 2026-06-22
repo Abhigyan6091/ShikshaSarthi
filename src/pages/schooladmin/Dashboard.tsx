@@ -5,13 +5,23 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Users, GraduationCap, PlusCircle, School, Eye, MessageSquare } from 'lucide-react';
+import { useToast } from "@/components/ui/use-toast";
+import { Users, GraduationCap, PlusCircle, School, Eye, MessageSquare, Key, Copy, Check } from 'lucide-react';
 import axios from 'axios';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 const SchoolAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [stats, setStats] = useState({
     teachers: 0,
     students: 0,
@@ -21,6 +31,55 @@ const SchoolAdminDashboard: React.FC = () => {
   const [students, setStudents] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [username, setUsername] = useState<string>('');
+
+  // Reset password states
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [tempPassword, setTempPassword] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleResetPassword = async (student: any) => {
+    setSelectedStudent(student);
+    setTempPassword('');
+    setIsCopied(false);
+    setResetDialogOpen(true);
+  };
+
+  const confirmReset = async () => {
+    if (!selectedStudent) return;
+
+    try {
+      setIsResetting(true);
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
+      const response = await axios.post(`${API_URL}/api/auth/admin/reset-student-password`, {
+        adminId: currentUser._id || currentUser.username,
+        adminRole: 'SchoolAdmin',
+        studentId: selectedStudent.studentId
+      });
+
+      setTempPassword(response.data.tempPassword);
+      toast({
+        title: "Success",
+        description: "Temporary password generated successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.response?.data?.error || "Failed to reset password",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(tempPassword);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   useEffect(() => {
     const currentUser = localStorage.getItem('currentUser');
@@ -66,14 +125,14 @@ const SchoolAdminDashboard: React.FC = () => {
   };
 
   const statsData = [
-    { 
+    {
       title: "Total Teachers",
       value: stats.teachers,
       icon: <GraduationCap className="h-8 w-8 text-edu-green" />,
       description: "In your school",
     },
-    { 
-      title: "Total Students", 
+    {
+      title: "Total Students",
       value: stats.students,
       icon: <Users className="h-8 w-8 text-edu-blue" />,
       description: "Enrolled students",
@@ -87,8 +146,8 @@ const SchoolAdminDashboard: React.FC = () => {
     return numA - numB;
   });
 
-  const filteredStudents = selectedClass === 'all' 
-    ? students 
+  const filteredStudents = selectedClass === 'all'
+    ? students
     : students.filter(s => s.class === selectedClass);
 
   // Group students by class for display
@@ -111,7 +170,7 @@ const SchoolAdminDashboard: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
-      
+
       <main className="flex-1 py-6 md:py-8 bg-gray-50">
         <div className="edu-container">
           <div className="mb-8">
@@ -254,16 +313,15 @@ const SchoolAdminDashboard: React.FC = () => {
                             ({studentsByClass[className].length} students)
                           </span>
                         </div>
-                        
+
                         {/* Students in this class */}
                         {studentsByClass[className].map((student: any) => (
-                          <div 
-                            key={student.studentId} 
-                            className="p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors cursor-pointer group sm:ml-7"
-                            onClick={() => navigate(`/student/profile/${student.studentId}`)}
+                          <div
+                            key={student.studentId}
+                            className="p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors group sm:ml-7"
                           >
                             <div className="flex items-center justify-between">
-                              <div className="flex-1">
+                              <div className="flex-1 cursor-pointer" onClick={() => navigate(`/student/profile/${student.studentId}`)}>
                                 <p className="font-medium text-gray-900 group-hover:text-edu-blue transition-colors">
                                   {student.name}
                                 </p>
@@ -273,7 +331,24 @@ const SchoolAdminDashboard: React.FC = () => {
                                   <span className="block sm:inline">Phone: {student.phone || 'N/A'}</span>
                                 </p>
                               </div>
-                              <Eye className="h-5 w-5 text-gray-400 group-hover:text-edu-blue transition-colors" />
+                              <div className="flex items-center gap-3">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleResetPassword(student);
+                                  }}
+                                  title="Reset Password"
+                                >
+                                  <Key className="h-4 w-4" />
+                                </Button>
+                                <Eye
+                                  className="h-5 w-5 text-gray-400 cursor-pointer hover:text-edu-blue transition-colors"
+                                  onClick={() => navigate(`/student/profile/${student.studentId}`)}
+                                />
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -286,6 +361,61 @@ const SchoolAdminDashboard: React.FC = () => {
           </Card>
         </div>
       </main>
+
+      <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reset Student Password</DialogTitle>
+            <DialogDescription>
+              Generate a temporary password for <strong>{selectedStudent?.name}</strong> (ID: {selectedStudent?.studentId}).
+            </DialogDescription>
+          </DialogHeader>
+
+          {tempPassword ? (
+            <div className="space-y-4 py-4">
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
+                <p className="text-sm text-amber-800 font-medium mb-1">Temporary Password:</p>
+                <div className="flex items-center justify-between bg-white border border-amber-300 p-2 rounded text-lg font-mono tracking-wider">
+                  <span>{tempPassword}</span>
+                  <Button variant="ghost" size="sm" onClick={copyToClipboard}>
+                    {isCopied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-amber-700 mt-2">
+                  Please share this password with the student. They will be required to change it upon their next login.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="py-6 flex flex-col items-center justify-center text-center space-y-3">
+              <Key className="h-12 w-12 text-amber-500 opacity-20" />
+              <p className="text-sm text-gray-600">
+                Are you sure you want to reset the password for this student?
+              </p>
+            </div>
+          )}
+
+          <DialogFooter className="sm:justify-between">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setResetDialogOpen(false)}
+            >
+              Close
+            </Button>
+            {!tempPassword && (
+              <Button
+                type="button"
+                className="bg-amber-600 hover:bg-amber-700"
+                onClick={confirmReset}
+                disabled={isResetting}
+              >
+                {isResetting ? "Generating..." : "Generate Password"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Footer />
     </div>

@@ -1,0 +1,68 @@
+# ─── ShikshaSarthi – Docker Compose ─────────────────────────────────────────
+# Spins up the full stack: app (nginx + Node backend) + MongoDB.
+#
+# Usage:
+#   docker compose up -d
+#   docker compose logs -f
+#   docker compose down
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── App (frontend + backend) ─────────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: shiksha-sarthi:latest
+    container_name: shiksha-app
+    restart: unless-stopped
+    ports:
+      - "8080:80"                 # ← map host port 8080 → nginx port 80
+    environment:
+      # ── MongoDB ──
+      MONGO_URI: "mongodb://mongo:27017/app"
+      MONGO_URI_LOCAL: "mongodb://mongo:27017/app"
+      USE_LOCAL_DB: "false"
+
+      # ── Backend ──
+      BACKEND_HOST: "127.0.0.1"   # nginx talks to node on localhost
+      BACKEND_PORT: "5000"
+      NODE_ENV: "production"
+
+      # ── App config ──
+      APP_VERSION: "1.0.0"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
+      CLOUDINARY_CLOUD_NAME: "${CLOUDINARY_CLOUD_NAME:-}"
+      CLOUDINARY_UPLOAD_PRESET: "${CLOUDINARY_UPLOAD_PRESET:-}"
+      CLOUDINARY_SYNC_FOLDER: "${CLOUDINARY_SYNC_FOLDER:-offline_sync}"
+      SYNC_AUTO_ENABLED: "false"
+      AUDIO_CACHE_TTL_MS: "1296000000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+      - audio_cache:/app/backend/data/audio-cache
+
+  # ── MongoDB ──────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: shiksha-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: app
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo_data:
+  uploads_data:
+  audio_cache:

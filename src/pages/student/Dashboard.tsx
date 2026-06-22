@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { 
   BookOpen, 
   ListChecks, 
@@ -51,6 +52,7 @@ const StudentDashboard: React.FC = () => {
     phone?: string;
     username?: string;
     createdAt?: string;
+    profilePhoto?: string;
     quizAttempted: {
       quizId: string;
       score: {
@@ -104,16 +106,7 @@ const StudentDashboard: React.FC = () => {
       return;
     }
 
-    const alreadyAttempted = student?.quizAttempted.some(
-      (attempt) => attempt.quizId === trimmedQuizId
-    );
-
-    if (alreadyAttempted) {
-      alert(`You have already attempted Quiz ID: ${trimmedQuizId}`);
-      return;
-    }
-
-    navigate(`/attemptquiz/${trimmedQuizId}`);
+    navigate(`/student/take-advanced-quiz?quizId=${trimmedQuizId}`);
   };
 
   // Calculate statistics from actual quiz data
@@ -248,9 +241,12 @@ const StudentDashboard: React.FC = () => {
           {/* Welcome Section with Student Info */}
           <div className="mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
-              <div className="h-16 w-16 bg-gradient-to-br from-edu-blue to-edu-purple rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                {student.name.charAt(0).toUpperCase()}
-              </div>
+              <Avatar className="h-16 w-16 ring-4 ring-edu-blue/20">
+                <AvatarImage src={student.profilePhoto ? `${API_URL}/${student.profilePhoto.replace(/^\//, '')}` : ''} alt={student.name} className="object-cover" />
+                <AvatarFallback className="bg-gradient-to-br from-edu-blue to-edu-purple text-white text-2xl font-bold">
+                  {student.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                   Welcome back, {student.name}! 👋
@@ -336,73 +332,42 @@ const StudentDashboard: React.FC = () => {
               </CardFooter>
             </Card>
 
-            <Card className="border-2 border-edu-green/20 hover:border-edu-green/40 transition-colors">
-              <CardHeader>
-                <ListChecks className="h-10 w-10 text-edu-green mb-2" />
-                <CardTitle>Attempt Quiz</CardTitle>
-                <CardDescription>
-                  Enter a Quiz ID to take a teacher-created quiz
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-500">
-                  Enter a Quiz ID provided by your teacher to attempt a specific
-                  quiz.
-                </p>
-              </CardContent>
-              <CardFooter className="flex flex-col space-y-2">
-                <input
-                  type="text"
-                  placeholder="Enter Quiz ID"
-                  value={quizId}
-                  onChange={(e) => setQuizId(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-md text-sm border-edu-green focus:outline-none focus:ring-2 focus:ring-edu-green/40"
-                />
-                <Button
-                  variant="outline"
-                  className="w-full border-edu-green text-edu-green hover:bg-edu-green/10"
-                  onClick={handleStartQuiz}
-                >
-                  Start Quiz
-                </Button>
-              </CardFooter>
-            </Card>
-
             <Card className="border-2 border-blue-300/20 hover:border-blue-400/40 transition-colors bg-gradient-to-br from-blue-50 to-white">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
                     <ListChecks className="h-10 w-10 text-blue-600 mb-2" />
                     <CardTitle className="flex items-center gap-2">
-                      Take Advanced Quiz
-                      <Badge className="bg-gradient-to-r from-blue-500 to-purple-500">NEW</Badge>
+                      Take Quiz
+                      <Badge className="bg-gradient-to-r from-blue-500 to-purple-500">New</Badge>
                     </CardTitle>
                     <CardDescription>
-                      Multi-format quiz with MCQ, Audio, Video & Puzzles
+                      Enter a Quiz ID to start. Supports MCQ, Audio, Video & Puzzles
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-gray-500 mb-2">
-                  Take comprehensive quizzes that include multiple question types:
+                <p className="text-sm text-gray-500 mb-3">
+                  Enter the Quiz ID provided by your teacher to attempt the quiz.
                 </p>
-                <ul className="text-xs text-gray-600 space-y-1 ml-4">
-                  <li>• Multiple Choice Questions (MCQ)</li>
-                  <li>• Audio-based Questions</li>
-                  <li>• Video Questions</li>
-                  <li>• Interactive Puzzles</li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Link to="/student/take-advanced-quiz" className="w-full">
+                <div className="flex flex-col gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter Quiz ID"
+                    value={quizId}
+                    onChange={(e) => setQuizId(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleStartQuiz()}
+                    className="flex-1 px-4 py-2 border rounded-md text-sm border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-400/40"
+                  />
                   <Button
-                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                    onClick={handleStartQuiz}
                   >
-                    Start Advanced Quiz
+                    Start Quiz
                   </Button>
-                </Link>
-              </CardFooter>
+                </div>
+              </CardContent>
             </Card>
 
             <Card className="border-2 border-edu-purple/20 hover:border-edu-purple/40 transition-colors">

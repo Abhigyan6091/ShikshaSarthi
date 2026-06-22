@@ -21,6 +21,7 @@ import {
   Eye,
   Grid3X3,
   Trophy,
+  Dices,
 } from "lucide-react";
 
 const Puzzles: React.FC = () => {
@@ -52,6 +53,19 @@ const Puzzles: React.FC = () => {
       borderColor: "border-cyan-200 hover:border-cyan-400",
       buttonColor: "bg-cyan-600 hover:bg-cyan-700",
       features: ["3 चित्र", "9 टुकड़े प्रति चित्र", "खींचें और रखें"],
+    },
+    {
+      id: "gyan_ki_yatra",
+      title: "ज्ञान की यात्रा",
+      description: "साँप-सीढ़ी खेल के साथ गणित और सामान्य ज्ञान के प्रश्न। सही उत्तर दें और आगे बढ़ें!",
+      duration: "अपनी गति से",
+      route: "/student/puzzles/gyan-ki-yatra",
+      icon: Dices,
+      gradient: "from-orange-500 to-amber-600",
+      bgLight: "bg-orange-50",
+      borderColor: "border-orange-200 hover:border-orange-400",
+      buttonColor: "bg-orange-600 hover:bg-orange-700",
+      features: ["साँप और सीढ़ी", "शैक्षिक प्रश्न", "कक्षा 9-12 स्तर"],
     },
   ];
 

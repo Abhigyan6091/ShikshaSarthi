@@ -7,8 +7,11 @@ const studentSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phone: String,
   schoolId: { type: String, ref: "School", required: true },
+  email: { type: String, unique: true, sparse: true },
   password: { type: String, required: true },
+  must_change_password: { type: Boolean, default: false },
   class: { type: String, required: true },
+  profilePhoto: { type: String },
   classes: [{ type: String, ref: "Class" }], // Classes enrolled in
   quizAttempted: [
     {
@@ -32,11 +35,11 @@ const studentSchema = new mongoose.Schema({
 });
 
 // Pre-save hook to set username to studentId if not provided
-studentSchema.pre('save', async function(next) {
+studentSchema.pre('save', async function (next) {
   if (!this.username) {
     this.username = this.studentId;
   }
-  
+
   // Hash password if it's modified or new
   if (this.isModified('password')) {
     try {
@@ -46,12 +49,12 @@ studentSchema.pre('save', async function(next) {
       return next(error);
     }
   }
-  
+
   next();
 });
 
 // Method to compare password for login
-studentSchema.methods.comparePassword = async function(candidatePassword) {
+studentSchema.methods.comparePassword = async function (candidatePassword) {
   try {
     return await bcrypt.compare(candidatePassword, this.password);
   } catch (error) {

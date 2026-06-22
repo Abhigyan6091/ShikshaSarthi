@@ -1,0 +1,122 @@
+# ─── ShikshaSarthi – Kubernetes Deployment ─────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shiksha-app
+  namespace: shiksha
+  labels:
+    app: shiksha-sarthi
+    tier: frontend
+    tier: backend
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: shiksha-sarthi
+  template:
+    metadata:
+      labels:
+        app: shiksha-sarthi
+        tier: frontend
+        tier: backend
+    spec:
+      containers:
+        - name: app
+          image: shiksha-sarthi:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              name: http
+            - containerPort: 5000
+              name: backend
+          envFrom:
+            - configMapRef:
+                name: shiksha-config
+            - secretRef:
+                name: shiksha-secrets
+          livenessProbe:
+            httpGet:
+              path: /hi
+              port: backend
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+            - name: audio-cache
+              mountPath: /app/backend/data/audio-cache
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: shiksha-uploads
+        - name: audio-cache
+          emptyDir: {}
+---
+# ─── MongoDB Deployment ────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+  namespace: shiksha
+  labels:
+    app: mongodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:7
+          ports:
+            - containerPort: 27017
+              name: mongo
+          env:
+            - name: MONGO_INITDB_DATABASE
+              value: app
+          livenessProbe:
+            exec:
+              command:
+                - mongosh
+                - --quiet
+                - --eval
+                - "db.runCommand('ping').ok"
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          volumeMounts:
+            - name: mongo-data
+              mountPath: /data/db
+      volumes:
+        - name: mongo-data
+          persistentVolumeClaim:
+            claimName: shiksha-mongo-data

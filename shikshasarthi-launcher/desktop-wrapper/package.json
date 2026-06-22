@@ -1,0 +1,61 @@
+{
+  "name": "shikshasarthi-launcher",
+  "version": "1.0.0",
+  "description": "Desktop Launcher for ShikshaSarthi School Server",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "build:linux": "electron-builder --linux"
+  },
+  "author": "ShikshaSarthi",
+  "license": "ISC",
+  "dependencies": {
+    "electron-is-dev": "^2.0.0"
+  },
+  "devDependencies": {
+    "electron": "^31.0.1",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.shikshasarthi.launcher",
+    "productName": "ShikshaSarthi",
+    "win": {
+      "icon": "icon.ico",
+      "target": "portable"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Education"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html"
+    ],
+    "extraResources": [
+      {
+        "from": "../",
+        "to": "launcher-data",
+        "filter": [
+          "docker-compose.yml",
+          ".env",
+          "sync-agent/**/*",
+          "update-agent/**/*",
+          "Dockerfile.lean"
+        ]
+      },
+      {
+        "from": "../../",
+        "to": "app-source",
+        "filter": [
+          "backend/**/*",
+          "dist/**/*",
+          "nginx.conf",
+          "docker-entrypoint.sh",
+          "Dockerfile.lean"
+        ]
+      }
+    ]
+  }
+}

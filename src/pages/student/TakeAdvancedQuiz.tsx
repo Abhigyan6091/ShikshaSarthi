@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,8 @@ const TakeAdvancedQuiz: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const dispatch = useAppDispatch();
-  const [quizId, setQuizId] = useState('');
+  const [searchParams] = useSearchParams();
+  const [quizId, setQuizId] = useState(searchParams.get('quizId') || '');
   const [quizInfo, setQuizInfo] = useState<QuizInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [studentId, setStudentId] = useState('');
@@ -135,6 +136,19 @@ const TakeAdvancedQuiz: React.FC = () => {
     }
   }, [navigate, toast]);
 
+  // Auto-load quiz when quizId is provided via URL params
+  useEffect(() => {
+    const urlQuizId = searchParams.get('quizId');
+    if (urlQuizId && studentId) {
+      setQuizId(urlQuizId);
+      // Small delay to ensure quizId state is set
+      const timer = setTimeout(() => {
+        document.getElementById('load-quiz-btn')?.click();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, studentId]);
+
   const handleLoadQuiz = async () => {
     if (!quizId.trim()) {
       toast({
@@ -179,9 +193,37 @@ const TakeAdvancedQuiz: React.FC = () => {
         console.log('No previous submission found - OK to proceed');
       }
 
-      // SECOND: Load the quiz
-      const response = await axios.get(`${API_URL}/quizzes/by-id/${quizId}`);
-      const quiz = response.data;
+      // SECOND: Load the quiz (try advanced format first, fall back to simple)
+      let quiz;
+      try {
+        const response = await axios.get(`${API_URL}/quizzes/by-id/${quizId}`);
+        quiz = response.data;
+      } catch {
+        const response = await axios.get(`${API_URL}/quizzes/${quizId}`);
+        quiz = response.data;
+      }
+
+      // Normalize simple quiz to advanced quiz format
+      if (!quiz.questionTypes || quiz.questionTypes.mcq === 0 && quiz.questionTypes.audio === 0 && quiz.questionTypes.video === 0 && quiz.questionTypes.puzzle === 0) {
+        const totalQ = quiz.questions?.length || 0;
+        quiz.questionTypes = { mcq: totalQ, audio: 0, video: 0, puzzle: 0 };
+        quiz.totalQuestions = totalQ;
+        quiz.timeLimit = quiz.timeLimit || 30;
+        if (!quiz.startTime) {
+          const past = new Date();
+          past.setFullYear(past.getFullYear() - 1);
+          quiz.startTime = past.toISOString();
+        }
+        if (!quiz.endTime) {
+          const future = new Date();
+          future.setFullYear(future.getFullYear() + 1);
+          quiz.endTime = future.toISOString();
+        }
+        // Extract IDs if questions are populated objects
+        if (quiz.questions?.length > 0 && typeof quiz.questions[0] === 'object') {
+          quiz.questions = quiz.questions.map((q: any) => q._id || q);
+        }
+      }
 
       if (studentId && studentId.trim()) {
         setCheckingDraft(true);
@@ -288,7 +330,7 @@ const TakeAdvancedQuiz: React.FC = () => {
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-            <CardTitle className="text-2xl sm:text-3xl font-bold">Take Advanced Quiz</CardTitle>
+            <CardTitle className="text-2xl sm:text-3xl font-bold">Take Quiz</CardTitle>
             <Button 
               variant="outline" 
               onClick={() => navigate('/student/advanced-quiz-past-reports')}
@@ -312,7 +354,7 @@ const TakeAdvancedQuiz: React.FC = () => {
                     onChange={(e) => setQuizId(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleLoadQuiz()}
                   />
-                  <Button onClick={handleLoadQuiz} disabled={loading} className="w-full sm:w-auto">
+                  <Button id="load-quiz-btn" onClick={handleLoadQuiz} disabled={loading} className="w-full sm:w-auto">
                     {loading ? 'Loading...' : 'Load Quiz'}
                   </Button>
                 </div>
@@ -343,6 +385,11 @@ const TakeAdvancedQuiz: React.FC = () => {
                       <div className="flex items-center gap-2 bg-blue-100 p-2 rounded">
                         {getQuestionTypeIcon('mcq')}
                         <span>MCQ: {quizInfo.questionTypes.mcq}</span>
+                      </div>
+                    )}
+                    {quizInfo.questionTypes.mcq > 0 && quizInfo.questionTypes.audio === 0 && quizInfo.questionTypes.video === 0 && quizInfo.questionTypes.puzzle === 0 && (
+                      <div className="flex items-center gap-2 p-2 rounded text-xs text-gray-500 italic">
+                        Standard quiz — all MCQ questions. Advanced features (audio, video, puzzles) not available for this quiz.
                       </div>
                     )}
                     {quizInfo.questionTypes.audio > 0 && (

@@ -33,3 +33,18 @@ public/videos/
 
 # files
 create-superadmin.js
+
+# Sync state files (ephemeral, regenerated at runtime)
+backend/data/sync-state.json
+backend/data/media-map.json
+
+# Secret scripts with hardcoded API keys
+translatetohindi.js
+imagedownload.js
+
+# Large generated data files
+converted_questions.json
+test.questions.json
+videoQuestionsData.json
+backend/videoQuestionsData.json
+shikshasarthi-launcher/data/

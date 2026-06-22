@@ -1,0 +1,29 @@
+# ─── ShikshaSarthi – PersistentVolumeClaims ────────────────────────────────
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shiksha-mongo-data
+  namespace: shiksha
+  labels:
+    app: mongodb
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shiksha-uploads
+  namespace: shiksha
+  labels:
+    app: shiksha-sarthi
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

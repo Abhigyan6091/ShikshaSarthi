@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 const API_URL = import.meta.env.VITE_API_URL;
 import {
   Card,
@@ -101,29 +101,32 @@ const Login: React.FC = () => {
             ...(response.data.student || response.data.user),
             role: role
           };
-          
+
           console.log('=== LOGIN DEBUG ===');
           console.log('Response data:', response.data);
           console.log('userData:', userData);
           console.log('studentId in userData:', userData.studentId);
           console.log('==================');
-          
+
           localStorage.setItem('student', JSON.stringify({ student: userData }));
-          
+
           // Verify what was stored
           const stored = localStorage.getItem('student');
           console.log('Stored in localStorage:', stored);
-          
+
         } else if (role === 'teacher') {
           userData = {
             ...(response.data.teacher || response.data.user),
             role: role
           };
+
+          const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
           Cookies.set('teacher', JSON.stringify({ teacher: userData }), {
             expires: 7,
-            secure: true,
-            sameSite: "strict",
+            secure: isHttps,
+            sameSite: isHttps ? "strict" : "lax",
           });
+          localStorage.setItem('teacher', JSON.stringify({ teacher: userData }));
         } else if (role === 'schooladmin') {
           userData = {
             ...(response.data.user),
@@ -141,12 +144,18 @@ const Login: React.FC = () => {
         localStorage.setItem('userRole', role);
         localStorage.setItem('currentUser', JSON.stringify(userData));
 
+        window.dispatchEvent(new CustomEvent('userLoggedIn'));
+
         toast({
           title: "Success",
           description: `Welcome back, ${response.data.user?.name || username}!`,
         });
 
-        navigate(redirectPath);
+        if (userData.must_change_password) {
+          navigate('/change-password');
+        } else {
+          navigate(redirectPath);
+        }
       }
     } catch (error: any) {
       toast({
@@ -163,9 +172,8 @@ const Login: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 sm:px-6 md:px-8 py-10">
       <div className="fixed top-4 right-4 z-10">
         <div
-          className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ${
-            isOnline ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
-          }`}
+          className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ${isOnline ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+            }`}
           title={isOnline ? "Online" : "Offline"}
         >
           {isOnline ? <Wifi className="h-3.5 w-3.5" /> : <WifiOff className="h-3.5 w-3.5" />}
@@ -214,7 +222,15 @@ const Login: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-edu-blue hover:underline font-medium"
+                >
+                  Forgot Password?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -236,12 +252,12 @@ const Login: React.FC = () => {
             <Button className="w-full text-sm sm:text-base" type="submit" disabled={isLoading}>
               {isLoading ? "Logging in..." : "Login"}
             </Button>
-            <p className="mt-2 text-center text-xs sm:text-sm text-gray-500">
+            {/* <p className="mt-2 text-center text-xs sm:text-sm text-gray-500">
               Don&apos;t have an account?{" "}
               <a href="/register" className="text-edu-blue hover:underline">
                 Register here
               </a>
-            </p>
+            </p> */}
           </CardFooter>
         </form>
       </Card>

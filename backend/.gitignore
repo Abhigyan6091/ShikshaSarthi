@@ -1,4 +1,7 @@
 node_modules/
 .env
-data/audio-cache/*.mp3
-!data/audio-cache/.gitkeep
+.env.*
+data/audio-cache/
+data/sync-state.json
+data/media-map.json
+uploads/
