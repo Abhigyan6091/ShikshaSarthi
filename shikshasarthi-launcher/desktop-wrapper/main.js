@@ -57,6 +57,8 @@ function createWindow() {
         resizable: true,
         icon: path.join(__dirname, 'icon.ico'),
         title: 'ShikshaSarthi Hub',
+        show: false,
+        backgroundColor: '#0f172a',
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -67,13 +69,19 @@ function createWindow() {
     mainWindow.setMenuBarVisibility(false);
     mainWindow.loadFile('index.html');
 
+    mainWindow.once('ready-to-show', () => {
+        mainWindow.show();
+    });
+
     const isDev = !app.isPackaged;
     const resourcesPath = isDev ? path.join(__dirname, '..') : path.join(process.resourcesPath, 'launcher-data');
-    const execOptions = { cwd: resourcesPath };
+    const execOptions = { cwd: resourcesPath, windowsHide: true, shell: true };
 
-    exec(`docker compose up -d`, execOptions, (error, stdout, stderr) => {
+    // Set a timeout of 60 seconds to prevent hanging indefinitely
+    exec(`docker compose up -d`, { ...execOptions, timeout: 60000 }, (error, stdout, stderr) => {
         if (error) {
             console.error(`Error starting Docker: ${error.message}`);
+            // Send specific error details to UI if possible
             mainWindow.webContents.send('docker-status', 'error');
             return;
         }
