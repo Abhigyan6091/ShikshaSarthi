@@ -306,7 +306,9 @@
 
             if (info.tailscale) {
                 tsDot.className = 'dot ok';
-                tsText.textContent = 'Active';
+                tsText.textContent = 'Active (Mesh)';
+                // Optional: show Tailscale address in logs so user knows it's there
+                runtimeLogs.innerText = `> Admin Mesh IP detected. Remote support enabled.`;
             }
         }
 
@@ -317,20 +319,20 @@
                 runtimeLogs.style.color = 'var(--status-ok)';
                 runtimeLogs.innerText = '> All container processes online.\n> Ready to accept connections.';
                 isDockerReady = true;
+                launchBtn.disabled = false;
             } else if (status === 'error') {
                 dockerDot.className = 'dot err';
                 dockerText.textContent = 'Faulted';
                 runtimeLogs.style.color = 'var(--status-err)';
-                runtimeLogs.innerText = '> FATAL: Engine unresponsive.\n> Check Docker Desktop subsystem.';
+                runtimeLogs.innerHTML = '> ENGINE ERROR: Docker processes failed.<br>> ACTION: Please ensure <b>Docker Desktop</b> is running on this laptop and try again.';
                 isDockerReady = false;
             }
         });
 
         launchBtn.addEventListener('click', () => {
-            // Always try to open, even if status is not ready (in case user knows better)
             if (!isDockerReady) {
                 runtimeLogs.style.color = 'var(--status-warn)';
-                runtimeLogs.innerText = '> WARN: Forcing browser launch while processes are pending...';
+                runtimeLogs.innerText = '> WARN: Forcing browser launch while engine is faulted...';
             }
             window.electronAPI.openExternal(currentUrl);
         });

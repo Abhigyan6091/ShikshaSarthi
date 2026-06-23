@@ -31,10 +31,13 @@ function getLocalIp() {
         for (let i = 0; i < iface.length; i++) {
             const alias = iface[i];
             if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal) {
-                // Ignore docker and tailscale interfaces for LAN IP
-                if (!devName.includes('docker') && !devName.includes('br-') && !devName.includes('tailscale')) {
-                    return alias.address;
-                }
+                // Ignore Tailscale range (100.64.0.0/10) regardless of interface name
+                if (alias.address.startsWith('100.')) continue;
+                
+                // Ignore docker/bridge interfaces
+                if (devName.includes('docker') || devName.includes('br-') || devName.includes('veth')) continue;
+                
+                return alias.address;
             }
         }
     }
