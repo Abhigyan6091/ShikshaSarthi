@@ -13,7 +13,7 @@
     "build": "electron-builder --win",
     "build:linux": "electron-builder --linux"
   },
-  "author": "ShikshaSarthi",
+  "author": "ShikshaSarthi <admin@shikshasarthi.com>",
   "license": "ISC",
   "dependencies": {
     "electron-is-dev": "^2.0.0"
