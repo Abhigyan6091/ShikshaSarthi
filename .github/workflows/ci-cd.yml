@@ -64,7 +64,7 @@ jobs:
       - name: Build Windows Executable
         run: |
           cd shikshasarthi-launcher/desktop-wrapper
-          npm run build -- -c.publish=never
+          npx electron-builder --win --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
