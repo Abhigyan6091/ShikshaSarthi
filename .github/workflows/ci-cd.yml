@@ -98,11 +98,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Artifact
+      - name: Upload Linux Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ShikshaSarthi-Linux
-          path: shikshasarthi-launcher/desktop-wrapper/dist/*.AppImage
+          path: |
+            shikshasarthi-launcher/desktop-wrapper/dist/*.AppImage
+            shikshasarthi-launcher/desktop-wrapper/dist/*.deb
 
   # 4. Update the Master Hub Manifest over Tailscale
   update-hub-manifest:
