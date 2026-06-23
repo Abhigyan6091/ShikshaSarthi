@@ -45,9 +45,14 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/shikshasarthi:latest
 
   # 3. Update the Master Hub Manifest over Tailscale
+  # NOTE: This step is non-blocking (continue-on-error: true).
+  # The Docker image is already built and pushed by this point.
+  # This step will fail gracefully if the hub server is unreachable
+  # (e.g. it hasn't been restarted on the new port yet).
   update-hub-manifest:
     needs: ship-docker
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       
@@ -64,8 +69,18 @@ jobs:
           VERSION=$(date +'%Y.%m.%d').${{ github.run_number }}
           API_KEY=${{ secrets.UPDATE_API_KEY }}
           
-          # Use your Master Hub Tailscale IP (default 100.111.94.52)
-          # This endpoint was implemented in /api/updates/publish
-          curl -f -X POST "http://100.111.94.52:6091/api/updates/publish" \
+          echo "Attempting to notify hub at 100.111.94.52:6091..."
+          
+          # --max-time 30: abort if no response in 30s
+          # --retry 3: retry up to 3 times on transient failures
+          if curl -f --max-time 30 --retry 3 --retry-delay 5 \
+               -X POST "http://100.111.94.52:6091/api/updates/publish" \
                -H "Content-Type: application/json" \
-               -d "{\"version\": \"$VERSION\", \"apiKey\": \"$API_KEY\", \"releaseNotes\": \"Automated update from GitHub Actions\"}"
+               -d "{\"version\": \"$VERSION\", \"apiKey\": \"$API_KEY\", \"releaseNotes\": \"Automated update from GitHub Actions\"}"; then
+            echo "✅ Hub manifest updated to version $VERSION"
+          else
+            echo "⚠️  Could not reach hub on port 6091. Docker image is already pushed."
+            echo "   ACTION REQUIRED: SSH into 100.111.94.52 and run:"
+            echo "   cd /path/to/shikshasarthi-launcher && docker compose down && docker compose up -d"
+            exit 0
+          fi
