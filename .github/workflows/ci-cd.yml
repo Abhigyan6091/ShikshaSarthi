@@ -44,11 +44,37 @@ jobs:
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/shikshasarthi:latest
 
-  # 3. Update the Master Hub Manifest over Tailscale
-  # NOTE: This step is non-blocking (continue-on-error: true).
-  # The Docker image is already built and pushed by this point.
-  # This step will fail gracefully if the hub server is unreachable
-  # (e.g. it hasn't been restarted on the new port yet).
+  # 3. Build Desktop Application (Windows)
+  build-desktop:
+    needs: build-and-test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: shikshasarthi-launcher/desktop-wrapper/package-lock.json
+
+      - name: Install Desktop Dependencies
+        run: |
+          cd shikshasarthi-launcher/desktop-wrapper
+          npm install
+
+      - name: Build Windows Executable
+        run: |
+          cd shikshasarthi-launcher/desktop-wrapper
+          npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShikshaSarthi-Windows
+          path: shikshasarthi-launcher/desktop-wrapper/dist/*.exe
+
+  # 4. Update the Master Hub Manifest over Tailscale
   update-hub-manifest:
     needs: ship-docker
     runs-on: ubuntu-latest

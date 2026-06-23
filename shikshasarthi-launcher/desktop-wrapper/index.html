@@ -4,136 +4,232 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShikshaSarthi Launcher</title>
+    <title>ShikshaSarthi Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #6366f1;
-            --primary-hover: #4f46e5;
-            --bg: #0f172a;
-            --card-bg: #1e293b;
+            --primary: #818cf8;
+            --primary-dark: #6366f1;
+            --accent: #c084fc;
+            --bg: #020617;
+            --card-bg: rgba(30, 41, 59, 0.7);
             --text: #f8fafc;
             --text-muted: #94a3b8;
-            --success: #22c55e;
-            --error: #ef4444;
+            --success: #10b981;
+            --error: #f43f5e;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Outfit', sans-serif;
             background-color: var(--bg);
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(168, 85, 247, 0.15) 0%, transparent 50%);
             color: var(--text);
-            margin: 0;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
             overflow: hidden;
+            -webkit-user-select: none;
         }
 
         .container {
-            background-color: var(--card-bg);
-            padding: 2.5rem;
-            border-radius: 1.5rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            text-align: center;
-            width: 80%;
-            max-width: 500px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 90%;
+            max-width: 750px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 2.5rem;
+            padding: 3.5rem;
+            box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.7);
             position: relative;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        .role-tag {
+            position: absolute;
+            top: 2rem;
+            right: 2.5rem;
+            padding: 0.4rem 1rem;
+            background: rgba(129, 140, 248, 0.1);
+            border: 1px solid rgba(129, 140, 248, 0.2);
+            border-radius: 1rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--primary);
+            text-transform: uppercase;
+        }
+
+        .header {
+            text-align: left;
         }
 
         .logo {
-            font-size: 2.5rem;
+            font-size: 3rem;
             font-weight: 800;
-            background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+            background: linear-gradient(135deg, var(--text) 0%, var(--primary) 100%);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.25rem;
         }
 
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.5rem 1rem;
-            border-radius: 9999px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            margin-bottom: 2rem;
-            background: rgba(255, 255, 255, 0.05);
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-weight: 300;
         }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 0.75rem;
-            background-color: var(--text-muted);
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2.5rem;
         }
 
-        .status-dot.running {
-            background-color: var(--success);
-            box-shadow: 0 0 10px var(--success);
-        }
-
-        .status-dot.starting {
-            background-color: #eab308;
-            animation: blink 1s infinite;
-        }
-
-        .status-dot.error {
-            background-color: var(--error);
-        }
-
-        @keyframes blink {
-            0% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.4;
-            }
-
-            100% {
-                opacity: 1;
-            }
+        .status-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
         }
 
         .info-card {
-            background: rgba(0, 0, 0, 0.2);
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
             padding: 1.5rem;
-            border-radius: 1rem;
-            margin-top: 1rem;
-            text-align: left;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .info-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
         }
 
         .label {
-            color: var(--text-muted);
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.5rem;
             display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.75rem;
         }
 
-        .ip-address {
+        .value {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 1.25rem;
-            color: var(--primary);
+            font-size: 1.35rem;
             font-weight: 700;
-            word-break: break-all;
+            color: var(--primary);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .status-item {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 1rem;
+            border-radius: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #475569;
+        }
+
+        .indicator.active {
+            background: var(--success);
+            box-shadow: 0 0 12px var(--success);
+        }
+
+        .indicator.starting {
+            background: #f59e0b;
+            animation: pulse 1.5s infinite;
+        }
+
+        .indicator.error {
+            background: var(--error);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .item-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .action-section {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
         .instruction {
-            margin-top: 1.5rem;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             color: var(--text-muted);
             line-height: 1.6;
+            margin-top: 1rem;
+        }
+
+        .launch-btn {
+            margin-top: auto;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent) 100%);
+            border: none;
+            border-radius: 1.25rem;
+            color: white;
+            font-family: inherit;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.5);
+        }
+
+        .launch-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 20px 40px -15px rgba(99, 102, 241, 0.7);
+        }
+
+        .launch-btn:active {
+            transform: scale(0.98);
         }
 
         .footer {
-            margin-top: 2rem;
-            font-size: 0.75rem;
+            margin-top: 1rem;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
             color: var(--text-muted);
             opacity: 0.5;
         }
@@ -142,49 +238,112 @@
 
 <body>
     <div class="container">
-        <div class="logo">ShikshaSarthi</div>
-        <div class="status-badge">
-            <div id="status-dot" class="status-dot starting"></div>
-            <span id="status-text">Starting Services...</span>
+        <div id="role-tag" class="role-tag">Loading...</div>
+        
+        <div class="header">
+            <h1 class="logo">ShikshaSarthi</h1>
+            <p id="role-subtitle" class="subtitle">Intelligent Education Platform</p>
         </div>
 
-        <div class="info-card">
-            <span class="label">Server LAN Access URL</span>
-            <div id="server-url" class="ip-address">Loading...</div>
-        </div>
+        <div class="main-layout">
+            <div class="status-section">
+                <div class="info-card">
+                    <span class="label">Access Local URL</span>
+                    <div id="server-url" class="value">0.0.0.0:6091</div>
+                </div>
 
-        <p class="instruction">
-            Ensure students are on the same Wi-Fi/LAN network. They can access the platform by entering the URL above in
-            their web browsers.
-        </p>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div id="docker-status" class="indicator starting"></div>
+                        <span class="item-label">Server</span>
+                    </div>
+                    <div class="status-item">
+                        <div id="ts-status" class="indicator"></div>
+                        <span class="item-label">Tailscale</span>
+                    </div>
+                    <div class="status-item">
+                        <div id="lan-status" class="indicator active"></div>
+                        <span class="item-label">Local LAN</span>
+                    </div>
+                    <div class="status-item">
+                        <div class="indicator active"></div>
+                        <span class="item-label">Offline Mod</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-section">
+                <p id="instruction-text" class="instruction">
+                    Initializing local classroom services...
+                </p>
+
+                <button id="launch-btn" class="launch-btn">
+                    <span>Open Dashboard</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </button>
+            </div>
+        </div>
 
         <div class="footer">
-            ShikshaSarthi Server v1.0.0
+            <span>Powered by Gemini 3.5</span>
+            <span>Build v2.1.0-Stable</span>
         </div>
     </div>
 
     <script>
-        const statusDot = document.getElementById('status-dot');
-        const statusText = document.getElementById('status-text');
         const serverUrl = document.getElementById('server-url');
+        const roleTag = document.getElementById('role-tag');
+        const roleSubtitle = document.getElementById('role-subtitle');
+        const dockerStatus = document.getElementById('docker-status');
+        const tsStatus = document.getElementById('ts-status');
+        const instructionText = document.getElementById('instruction-text');
+        const launchBtn = document.getElementById('launch-btn');
 
-        async function updateInfo() {
+        let currentUrl = 'http://localhost:6091';
+
+        async function init() {
             const info = await window.electronAPI.getServerInfo();
-            serverUrl.textContent = `http://${info.ip}:${info.port}`;
+            
+            // Set Role
+            roleTag.textContent = info.role;
+            if (info.role === 'MASTER') {
+                roleSubtitle.textContent = 'Content Management & Sync Hub';
+                instructionText.textContent = 'You are in Master Mode. Create content and manage school nodes from the dashboard.';
+            } else {
+                roleSubtitle.textContent = 'Classroom Education Node';
+                instructionText.textContent = `Ensure students connect to the WiFi and visit the URL on the left. No internet required.`;
+            }
+
+            // Set URL
+            currentUrl = `http://${info.ip}:${info.port}`;
+            serverUrl.textContent = info.ip + ':' + info.port;
+
+            // Tailscale status
+            if (info.tailscale) {
+                tsStatus.className = 'indicator active';
+            } else {
+                tsStatus.className = 'indicator';
+            }
         }
 
         window.electronAPI.onDockerStatus((status) => {
             if (status === 'running') {
-                statusDot.className = 'status-dot running';
-                statusText.textContent = 'Server is Running';
+                dockerStatus.className = 'indicator active';
+                launchBtn.disabled = false;
             } else if (status === 'error') {
-                statusDot.className = 'status-dot error';
-                statusText.textContent = 'Critical Error';
-                serverUrl.textContent = 'Check Docker installation';
+                dockerStatus.className = 'indicator error';
+                instructionText.textContent = 'Docker service failed to start. Please ensure Docker Desktop is running.';
+                launchBtn.style.opacity = '0.5';
             }
         });
 
-        updateInfo();
+        launchBtn.addEventListener('click', () => {
+            // In a real app, this would use shell.openExternal
+            // For now we just show it's interactive
+            window.open(currentUrl, '_blank');
+        });
+
+        init();
     </script>
 </body>
 
