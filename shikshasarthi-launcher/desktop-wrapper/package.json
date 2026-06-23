@@ -2,6 +2,11 @@
   "name": "shikshasarthi-launcher",
   "version": "1.0.0",
   "description": "Desktop Launcher for ShikshaSarthi School Server",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/S3labIITbh/ShikshaSarthi.git"
+  },
+  "homepage": "https://github.com/S3labIITbh/ShikshaSarthi",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
