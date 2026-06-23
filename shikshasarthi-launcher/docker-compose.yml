@@ -17,7 +17,7 @@ services:
     container_name: shikshasarthi-app
     restart: always
     ports:
-      - "8080:80"
+      - "6091:80"
     environment:
       - MONGO_URI=mongodb://100.111.94.52:27017/app
       - MONGO_URI_LOCAL=mongodb://100.111.94.52:27017/app
@@ -32,7 +32,7 @@ services:
     container_name: shikshasarthi-sync-agent
     restart: always
     environment:
-      - HUB_URL=http://100.111.94.52:8080
+      - HUB_URL=http://100.111.94.52:6091
       - MONGO_URI=mongodb://100.111.94.52:27017/app
     depends_on:
       - db

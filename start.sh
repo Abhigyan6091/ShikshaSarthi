@@ -158,17 +158,17 @@ cd "$PROJECT_DIR"
 
 header "Starting Frontend Dev Server"
 
-# Try to free port 8080 if something is already listening on it
-if ss -tlnp 2>/dev/null | grep -q ':8080 '; then
-  warn "Port 8080 already in use – Vite will auto-select another port."
+# Try to free port 6091 if something is already listening on it
+if ss -tlnp 2>/dev/null | grep -q ':6091 '; then
+  warn "Port 6091 already in use – Vite will auto-select another port."
 fi
 
-npx vite --host 0.0.0.0 --port 8080 &
+npx vite --host 0.0.0.0 --port 6091 &
 FRONTEND_PID=$!
 
 # Wait a moment then detect the actual port Vite bound to
 sleep 4
-VITE_PORT=$(ss -tlnp 2>/dev/null | grep -oE ':808[0-9]' | head -1 | tr -d ':' || echo "8080")
+VITE_PORT=$(ss -tlnp 2>/dev/null | grep -oE ':609[0-9]' | head -1 | tr -d ':' || echo "6091")
 info "Frontend (Vite)       ->  http://localhost:${VITE_PORT}  (PID $FRONTEND_PID)"
 
 sleep 1

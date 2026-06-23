@@ -2,7 +2,7 @@
 
 # Configuration from environment or defaults
 HUB_IP="100.111.94.52"
-HUB_PORT="8080"
+HUB_PORT="6091"
 MANIFEST_URL="http://${HUB_IP}:${HUB_PORT}/api/updates/manifest"
 COMPOSE_FILE="${COMPOSE_FILE:-/launcher_root/docker-compose.yml}"
 ENV_FILE="${ENV_FILE:-/launcher_root/.env}"

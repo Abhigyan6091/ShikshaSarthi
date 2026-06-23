@@ -541,7 +541,7 @@ const SuperAdminDashboard: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 font-medium uppercase">Node Endpoint</p>
-                      <p className="font-mono text-sm font-bold text-gray-800">100.111.94.52:8080</p>
+                      <p className="font-mono text-sm font-bold text-gray-800">100.111.94.52:6091</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-100">

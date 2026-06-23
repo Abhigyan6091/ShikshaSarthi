@@ -75,6 +75,6 @@ app.on('window-all-closed', function () {
 ipcMain.handle('get-server-info', async () => {
     return {
         ip: getLocalIp(),
-        port: 8080
+        port: 6091
     };
 });

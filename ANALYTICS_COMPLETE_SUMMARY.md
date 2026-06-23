@@ -357,7 +357,7 @@ The system can determine:
 ## 📝 How to Test
 
 ### **Quick Test** (5 minutes):
-1. Go to: http://localhost:8080/student/video-questions/गणित
+1. Go to: http://localhost:6091/student/video-questions/गणित
 2. Click "आयतन तथा पृष्ठीय क्षेत्रफल"
 3. Skip video
 4. Answer all questions quickly (<3 sec each)

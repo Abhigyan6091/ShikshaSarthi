@@ -18,7 +18,7 @@ services:
     container_name: shiksha-app
     restart: unless-stopped
     ports:
-      - "8080:80"                 # ← map host port 8080 → nginx port 80
+      - "6091:80"                 # ← map host port 6091 → nginx port 80
     environment:
       # ── MongoDB ──
       MONGO_URI: "mongodb://mongo:27017/app"

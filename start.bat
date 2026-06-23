@@ -27,12 +27,12 @@ start "Backend API" cmd /k "cd /d \"%PROJECT_DIR%\backend\" && if not exist node
 timeout /t 2 >nul
 
 echo [3/3] Starting frontend UI...
-start "Frontend UI" cmd /k "cd /d \"%PROJECT_DIR%\" && if not exist node_modules npm install && npm run dev -- --host 0.0.0.0 --port 5173"
+start "Frontend UI" cmd /k "cd /d \"%PROJECT_DIR%\" && if not exist node_modules npm install && npm run dev -- --host 0.0.0.0 --port 6091"
 
 echo.
 echo Services launched:
 echo - MongoDB: localhost:27017
 echo - Backend: http://localhost:5000
-echo - Frontend: http://localhost:5173
+echo - Frontend: http://localhost:6091
 echo.
 pause
