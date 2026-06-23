@@ -74,6 +74,36 @@ jobs:
           name: ShikshaSarthi-Windows
           path: shikshasarthi-launcher/desktop-wrapper/dist/*.exe
 
+  # 3b. Build Desktop Application (Linux)
+  build-desktop-linux:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: shikshasarthi-launcher/desktop-wrapper/package-lock.json
+
+      - name: Install Desktop Dependencies
+        run: |
+          cd shikshasarthi-launcher/desktop-wrapper
+          npm install
+
+      - name: Build Linux AppImage
+        run: |
+          cd shikshasarthi-launcher/desktop-wrapper
+          npx electron-builder --linux --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShikshaSarthi-Linux
+          path: shikshasarthi-launcher/desktop-wrapper/dist/*.AppImage
+
   # 4. Update the Master Hub Manifest over Tailscale
   update-hub-manifest:
     needs: ship-docker
