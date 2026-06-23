@@ -25,6 +25,7 @@
   "build": {
     "appId": "com.shikshasarthi.launcher",
     "productName": "ShikshaSarthi",
+    "publish": null,
     "win": {
       "icon": "icon.ico",
       "target": "portable"
