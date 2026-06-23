@@ -80,6 +80,10 @@ function createWindow() {
         mainWindow.webContents.send('docker-status', 'running');
     });
 }
+ipcMain.on('open-external', (event, url) => {
+    const { shell } = require('electron');
+    shell.openExternal(url);
+});
 
 app.whenReady().then(() => {
     createWindow();

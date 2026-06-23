@@ -9,16 +9,16 @@
     <style>
         :root {
             --primary: #818cf8;
-            --primary-dark: #6366f1;
-            --accent: #c084fc;
-            --bg: #020617;
-            --card-bg: rgba(30, 41, 59, 0.7);
+            --primary-dark: #4f46e5;
+            --accent: #a855f7;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --card-border: #334155;
             --text: #f8fafc;
             --text-muted: #94a3b8;
             --success: #10b981;
             --error: #f43f5e;
-            --glass: rgba(255, 255, 255, 0.03);
-            --glass-border: rgba(255, 255, 255, 0.1);
+            --panel: #111827;
         }
 
         * {
@@ -30,9 +30,6 @@
         body {
             font-family: 'Outfit', sans-serif;
             background-color: var(--bg);
-            background-image: 
-                radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 100% 100%, rgba(168, 85, 247, 0.15) 0%, transparent 50%);
             color: var(--text);
             height: 100vh;
             display: flex;
@@ -45,12 +42,11 @@
         .container {
             width: 90%;
             max-width: 750px;
-            background: var(--card-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            border-radius: 2.5rem;
+            background: var(--panel);
+            border: 2px solid var(--card-border);
+            border-radius: 2rem;
             padding: 3.5rem;
-            box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.7);
+            box-shadow: 0 40px 80px -15px rgba(0, 0, 0, 0.6);
             position: relative;
             display: grid;
             grid-template-columns: 1fr;
@@ -61,11 +57,11 @@
             position: absolute;
             top: 2rem;
             right: 2.5rem;
-            padding: 0.4rem 1rem;
-            background: rgba(129, 140, 248, 0.1);
-            border: 1px solid rgba(129, 140, 248, 0.2);
-            border-radius: 1rem;
-            font-size: 0.7rem;
+            padding: 0.5rem 1.25rem;
+            background: #1e1b4b;
+            border: 1px solid var(--primary);
+            border-radius: 2rem;
+            font-size: 0.75rem;
             font-weight: 700;
             letter-spacing: 0.1em;
             color: var(--primary);
@@ -77,60 +73,53 @@
         }
 
         .logo {
-            font-size: 3rem;
+            font-size: 3.5rem;
             font-weight: 800;
-            background: linear-gradient(135deg, var(--text) 0%, var(--primary) 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.25rem;
+            color: var(--text);
+            margin-bottom: 0.1rem;
+            letter-spacing: -0.02em;
         }
 
         .subtitle {
             color: var(--text-muted);
-            font-size: 1.1rem;
-            font-weight: 300;
+            font-size: 1.15rem;
+            font-weight: 400;
+            margin-top: -0.5rem;
         }
 
         .main-layout {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1.2fr 1fr;
             gap: 2.5rem;
+            align-items: start;
         }
 
         .status-section {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 1.25rem;
         }
 
         .info-card {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            padding: 1.5rem;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 1.75rem;
             border-radius: 1.5rem;
-            transition: all 0.3s ease;
-        }
-
-        .info-card:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
         }
 
         .label {
             display: block;
             font-size: 0.7rem;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 0.75rem;
+            letter-spacing: 0.15em;
+            margin-bottom: 1rem;
         }
 
         .value {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 1.35rem;
+            font-size: 1.5rem;
             font-weight: 700;
             color: var(--primary);
         }
@@ -138,29 +127,29 @@
         .status-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-
-        .status-item {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            padding: 1rem;
-            border-radius: 1.25rem;
-            display: flex;
-            align-items: center;
             gap: 0.75rem;
         }
 
+        .status-item {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            padding: 1.25rem;
+            border-radius: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
         .indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #475569;
+            width: 12px;
+            height: 12px;
+            border-radius: 4px;
+            background: #334155;
         }
 
         .indicator.active {
             background: var(--success);
-            box-shadow: 0 0 12px var(--success);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
         }
 
         .indicator.starting {
@@ -173,65 +162,70 @@
         }
 
         @keyframes pulse {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.2); }
-            100% { opacity: 1; transform: scale(1); }
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
         }
 
         .item-label {
-            font-size: 0.8rem;
-            font-weight: 500;
+            font-size: 0.85rem;
+            font-weight: 600;
             color: var(--text-muted);
         }
 
         .action-section {
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            height: 100%;
         }
 
         .instruction {
-            font-size: 0.9rem;
+            font-size: 1rem;
             color: var(--text-muted);
             line-height: 1.6;
-            margin-top: 1rem;
+            margin-bottom: 2rem;
         }
 
         .launch-btn {
-            margin-top: auto;
-            padding: 1.25rem;
-            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent) 100%);
+            padding: 1.5rem;
+            background: var(--primary-dark);
             border: none;
             border-radius: 1.25rem;
             color: white;
             font-family: inherit;
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: 700;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.75rem;
-            box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.5);
+            gap: 1rem;
+            box-shadow: 0 4px 0px #3730a3;
+            margin-top: auto;
         }
 
         .launch-btn:hover {
-            transform: scale(1.02);
-            box-shadow: 0 20px 40px -15px rgba(99, 102, 241, 0.7);
+            background: #4338ca;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0px #3730a3;
         }
 
         .launch-btn:active {
-            transform: scale(0.98);
+            transform: translateY(2px);
+            box-shadow: 0 0px 0px #3730a3;
         }
 
         .footer {
             margin-top: 1rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--card-border);
             display: flex;
             justify-content: space-between;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
+            font-weight: 600;
             color: var(--text-muted);
-            opacity: 0.5;
+            opacity: 0.6;
         }
     </style>
 </head>
@@ -242,13 +236,13 @@
         
         <div class="header">
             <h1 class="logo">ShikshaSarthi</h1>
-            <p id="role-subtitle" class="subtitle">Intelligent Education Platform</p>
+            <p id="role-subtitle" class="subtitle">Platform Status Console</p>
         </div>
 
         <div class="main-layout">
             <div class="status-section">
                 <div class="info-card">
-                    <span class="label">Access Local URL</span>
+                    <span class="label">Classroom Access Address</span>
                     <div id="server-url" class="value">0.0.0.0:6091</div>
                 </div>
 
@@ -263,30 +257,26 @@
                     </div>
                     <div class="status-item">
                         <div id="lan-status" class="indicator active"></div>
-                        <span class="item-label">Local LAN</span>
-                    </div>
-                    <div class="status-item">
-                        <div class="indicator active"></div>
-                        <span class="item-label">Offline Mod</span>
+                        <span class="item-label">Wi-Fi LAN</span>
                     </div>
                 </div>
             </div>
 
             <div class="action-section">
                 <p id="instruction-text" class="instruction">
-                    Initializing local classroom services...
+                    Starting local services. Please wait...
                 </p>
 
-                <button id="launch-btn" class="launch-btn">
+                <button id="launch-btn" class="launch-btn" style="opacity: 0.6; cursor: not-allowed;" disabled>
                     <span>Open Dashboard</span>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                 </button>
             </div>
         </div>
 
         <div class="footer">
-            <span>Powered by Gemini 3.5</span>
-            <span>Build v2.1.0-Stable</span>
+            <span>Powered by Anthropic</span>
+            <span>SHIKSHASARTHI V2.2-STABLE</span>
         </div>
     </div>
 
@@ -307,11 +297,11 @@
             // Set Role
             roleTag.textContent = info.role;
             if (info.role === 'MASTER') {
-                roleSubtitle.textContent = 'Content Management & Sync Hub';
-                instructionText.textContent = 'You are in Master Mode. Create content and manage school nodes from the dashboard.';
+                roleSubtitle.textContent = 'Hub Management Console';
+                instructionText.textContent = 'Ready for content management. Use the button below to access your master tools.';
             } else {
-                roleSubtitle.textContent = 'Classroom Education Node';
-                instructionText.textContent = `Ensure students connect to the WiFi and visit the URL on the left. No internet required.`;
+                roleSubtitle.textContent = 'School Node Console';
+                instructionText.textContent = `Ensure student devices are on the same WiFi network and use the address shown on the left.`;
             }
 
             // Set URL
@@ -330,17 +320,17 @@
             if (status === 'running') {
                 dockerStatus.className = 'indicator active';
                 launchBtn.disabled = false;
+                launchBtn.style.opacity = '1';
+                launchBtn.style.cursor = 'pointer';
             } else if (status === 'error') {
                 dockerStatus.className = 'indicator error';
-                instructionText.textContent = 'Docker service failed to start. Please ensure Docker Desktop is running.';
-                launchBtn.style.opacity = '0.5';
+                instructionText.textContent = 'Critical Error: Docker services failed. Verify Docker Desktop is running.';
+                launchBtn.style.opacity = '0.4';
             }
         });
 
         launchBtn.addEventListener('click', () => {
-            // In a real app, this would use shell.openExternal
-            // For now we just show it's interactive
-            window.open(currentUrl, '_blank');
+            window.electronAPI.openExternal(currentUrl);
         });
 
         init();
