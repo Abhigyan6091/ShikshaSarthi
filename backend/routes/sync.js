@@ -269,4 +269,51 @@ router.post("/bootstrap-from-atlas", async (req, res) => {
   }
 });
 
+// --- Simplified Sync Endpoints for Desktop Launcher ---
+
+// Get all items from a collection for simple mirroring
+router.get("/get-latest/:collection", async (req, res) => {
+  try {
+    const { collection } = req.params;
+    const model = SYNC_MODELS[collection];
+
+    if (!model) {
+      return res.status(404).json({ message: `Collection ${collection} not found for sync` });
+    }
+
+    const items = await model.find({}).lean();
+    res.json({ items });
+  } catch (error) {
+    console.error(`Fetch failed for ${req.params.collection}:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Receive student reports from school nodes
+router.post("/upload-reports", async (req, res) => {
+  try {
+    const { reports } = req.body;
+    if (!Array.isArray(reports)) {
+      return res.status(400).json({ message: "Invalid reports payload" });
+    }
+
+    const StudentReport = SYNC_MODELS.studentreports;
+    
+    let imported = 0;
+    for (const report of reports) {
+      await StudentReport.updateOne(
+        { _id: report._id },
+        { $set: { ...report, synced: true } },
+        { upsert: true }
+      );
+      imported++;
+    }
+
+    res.json({ message: "Reports uploaded successfully", count: imported });
+  } catch (error) {
+    console.error("Report upload failed:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

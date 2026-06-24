@@ -130,7 +130,7 @@ function stopInterval() {
 
 export function startSyncManager() {
   if (!SYNC_ENABLED || !hasWindow()) {
-    return () => {};
+    return () => { };
   }
 
   const onlineHandler = () => triggerSync();
