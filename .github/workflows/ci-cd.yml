@@ -36,13 +36,27 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       
-      - name: Build and Push Lean Image
+      - name: Build and Push App
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile.lean
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/shikshasarthi:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/shikshasarthi-app:latest
+
+      - name: Build and Push Sync Agent
+        uses: docker/build-push-action@v5
+        with:
+          context: ./shikshasarthi-launcher/sync-agent
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/shikshasarthi-sync-agent:latest
+
+      - name: Build and Push Update Agent
+        uses: docker/build-push-action@v5
+        with:
+          context: ./shikshasarthi-launcher/update-agent
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/shikshasarthi-update-agent:latest
 
   # 3. Build Desktop Application (Windows)
   build-desktop:

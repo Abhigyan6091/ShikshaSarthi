@@ -11,16 +11,13 @@ services:
       - shikshasarthi-net
 
   app:
-    build:
-      context: ..
-      dockerfile: Dockerfile.lean
+    image: s3labiitbh/shikshasarthi-app:latest
     container_name: shikshasarthi-app
     restart: always
     ports:
       - "6091:80"
     environment:
-      - MONGO_URI=mongodb://100.111.94.52:27017/app
-      - MONGO_URI_LOCAL=mongodb://100.111.94.52:27017/app
+      - MONGO_URI=mongodb://db:27017/app
       - USE_LOCAL_DB=true
     depends_on:
       - db
@@ -28,19 +25,19 @@ services:
       - shikshasarthi-net
 
   sync-agent:
-    build: ./sync-agent
+    image: s3labiitbh/shikshasarthi-sync-agent:latest
     container_name: shikshasarthi-sync-agent
     restart: always
     environment:
       - HUB_URL=http://100.111.94.52:6091
-      - MONGO_URI=mongodb://100.111.94.52:27017/app
+      - MONGO_URI=mongodb://db:27017/app
     depends_on:
       - db
     networks:
       - shikshasarthi-net
 
   update-agent:
-    build: ./update-agent
+    image: s3labiitbh/shikshasarthi-update-agent:latest
     container_name: shikshasarthi-update-agent
     restart: always
     volumes:
