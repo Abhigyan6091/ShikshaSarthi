@@ -30,7 +30,8 @@ async function syncData() {
 
         if (unsyncedReports.length > 0) {
             console.log(`Found ${unsyncedReports.length} unsynced reports. Uploading...`);
-            await axios.post(`${HUB_URL}/api/sync/upload-reports`, { reports: unsyncedReports });
+            // Fixed URL: removed /api/ prefix to match backend mount point
+            await axios.post(`${HUB_URL}/sync/upload-reports`, { reports: unsyncedReports });
 
             const reportIds = unsyncedReports.map(r => r._id);
             await StudentReport.updateMany({ _id: { $in: reportIds } }, { $set: { synced: true } });
@@ -41,7 +42,8 @@ async function syncData() {
         for (const colName of COLLECTIONS_TO_PULL) {
             try {
                 console.log(`Pulling updates for: ${colName}...`);
-                const response = await axios.get(`${HUB_URL}/api/sync/get-latest/${colName}`);
+                // Fixed URL: removed /api/ prefix to match backend mount point
+                const response = await axios.get(`${HUB_URL}/sync/get-latest/${colName}`);
                 const items = response.data.items;
 
                 if (items && items.length > 0) {
