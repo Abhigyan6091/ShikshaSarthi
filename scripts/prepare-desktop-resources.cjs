@@ -83,6 +83,7 @@ if (process.env.SKIP_BACKEND_NPM_CI !== 'true') {
     cwd: backendRoot,
     stdio: 'inherit',
     env: process.env,
+    shell: process.platform === 'win32',
   });
 }
 
