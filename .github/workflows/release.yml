@@ -111,6 +111,10 @@ jobs:
         working-directory: shikshasarthi-launcher/desktop-wrapper
         run: npm ci
 
+      - name: Stamp desktop version
+        working-directory: shikshasarthi-launcher/desktop-wrapper
+        run: npm version "${{ needs.build-web-and-update.outputs.version }}" --no-git-tag-version
+
       - name: Prepare bundled app resources
         run: node scripts/prepare-desktop-resources.cjs
 
@@ -142,6 +146,10 @@ jobs:
       - name: Install desktop dependencies
         working-directory: shikshasarthi-launcher/desktop-wrapper
         run: npm ci
+
+      - name: Stamp desktop version
+        working-directory: shikshasarthi-launcher/desktop-wrapper
+        run: npm version "${{ needs.build-web-and-update.outputs.version }}" --no-git-tag-version
 
       - name: Prepare bundled app resources
         run: node scripts/prepare-desktop-resources.cjs
@@ -180,13 +188,26 @@ jobs:
   publish-aws:
     name: Publish AWS update package
     runs-on: ubuntu-latest
-    needs: build-web-and-update
+    needs:
+      - build-web-and-update
+      - build-desktop-windows
+      - build-desktop-linux
     if: ${{ vars.AWS_UPDATES_BUCKET != '' }}
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: shiksha-sarthi-update-${{ needs.build-web-and-update.outputs.version }}
           path: dist-release
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ShikshaSarthi-Windows-${{ needs.build-web-and-update.outputs.version }}
+          path: desktop-artifacts/windows
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ShikshaSarthi-Linux-${{ needs.build-web-and-update.outputs.version }}
+          path: desktop-artifacts/linux
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -200,6 +221,11 @@ jobs:
           VERSION="${{ needs.build-web-and-update.outputs.version }}"
           CHANNEL="${{ env.RELEASE_CHANNEL }}"
           BUCKET="${{ vars.AWS_UPDATES_BUCKET }}"
+          WINDOWS_INSTALLER="$(find desktop-artifacts/windows -name '*.exe' -type f | head -n 1)"
+          LINUX_INSTALLER="$(find desktop-artifacts/linux -name '*.deb' -type f | head -n 1)"
+
           aws s3 cp "dist-release/shiksha-sarthi-update-$VERSION.zip" "s3://$BUCKET/updates/$CHANNEL/shiksha-sarthi-update-$VERSION.zip"
           aws s3 cp "dist-release/shiksha-sarthi-update-$VERSION.zip.sha256" "s3://$BUCKET/updates/$CHANNEL/shiksha-sarthi-update-$VERSION.zip.sha256"
           aws s3 cp "dist-release/aws-update-manifest.json" "s3://$BUCKET/updates/$CHANNEL/manifest.json"
+          aws s3 cp "$WINDOWS_INSTALLER" "s3://$BUCKET/installers/$CHANNEL/windows/ShikshaSarthi-$VERSION.exe"
+          aws s3 cp "$LINUX_INSTALLER" "s3://$BUCKET/installers/$CHANNEL/linux/ShikshaSarthi-$VERSION.deb"
