@@ -32,10 +32,34 @@ async function sendHeartbeat() {
 function collectSyncedIds(collections = {}) {
   const idsByCollection = {};
   Object.entries(collections).forEach(([collectionName, records]) => {
-    const ids = (records || []).map((record) => record && record._id).filter(Boolean).map(String);
+    const ids = (records || [])
+      .map((record) => normalizeRecordId(record && record._id))
+      .filter(Boolean);
     if (ids.length) idsByCollection[collectionName] = ids;
   });
   return idsByCollection;
+}
+
+function normalizeRecordId(id) {
+  if (!id) return null;
+  if (typeof id === "string") return id;
+  if (typeof id.toHexString === "function") return id.toHexString();
+  if (id.$oid) return String(id.$oid);
+  if (id.buffer) {
+    const bytes = Array.isArray(id.buffer)
+      ? id.buffer
+      : Object.keys(id.buffer)
+        .sort((left, right) => Number(left) - Number(right))
+        .map((key) => id.buffer[key]);
+    if (bytes.length) {
+      return bytes.map((byte) => Number(byte).toString(16).padStart(2, "0")).join("");
+    }
+  }
+  if (id._id && id._id !== id) return normalizeRecordId(id._id);
+  if (id.id && id.id !== id) return normalizeRecordId(id.id);
+
+  const value = String(id);
+  return value === "[object Object]" ? null : value;
 }
 
 function countRecords(collections = {}) {

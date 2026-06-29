@@ -20,12 +20,12 @@ These defaults intentionally prevent silent destructive updates:
 
 ```env
 UPDATE_INSTALL_ENABLED=false
-AWS_SYNC_MARK_UPLOADED_RECORDS=false
+AWS_SYNC_MARK_UPLOADED_RECORDS=true
 ```
 
 With `UPDATE_INSTALL_ENABLED=false`, `/api/update/apply` only stages the verified package. It does not overwrite the running app.
 
-With `AWS_SYNC_MARK_UPLOADED_RECORDS=false`, uploaded sync records are not marked as synced locally. Turn this on only after confirming your central review/import workflow.
+With `AWS_SYNC_MARK_UPLOADED_RECORDS=true`, uploaded sync records are marked as synced locally after S3 upload succeeds, which prevents the school server from repeatedly uploading the same initial database snapshot.
 
 ## APIs
 

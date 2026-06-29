@@ -267,7 +267,12 @@ async function fetchPendingChanges({ collections, limit }) {
   for (const collectionName of selectedCollections) {
     const model = SYNC_MODELS[collectionName];
     const records = await model
-      .find({ synced: false })
+      .find({
+        $or: [
+          { synced: false },
+          { synced: { $exists: false } },
+        ],
+      })
       .setOptions({ includeDeleted: true })
       .sort({ updatedAt: 1 })
       .limit(effectiveLimit)
@@ -275,7 +280,9 @@ async function fetchPendingChanges({ collections, limit }) {
 
     // Before pushing local pending docs to cloud, restore local media URLs back to
     // original cloud URLs using media map so cloud data is not polluted with /uploads paths.
-    collectionPayload[collectionName] = records.map((record) => restoreCloudUrlsForUpload(record, mediaMap));
+    collectionPayload[collectionName] = records.map((record) =>
+      normalizeRecordForSyncExport(restoreCloudUrlsForUpload(record, mediaMap))
+    );
     totalRecords += records.length;
   }
 
@@ -340,6 +347,56 @@ function normalizeMarkSyncedPayload(rawPayload) {
   return idsByCollection;
 }
 
+function normalizeRecordId(id) {
+  if (!id) return null;
+  if (typeof id === "string") return id;
+  if (typeof id.toHexString === "function") return id.toHexString();
+  if (id.$oid) return String(id.$oid);
+  if (id.buffer) {
+    const bytes = Array.isArray(id.buffer)
+      ? id.buffer
+      : Object.keys(id.buffer)
+        .sort((left, right) => Number(left) - Number(right))
+        .map((key) => id.buffer[key]);
+    if (bytes.length) {
+      return bytes.map((byte) => Number(byte).toString(16).padStart(2, "0")).join("");
+    }
+  }
+  if (id._id && id._id !== id) return normalizeRecordId(id._id);
+  if (id.id && id.id !== id) return normalizeRecordId(id.id);
+
+  const value = String(id);
+  return value === "[object Object]" ? null : value;
+}
+
+function normalizeRecordForSyncExport(record) {
+  const normalized = normalizeSyncValue(record);
+  const normalizedId = normalizeRecordId(record && record._id);
+  return normalizedId ? { ...normalized, _id: normalizedId } : normalized;
+}
+
+function normalizeSyncValue(value) {
+  if (!value) return value;
+  if (value instanceof Date) return value.toISOString();
+
+  const normalizedId = normalizeRecordId(value);
+  if (normalizedId && typeof value === "object" && (value.toHexString || value.$oid || value.buffer)) {
+    return normalizedId;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(normalizeSyncValue);
+  }
+
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [key, normalizeSyncValue(entry)])
+    );
+  }
+
+  return value;
+}
+
 async function markRecordsSynced(rawPayload) {
   const idsByCollection = normalizeMarkSyncedPayload(rawPayload);
   const result = {};
@@ -350,19 +407,22 @@ async function markRecordsSynced(rawPayload) {
       continue;
     }
 
-    const uniqueIds = [...new Set(ids.map((id) => String(id)).filter(Boolean))];
+    const uniqueIds = [...new Set(ids.map(normalizeRecordId).filter(Boolean))];
     if (!uniqueIds.length) {
       result[collectionName] = { matchedCount: 0, modifiedCount: 0 };
       continue;
     }
 
-    const writeResult = await model.updateMany(
-      { _id: { $in: uniqueIds } },
-      { $set: { synced: true } },
-      {
-        includeDeleted: true,
-        skipSyncMetadata: true,
+    const idCandidates = uniqueIds.flatMap((id) => {
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        return [id, new mongoose.Types.ObjectId(id)];
       }
+      return [id];
+    });
+
+    const writeResult = await model.collection.updateMany(
+      { _id: { $in: idCandidates } },
+      { $set: { synced: true } }
     );
 
     result[collectionName] = {
