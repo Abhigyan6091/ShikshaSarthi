@@ -16,7 +16,8 @@
 
 // Set to true to use local images from public/images folder
 const USE_LOCAL_IMAGES = true;
-const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000").replace(/\/$/, "");
+const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+const CLOUDINARY_ENABLED = import.meta.env.VITE_CLOUDINARY_ENABLED === "true";
 
 // Local images from public/images folder
 // These are the current images available in your project
@@ -129,7 +130,10 @@ export const uploadToCloudinary = async (
         : `${API_URL}${localPayload.localUrl}`;
     }
   } catch (error) {
-    console.warn("Local media upload failed, fallback to Cloudinary:", error);
+    console.warn("Local media upload failed:", error);
+  }
+  if (!CLOUDINARY_ENABLED) {
+    return null;
   }
 
   const formData = new FormData();

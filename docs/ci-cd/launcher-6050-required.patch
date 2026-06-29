@@ -1,0 +1,37 @@
+*** Begin Patch
+*** Update File: shikshasarthi-launcher/desktop-wrapper/main.js
+@@
+-    const envPath = isDev 
+-        ? path.join(__dirname, '..', '.env') 
+-        : path.join(process.resourcesPath, 'launcher-data', '.env');
++    const envPath = isDev
++        ? path.join(__dirname, '..', '..', '.env')
++        : path.join(process.resourcesPath, 'launcher-data', '.env');
+@@
+-    const resourcesPath = isDev ? path.join(__dirname, '..') : path.join(process.resourcesPath, 'launcher-data');
++    const resourcesPath = isDev ? path.join(__dirname, '..', '..') : path.join(process.resourcesPath, 'launcher-data');
+@@
+-        port: env.PORT || 6091,
++        port: env.FRONTEND_PORT || '6050',
+*** Update File: shikshasarthi-launcher/desktop-wrapper/index.html
+@@
+-                <div id="server-url" class="address-value">0.0.0.0:6091</div>
++                <div id="server-url" class="address-value">0.0.0.0:6050</div>
+@@
+-        let currentUrl = 'http://localhost:6091';
++        let currentUrl = 'http://localhost:6050';
+*** Update File: shikshasarthi-launcher/desktop-wrapper/test-ip.js
+@@
+-console.log(`Target Student URL: http://${ip}:6091`);
++console.log(`Target Student URL: http://${ip}:6050`);
+*** Update File: shikshasarthi-launcher/desktop-wrapper/package.json
+@@
+-    "build:linux": "electron-builder --linux"
++    "build:linux": "electron-builder --linux deb"
+@@
+-      "target": [
+-        "AppImage",
+-        "deb"
+-      ],
++      "target": ["deb"],
+*** End Patch

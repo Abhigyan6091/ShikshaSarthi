@@ -9,8 +9,8 @@ let mainWindow;
 // Helper to read .env manually since dotenv is not a dependency
 function getEnv() {
     const isDev = !app.isPackaged;
-    const envPath = isDev 
-        ? path.join(__dirname, '..', '.env') 
+    const envPath = isDev
+        ? path.join(__dirname, '..', '..', '.env')
         : path.join(process.resourcesPath, 'launcher-data', '.env');
     
     const env = {};
@@ -24,6 +24,15 @@ function getEnv() {
     return env;
 }
 
+function ensureEnvFile(resourcesPath) {
+    const envPath = path.join(resourcesPath, '.env');
+    const examplePath = path.join(resourcesPath, '.env.local-school.example');
+
+    if (!fs.existsSync(envPath) && fs.existsSync(examplePath)) {
+        fs.copyFileSync(examplePath, envPath);
+    }
+}
+
 function getLocalIp() {
     const interfaces = os.networkInterfaces();
     for (const devName in interfaces) {
@@ -31,7 +40,7 @@ function getLocalIp() {
         for (let i = 0; i < iface.length; i++) {
             const alias = iface[i];
             if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal) {
-                // Ignore Tailscale range (100.64.0.0/10) regardless of interface name
+                // Ignore carrier-grade NAT and private overlay ranges for the classroom LAN URL.
                 if (alias.address.startsWith('100.')) continue;
                 
                 // Ignore docker/bridge interfaces
@@ -42,15 +51,6 @@ function getLocalIp() {
         }
     }
     return '0.0.0.0';
-}
-
-async function checkTailscale() {
-    return new Promise((resolve) => {
-        // Simple check if tailscale0 interface exists
-        const interfaces = os.networkInterfaces();
-        const hasTailscale = Object.keys(interfaces).some(name => name.includes('tailscale'));
-        resolve(hasTailscale);
-    });
 }
 
 function createWindow() {
@@ -77,8 +77,9 @@ function createWindow() {
     });
 
     const isDev = !app.isPackaged;
-    const resourcesPath = isDev ? path.join(__dirname, '..') : path.join(process.resourcesPath, 'launcher-data');
+    const resourcesPath = isDev ? path.join(__dirname, '..', '..') : path.join(process.resourcesPath, 'launcher-data');
     const execOptions = { cwd: resourcesPath, windowsHide: true, shell: true };
+    ensureEnvFile(resourcesPath);
 
     // Set a timeout of 60 seconds to prevent hanging indefinitely
     exec(`docker compose up -d`, { ...execOptions, timeout: 60000 }, (error, stdout, stderr) => {
@@ -102,11 +103,9 @@ app.whenReady().then(() => {
 
 ipcMain.handle('get-server-info', async () => {
     const env = getEnv();
-    const isTailscaleActive = await checkTailscale();
     return {
         ip: getLocalIp(),
-        port: env.PORT || 6091,
-        role: env.NODE_ROLE || 'SCHOOL',
-        tailscale: isTailscaleActive
+        port: env.FRONTEND_PORT || '6050',
+        role: env.NODE_ROLE || 'SCHOOL'
     };
 });

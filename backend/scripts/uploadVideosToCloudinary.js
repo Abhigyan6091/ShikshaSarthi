@@ -3,9 +3,19 @@ const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
 
-// Cloudinary configuration
-const CLOUD_NAME = 'dmebh0vcd';
-const UPLOAD_PRESET = 'ml_default';
+// Optional Cloudinary script. Disabled by default for local-school mode.
+if (process.env.CLOUDINARY_ENABLED !== 'true') {
+  console.error('Cloudinary upload script is disabled. Set CLOUDINARY_ENABLED=true to run it intentionally.');
+  process.exit(1);
+}
+
+const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME;
+const UPLOAD_PRESET = process.env.CLOUDINARY_UPLOAD_PRESET || 'ml_default';
+
+if (!CLOUD_NAME) {
+  console.error('CLOUDINARY_CLOUD_NAME is required.');
+  process.exit(1);
+}
 
 // Video files to upload
 const videos = [

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useToast } from "@/components/ui/use-toast";
-import { Users, GraduationCap, PlusCircle, School, Eye, MessageSquare, Key, Copy, Check } from 'lucide-react';
+import { Users, GraduationCap, PlusCircle, School, Eye, MessageSquare, Key, Copy, Check, Activity, Cloud, Server, Wifi, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import {
   Dialog,
@@ -31,6 +31,10 @@ const SchoolAdminDashboard: React.FC = () => {
   const [students, setStudents] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [username, setUsername] = useState<string>('');
+  const [systemStatus, setSystemStatus] = useState<any>(null);
+  const [awsStatus, setAwsStatus] = useState<any>(null);
+  const [awsSyncStatus, setAwsSyncStatus] = useState<any>(null);
+  const [connectivityBusy, setConnectivityBusy] = useState(false);
 
   // Reset password states
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -91,11 +95,36 @@ const SchoolAdminDashboard: React.FC = () => {
         fetchStats(uname);
         fetchTeachers(uname);
         fetchStudents(uname);
+        fetchConnectivity();
       } catch (e) {
         console.error('Error parsing user', e);
       }
     }
   }, []);
+
+  const fetchConnectivity = async () => {
+    try {
+      setConnectivityBusy(true);
+      const [appStatusRes, awsStatusRes, awsSyncRes] = await Promise.allSettled([
+        axios.get(`${API_URL}/app/status`),
+        axios.get(`${API_URL}/api/aws/status`),
+        axios.get(`${API_URL}/api/aws/sync/status`),
+      ]);
+
+      if (appStatusRes.status === 'fulfilled') setSystemStatus(appStatusRes.value.data);
+      if (awsStatusRes.status === 'fulfilled') setAwsStatus(awsStatusRes.value.data);
+      if (awsSyncRes.status === 'fulfilled') setAwsSyncStatus(awsSyncRes.value.data);
+    } catch (error) {
+      console.error('Error fetching connectivity:', error);
+    } finally {
+      setConnectivityBusy(false);
+    }
+  };
+
+  const currentBrowserEndpoint = typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.host}`
+    : 'http://localhost:6050';
+  const lanEndpoint = currentBrowserEndpoint || systemStatus?.network?.lanUrl || 'http://localhost:6050';
 
   const fetchStats = async (uname: string) => {
     try {
@@ -177,6 +206,81 @@ const SchoolAdminDashboard: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">School Admin Dashboard</h1>
             <p className="text-gray-600">School ID: {stats.schoolId}</p>
           </div>
+
+          <Card className="mb-8 border-2 border-edu-blue/20 bg-white">
+            <CardHeader>
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    <Wifi className="h-5 w-5 text-edu-blue" />
+                    Local Server Connectivity
+                  </CardTitle>
+                  <CardDescription>LAN access, local database, AWS updates, and sync-agent status</CardDescription>
+                </div>
+                <Button size="sm" variant="outline" onClick={fetchConnectivity} disabled={connectivityBusy}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div className="rounded-lg border bg-gray-50 p-4">
+                  <div className="flex items-center gap-2 text-xs uppercase text-gray-500 font-medium">
+                    <Server className="h-4 w-4" />
+                    Student LAN URL
+                  </div>
+                  <p className="mt-2 font-mono text-sm font-bold text-gray-900 break-all">{lanEndpoint}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Students use this same host and port from the local network.
+                  </p>
+                </div>
+                <div className="rounded-lg border bg-gray-50 p-4">
+                  <div className="flex items-center gap-2 text-xs uppercase text-gray-500 font-medium">
+                    <Activity className="h-4 w-4" />
+                    Local Database
+                  </div>
+                  <p className={`mt-2 text-lg font-bold ${systemStatus?.database?.connected ? 'text-green-600' : 'text-amber-600'}`}>
+                    {systemStatus?.database?.connected ? 'Connected' : 'Checking'}
+                  </p>
+                  <p className="text-xs text-gray-500">Local MongoDB keeps login and quizzes working offline.</p>
+                </div>
+                <div className="rounded-lg border bg-gray-50 p-4">
+                  <div className="flex items-center gap-2 text-xs uppercase text-gray-500 font-medium">
+                    <Cloud className="h-4 w-4" />
+                    AWS Control
+                  </div>
+                  <p className={`mt-2 text-lg font-bold ${awsStatus?.reachable ? 'text-green-600' : 'text-amber-600'}`}>
+                    {awsStatus?.reachable ? 'Online' : 'Offline-ready'}
+                  </p>
+                  <p className="text-xs text-gray-500">Updates and sync resume whenever internet is available.</p>
+                </div>
+                <div className="rounded-lg border bg-gray-50 p-4">
+                  <div className="flex items-center gap-2 text-xs uppercase text-gray-500 font-medium">
+                    <RefreshCw className="h-4 w-4" />
+                    Sync Agent
+                  </div>
+                  <p className={`mt-2 text-lg font-bold ${awsSyncStatus?.enabled ? 'text-green-600' : 'text-amber-600'}`}>
+                    {awsSyncStatus?.enabled ? 'Enabled' : 'Disabled'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Last success: {awsSyncStatus?.lastSuccessAt ? new Date(awsSyncStatus.lastSuccessAt).toLocaleString() : 'Waiting'}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div className="rounded-md bg-blue-50 p-3">
+                  School ID: <strong>{awsStatus?.schoolId || stats.schoolId || 'Not bound'}</strong>
+                </div>
+                <div className="rounded-md bg-blue-50 p-3">
+                  Node ID: <strong>{awsStatus?.nodeId || awsSyncStatus?.nodeId || 'Not configured'}</strong>
+                </div>
+                <div className="rounded-md bg-blue-50 p-3">
+                  Version: <strong>{systemStatus?.version || '1.0.0'}</strong>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Stats Overview */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-12">

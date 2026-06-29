@@ -16,7 +16,7 @@ function getLocalIp() {
 
 const ip = getLocalIp();
 console.log(`Detected LAN IP: ${ip}`);
-console.log(`Target Student URL: http://${ip}:6091`);
+console.log(`Target Student URL: http://${ip}:6050`);
 
 if (ip !== '0.0.0.0') {
     console.log('✅ IP Detection Logic is WORKING');

@@ -7,6 +7,7 @@ const {
 } = require("../utils/localMediaStore");
 const { uploadLocalFileToCloudinary } = require("../utils/cloudinaryUploader");
 const { SYNC_MODELS } = require("../sync/modelRegistry");
+const { appConfig } = require("../config/appConfig");
 
 function resolveCloudinaryResourceType(resourceType, mimeType) {
   if (resourceType) {
@@ -25,8 +26,24 @@ function resolveCloudinaryResourceType(resourceType, mimeType) {
   return "auto";
 }
 
+function rejectWhenCloudinaryDisabled(res) {
+  if (appConfig.cloudinaryEnabled) {
+    return false;
+  }
+
+  res.status(503).json({
+    message: "Cloudinary uploads are disabled in offline mode",
+    cloudUrl: null,
+  });
+  return true;
+}
+
 router.post("/upload", async (req, res) => {
   try {
+    if (!appConfig.localUploadsEnabled) {
+      return res.status(503).json({ message: "Local uploads are disabled" });
+    }
+
     const { base64Data, fileName, mimeType, mediaType } = req.body || {};
 
     if (!base64Data || !fileName) {
@@ -60,6 +77,8 @@ router.post("/upload", async (req, res) => {
 
 router.post("/cloud-upload", async (req, res) => {
   try {
+    if (rejectWhenCloudinaryDisabled(res)) return;
+
     const { localPath, resourceType, folder } = req.body || {};
 
     if (!localPath) {
@@ -86,6 +105,8 @@ router.post("/cloud-upload", async (req, res) => {
 // Helper endpoint for media sync: upload local file to cloud and store cloudUrl on record.
 router.post("/sync-record", async (req, res) => {
   try {
+    if (rejectWhenCloudinaryDisabled(res)) return;
+
     const { collection, id, localPath, resourceType, folder, cloudUrlField = "cloudUrl" } = req.body || {};
 
     if (!collection || !id || !localPath) {

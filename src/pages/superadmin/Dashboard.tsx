@@ -10,6 +10,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { School, Users, GraduationCap, UserCog, PlusCircle, User, Phone, IdCard, Building, BookOpen, Key, Copy, Check, ArrowLeft, Mail, Shield, UserCheck } from 'lucide-react';
 import axios from 'axios';
+import CloudUpdateControl from './CloudUpdateControl';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -517,6 +518,8 @@ const SuperAdminDashboard: React.FC = () => {
             <p className="text-gray-600">Manage all schools, admins, teachers, and students</p>
           </div>
 
+          <CloudUpdateControl />
+
           {/* Master Hub Status Section */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <Card className="lg:col-span-2 border-2 border-edu-blue/20 bg-gradient-to-br from-white to-blue-50/30 overflow-hidden relative">
@@ -541,7 +544,7 @@ const SuperAdminDashboard: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 font-medium uppercase">Node Endpoint</p>
-                      <p className="font-mono text-sm font-bold text-gray-800">100.111.94.52:6091</p>
+                      <p className="font-mono text-sm font-bold text-gray-800">localhost:6050</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-100">

@@ -1,58 +1,60 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const Version = require('../models/Version');
+const Version = require("../models/Version");
 
-// 1. GET Manifest (Public - used by School Servers)
-// Endpoint: GET /api/updates/manifest
-router.get('/manifest', async (req, res) => {
-    try {
-        const latest = await Version.findOne().sort({ createdAt: -1 });
-        if (!latest) {
-            return res.json({
-                version: "1.0.0",
-                releaseDate: new Date(),
-                releaseNotes: "Initial version"
-            });
-        }
-        res.json({
-            version: latest.version,
-            releaseDate: latest.releaseDate,
-            releaseNotes: latest.releaseNotes,
-            forceUpdate: latest.forceUpdate
-        });
-    } catch (err) {
-        res.status(500).json({ error: "Failed to fetch manifest" });
+// GET Manifest (public - used by school servers in later phases).
+router.get("/manifest", async (_req, res) => {
+  try {
+    const latest = await Version.findOne().sort({ createdAt: -1 });
+    if (!latest) {
+      return res.json({
+        version: "1.0.0",
+        releaseDate: new Date(),
+        releaseNotes: "Initial version",
+      });
     }
+    res.json({
+      version: latest.version,
+      releaseDate: latest.releaseDate,
+      releaseNotes: latest.releaseNotes,
+      forceUpdate: latest.forceUpdate,
+    });
+  } catch (_err) {
+    res.status(500).json({ error: "Failed to fetch manifest" });
+  }
 });
 
-// 2. Publish New Version (Restricted - used by CI/CD or Admin)
-// In a production environment, this should be protected by an API Key
-router.post('/publish', async (req, res) => {
-    const { version, releaseNotes, forceUpdate, apiKey } = req.body;
+// Publish New Version (restricted - used by CI/CD or Admin in later phases).
+router.post("/publish", async (req, res) => {
+  const { version, releaseNotes, forceUpdate, apiKey } = req.body;
+  const masterApiKey = process.env.UPDATE_API_KEY;
 
-    // Basic protection (Ideally use a better secret management system)
-    const MASTER_API_KEY = process.env.UPDATE_API_KEY || "shiksha-sarthi-secret-2026";
+  if (!masterApiKey) {
+    return res.status(500).json({
+      error: "UPDATE_API_KEY is not configured. Refusing to publish with an insecure fallback key.",
+    });
+  }
 
-    if (apiKey !== MASTER_API_KEY) {
-        return res.status(401).json({ error: "Unauthorized: Invalid API Key" });
+  if (apiKey !== masterApiKey) {
+    return res.status(401).json({ error: "Unauthorized: Invalid API Key" });
+  }
+
+  try {
+    if (!version) {
+      return res.status(400).json({ error: "Version is required" });
     }
 
-    try {
-        if (!version) {
-            return res.status(400).json({ error: "Version is required" });
-        }
+    const newVersion = new Version({
+      version,
+      releaseNotes: releaseNotes || "Bug fixes and improvements",
+      forceUpdate: forceUpdate || false,
+    });
 
-        const newVersion = new Version({
-            version,
-            releaseNotes: releaseNotes || "Bug fixes and improvements",
-            forceUpdate: forceUpdate || false
-        });
-
-        await newVersion.save();
-        res.status(201).json({ message: "Version published successfully", version: newVersion });
-    } catch (err) {
-        res.status(500).json({ error: "Failed to publish version: " + err.message });
-    }
+    await newVersion.save();
+    res.status(201).json({ message: "Version published successfully", version: newVersion });
+  } catch (err) {
+    res.status(500).json({ error: `Failed to publish version: ${err.message}` });
+  }
 });
 
 module.exports = router;

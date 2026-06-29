@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
+const API_URL = import.meta.env.VITE_API_URL || "";
+
 interface Question {
   _id: string;
   question: string;
@@ -29,7 +31,7 @@ const VocabularyQuizPage: React.FC = () => {
   useEffect(() => {
     const fetchChapters = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/vocab");
+        const res = await axios.get(`/vocab`);
         setChapters(res.data);
       } catch (err) {
         console.error("Error fetching chapters:", err);
@@ -41,7 +43,7 @@ const VocabularyQuizPage: React.FC = () => {
   const handleSelectChapter = async (id: string) => {
     try {
       setLoading(true);
-      const res = await axios.get(`http://localhost:5000/vocab/${id}`);
+      const res = await axios.get(`/vocab/`);
       setSelectedChapter(res.data);
       setShowPassage(true);
       setLoading(false);
@@ -83,7 +85,7 @@ const VocabularyQuizPage: React.FC = () => {
       setCurrentQuestionIndex((prev) => prev + 1);
     } else {
       try {
-        const res = await axios.post("http://localhost:5000/vocab/evaluate", {
+        const res = await axios.post(`/vocab/evaluate`, {
           chapterId: selectedChapter._id,
           answers,
         });

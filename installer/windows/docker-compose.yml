@@ -1,0 +1,72 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/.}
+        VITE_CLOUDINARY_ENABLED: ${VITE_CLOUDINARY_ENABLED:-false}
+    image: shiksha-sarthi:local-school
+    container_name: shiksha-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      BACKEND_HOST: 127.0.0.1
+      BACKEND_PORT: ${PORT:-5000}
+      PORT: ${PORT:-5000}
+      FRONTEND_PORT: ${FRONTEND_PORT:-6050}
+      APP_MODE: ${APP_MODE:-local-school}
+      APP_VERSION: ${APP_VERSION:-1.0.0}
+      APP_RELEASE_DATE: ${APP_RELEASE_DATE:-2026-06-29}
+      USE_LOCAL_DB: ${USE_LOCAL_DB:-true}
+      MONGO_URI_LOCAL: ${MONGO_URI_LOCAL:-mongodb://mongo:27017/app}
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/app}
+      SYNC_AUTO_ENABLED: ${SYNC_AUTO_ENABLED:-false}
+      SYNC_NODE_ROLE: ${SYNC_NODE_ROLE:-local}
+      AI_HINTS_ENABLED: ${AI_HINTS_ENABLED:-false}
+      CLOUDINARY_ENABLED: ${CLOUDINARY_ENABLED:-false}
+      LOCAL_UPLOADS_ENABLED: ${LOCAL_UPLOADS_ENABLED:-true}
+      BACKUP_ENABLED: ${BACKUP_ENABLED:-true}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      BACKUP_DIR: /app/backend/backups
+      UPDATE_INSTALL_ENABLED: ${UPDATE_INSTALL_ENABLED:-false}
+      UPDATE_INSTALL_DIR: ${UPDATE_INSTALL_DIR:-/app/backend/updates/staged}
+      UPDATE_ROLLBACK_DIR: ${UPDATE_ROLLBACK_DIR:-/app/backend/updates/rollback}
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+      AWS_CONTROL_API_URL: ${AWS_CONTROL_API_URL:-}
+      AWS_CONTROL_API_KEY: ${AWS_CONTROL_API_KEY:-}
+      AWS_SCHOOL_ID: ${AWS_SCHOOL_ID:-SCHOOL001}
+      AWS_UPDATES_BUCKET: ${AWS_UPDATES_BUCKET:-}
+      AWS_SCHOOL_DATA_BUCKET: ${AWS_SCHOOL_DATA_BUCKET:-}
+      AWS_SYNC_ENABLED: ${AWS_SYNC_ENABLED:-false}
+      AWS_BACKUP_SYNC_ENABLED: ${AWS_BACKUP_SYNC_ENABLED:-true}
+      AWS_VIDEO_SYNC_ENABLED: ${AWS_VIDEO_SYNC_ENABLED:-true}
+      AWS_UPDATE_CHECK_ENABLED: ${AWS_UPDATE_CHECK_ENABLED:-true}
+      AWS_UPDATE_CHANNEL: ${AWS_UPDATE_CHANNEL:-stable}
+      AWS_SYNC_MARK_UPLOADED_RECORDS: ${AWS_SYNC_MARK_UPLOADED_RECORDS:-false}
+    ports:
+      - "${FRONTEND_PORT:-6050}:80"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    volumes:
+      - "C:/ProgramData/ShikshaSarthi/uploads:/app/uploads"
+      - "C:/ProgramData/ShikshaSarthi/backups:/app/backend/backups"
+      - "C:/ProgramData/ShikshaSarthi/updates:/app/backend/updates"
+
+  mongo:
+    image: mongo:7
+    container_name: shiksha-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: app
+    volumes:
+      - "C:/ProgramData/ShikshaSarthi/mongo-data:/data/db"
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s

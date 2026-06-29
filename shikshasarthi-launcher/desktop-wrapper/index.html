@@ -229,7 +229,7 @@
             <h2 class="panel-title">Network Configuration</h2>
             
             <div class="address-box">
-                <div id="server-url" class="address-value">0.0.0.0:6091</div>
+                <div id="server-url" class="address-value">0.0.0.0:6050</div>
             </div>
 
             <h2 class="panel-title">System Health Checks</h2>
@@ -243,8 +243,8 @@
                     <div class="status-badge" id="docker-ui-status"><div class="dot warn" id="docker-dot"></div> <span id="docker-text">Starting...</span></div>
                 </div>
                 <div class="status-row">
-                    <span class="status-label">Tailscale Mesh Network</span>
-                    <div class="status-badge" id="ts-ui-status"><div class="dot" id="ts-dot"></div> <span id="ts-text">Offline</span></div>
+                    <span class="status-label">AWS Updates & Sync</span>
+                    <div class="status-badge" id="cloud-ui-status"><div class="dot warn" id="cloud-dot"></div> <span id="cloud-text">Checks when online</span></div>
                 </div>
             </div>
         </div>
@@ -283,10 +283,10 @@
 
         const dockerDot = document.getElementById('docker-dot');
         const dockerText = document.getElementById('docker-text');
-        const tsDot = document.getElementById('ts-dot');
-        const tsText = document.getElementById('ts-text');
+        const cloudDot = document.getElementById('cloud-dot');
+        const cloudText = document.getElementById('cloud-text');
 
-        let currentUrl = 'http://localhost:6091';
+        let currentUrl = 'http://localhost:6050';
         let isDockerReady = false;
 
         async function init() {
@@ -304,12 +304,8 @@
             currentUrl = `http://${info.ip}:${info.port}`;
             serverUrl.textContent = info.ip + ':' + info.port;
 
-            if (info.tailscale) {
-                tsDot.className = 'dot ok';
-                tsText.textContent = 'Active (Mesh)';
-                // Optional: show Tailscale address in logs so user knows it's there
-                runtimeLogs.innerText = `> Admin Mesh IP detected. Remote support enabled.`;
-            }
+            cloudDot.className = 'dot warn';
+            cloudText.textContent = 'Online when internet is available';
         }
 
         window.electronAPI.onDockerStatus((status) => {

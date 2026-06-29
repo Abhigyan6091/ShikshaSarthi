@@ -2,10 +2,28 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
+
+process.env.APP_MODE = process.env.APP_MODE || "local-school";
+process.env.USE_LOCAL_DB = process.env.USE_LOCAL_DB || "true";
+process.env.SYNC_AUTO_ENABLED = process.env.SYNC_AUTO_ENABLED || "false";
+process.env.SYNC_NODE_ROLE = process.env.SYNC_NODE_ROLE || "local";
+process.env.AI_HINTS_ENABLED = process.env.AI_HINTS_ENABLED || "false";
+process.env.CLOUDINARY_ENABLED = process.env.CLOUDINARY_ENABLED || "false";
+process.env.LOCAL_UPLOADS_ENABLED = process.env.LOCAL_UPLOADS_ENABLED || "true";
+process.env.BACKUP_ENABLED = process.env.BACKUP_ENABLED || "true";
+
 const audioCache = require("./utils/audioCache");
 const syncMetadataPlugin = require("./utils/syncMetadataPlugin");
 const { ensureUploadDirectories, UPLOAD_ROOT } = require("./utils/localMediaStore");
-const { startAutoSync } = require("./sync/autoSyncService");
+const { startAutoSync, getAutoSyncState } = require("./sync/autoSyncService");
+const { getAwsAutoSyncState, startAwsAutoSync } = require("./aws/awsAutoSyncService");
+const {
+  appConfig,
+  getDatabaseStatus,
+  getLanAddress,
+  getMongoUri,
+  getPublicStatus,
+} = require("./config/appConfig");
 
 // Apply sync metadata behavior to every schema before models are imported.
 mongoose.plugin(syncMetadataPlugin);
@@ -30,10 +48,12 @@ const feedbackFormRoutes = require("./routes/feedbackForm");
 const feedbackResponseRoutes = require("./routes/feedbackResponse");
 const syncRoutes = require("./routes/sync");
 const mediaRoutes = require("./routes/media");
-const authRoutes = require('./routes/auth');
-const updateRoutes = require('./routes/updates');
+const authRoutes = require("./routes/auth");
+const updateRoutes = require("./routes/updates");
+const phaseTwoUpdateRoutes = require("./routes/update");
+const backupRoutes = require("./routes/backup");
+const awsRoutes = require("./routes/aws");
 const vqgRouter = require("./vqgRouter");
-const backendPackageJson = require("./package.json");
 
 const app = express();
 app.use(cors());
@@ -42,28 +62,28 @@ app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 
 // Ensure stale audio cache is cleaned at every backend startup.
 audioCache.initializeCacheCleanup();
-ensureUploadDirectories();
+if (appConfig.localUploadsEnabled) {
+  ensureUploadDirectories();
+}
 
-// Serve static video files for offline access
-app.use('/videos', express.static('public/videos'));
+// Serve static video and uploaded files for offline LAN access.
+app.use("/videos", express.static("public/videos"));
 app.use("/uploads", express.static(UPLOAD_ROOT));
 
-const useLocalDb = process.env.USE_LOCAL_DB !== "false";
-const mongoUri = useLocalDb
-  ? process.env.MONGO_URI_LOCAL || "mongodb://127.0.0.1:27017/app"
-  : process.env.MONGO_URI || process.env.MONGO_URI_LOCAL || "mongodb://127.0.0.1:27017/app";
+const { useLocalDb, mongoUri } = getMongoUri();
 const sanitizedMongoUri = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, "//$1:***@");
 
 mongoose
   .connect(mongoUri)
   .then(() => {
-    console.log("✅ Connected to MongoDB");
-    console.log(`📦 Database mode: ${useLocalDb ? "local" : "cloud"}`);
-    console.log(`🗄️ Mongo URI: ${sanitizedMongoUri}`);
+    console.log("MongoDB status: connected");
+    console.log(`Database mode: ${useLocalDb ? "local" : "remote"}`);
+    console.log(`Mongo URI: ${sanitizedMongoUri}`);
     startAutoSync();
+    startAwsAutoSync();
   })
   .catch((err) => {
-    console.error("❌ MongoDB connection error:", err);
+    console.error("MongoDB status: connection error", err);
   });
 
 app.use("/questions", questionRoutes);
@@ -87,36 +107,99 @@ app.use("/api/feedback-responses", feedbackResponseRoutes);
 app.use("/sync", syncRoutes);
 app.use("/media", mediaRoutes);
 app.use("/api/auth", authRoutes);
-app.use('/api/updates', updateRoutes);
+app.use("/api/updates", updateRoutes);
+app.use("/api/update", phaseTwoUpdateRoutes);
+app.use("/api/backup", backupRoutes);
+app.use("/api/aws", awsRoutes);
 
-// ── VQG (Video Question Generator) ────────────────────────────
 // Mounts the VQG router which manages the FastAPI subprocess and
-// serves the VQG frontend + API under /vqg/*
+// serves the VQG frontend + API under /vqg/*.
 app.use("/vqg", vqgRouter);
 
-// https://shiksha-sarthi-nmms-prep-cn64.vercel.app
-
-app.get("/app/version", (_req, res) => {
-  res.status(200).json({
-    version: process.env.APP_VERSION || backendPackageJson.version,
-    nodeRole: process.env.SYNC_NODE_ROLE || "local",
-    releaseDate: process.env.APP_RELEASE_DATE || null,
+app.get("/health", (_req, res) => {
+  const status = getPublicStatus(mongoose, UPLOAD_ROOT);
+  res.status(status.ok ? 200 : 503).json({
+    ok: status.ok,
+    service: status.service,
+    mode: status.mode,
+    version: status.version,
+    database: status.database,
+    syncEnabled: status.syncEnabled,
+    aiHintsEnabled: status.aiHintsEnabled,
+    cloudinaryEnabled: status.cloudinaryEnabled,
+    localUploadsEnabled: status.localUploadsEnabled,
+    timestamp: status.timestamp,
   });
 });
 
-app.get("/hi", (req, res) => {
+app.get("/app/version", (_req, res) => {
+  res.status(200).json({
+    version: appConfig.version,
+    releaseDate: appConfig.releaseDate,
+    mode: appConfig.mode,
+    nodeRole: appConfig.nodeRole,
+  });
+});
+
+app.get("/app/status", (_req, res) => {
+  const database = getDatabaseStatus(mongoose);
+  const syncState = getAutoSyncState();
+
+  res.status(database.connected ? 200 : 503).json({
+    ok: database.connected,
+    mode: appConfig.mode,
+    version: appConfig.version,
+    database: {
+      connected: database.connected,
+      name: database.name || "app",
+    },
+    storage: {
+      uploadsPath: UPLOAD_ROOT,
+      uploadsEnabled: appConfig.localUploadsEnabled,
+    },
+    sync: {
+      enabled: appConfig.syncAutoEnabled,
+      lastRunAt: syncState.lastRunAt || null,
+      lastSuccessAt: syncState.lastSuccessAt || null,
+      lastError: syncState.lastError || null,
+    },
+    awsSync: getAwsAutoSyncState(),
+    network: {
+      localUrl: `http://localhost:${appConfig.frontendPort}`,
+      lanUrl: `http://${getLanAddress()}:${appConfig.frontendPort}`,
+      frontendPort: appConfig.frontendPort,
+    },
+    features: {
+      aiHints: appConfig.aiHintsEnabled,
+      cloudinary: appConfig.cloudinaryEnabled,
+      localUploads: appConfig.localUploadsEnabled,
+      backup: appConfig.backupEnabled,
+    },
+  });
+});
+
+app.get("/hi", (_req, res) => {
   res.send("Welcome to the NMMS Prep API!");
 });
 
-app.get("/", (req, res) => {
-  res.send("Backend is working ✅");
+app.get("/", (_req, res) => {
+  res.send("Backend is working");
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = appConfig.port;
 
-// Listen on all network interfaces for LAN access
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📡 LAN Access: http://0.0.0.0:${PORT}`);
-  console.log(`📂 Local uploads directory: ${UPLOAD_ROOT}`);
+  const lanAddress = getLanAddress();
+  console.log("========================================");
+  console.log("ShikshaSarthi Local School Server started");
+  console.log("Backend status: running");
+  console.log(`Local URL: http://localhost:${appConfig.frontendPort}`);
+  console.log(`LAN URL: http://${lanAddress}:${appConfig.frontendPort}`);
+  console.log(`Mode: ${appConfig.mode}`);
+  console.log(`Version: ${appConfig.version}`);
+  console.log(`Sync: ${appConfig.syncAutoEnabled ? "enabled" : "disabled"}`);
+  console.log(`AI hints: ${appConfig.aiHintsEnabled ? "enabled" : "disabled"}`);
+  console.log(`Cloudinary: ${appConfig.cloudinaryEnabled ? "enabled" : "disabled"}`);
+  console.log(`Local uploads directory: ${UPLOAD_ROOT}`);
+  console.log("========================================");
 });

@@ -1,68 +1,91 @@
-# ─── ShikshaSarthi – Docker Compose ─────────────────────────────────────────
-# Spins up the full stack: app (nginx + Node backend) + MongoDB.
+# ShikshaSarthi - Local School Server
 #
-# Usage:
-#   docker compose up -d
-#   docker compose logs -f
-#   docker compose down
-# ─────────────────────────────────────────────────────────────────────────────
+# First-time setup:
+#   cp .env.local-school.example .env
+#   docker compose up -d --build
 
 services:
-
-  # ── App (frontend + backend) ─────────────────────────────────────────────
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    image: shiksha-sarthi:latest
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/.}
+        VITE_CLOUDINARY_ENABLED: ${VITE_CLOUDINARY_ENABLED:-false}
+    image: shiksha-sarthi:local-school
     container_name: shiksha-app
     restart: unless-stopped
-    ports:
-      - "6091:80"                 # ← map host port 6091 → nginx port 80
+    env_file:
+      - .env
     environment:
-      # ── MongoDB ──
-      MONGO_URI: "mongodb://mongo:27017/app"
-      MONGO_URI_LOCAL: "mongodb://mongo:27017/app"
-      USE_LOCAL_DB: "false"
-
-      # ── Backend ──
-      BACKEND_HOST: "127.0.0.1"   # nginx talks to node on localhost
-      BACKEND_PORT: "5000"
-      NODE_ENV: "production"
-
-      # ── App config ──
-      APP_VERSION: "1.0.0"
-      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
-      CLOUDINARY_CLOUD_NAME: "${CLOUDINARY_CLOUD_NAME:-}"
-      CLOUDINARY_UPLOAD_PRESET: "${CLOUDINARY_UPLOAD_PRESET:-}"
-      CLOUDINARY_SYNC_FOLDER: "${CLOUDINARY_SYNC_FOLDER:-offline_sync}"
-      SYNC_AUTO_ENABLED: "false"
-      AUDIO_CACHE_TTL_MS: "1296000000"
+      NODE_ENV: production
+      BACKEND_HOST: 127.0.0.1
+      BACKEND_PORT: ${PORT:-5000}
+      PORT: ${PORT:-5000}
+      FRONTEND_PORT: ${FRONTEND_PORT:-6050}
+      APP_MODE: ${APP_MODE:-local-school}
+      APP_VERSION: ${APP_VERSION:-1.0.0}
+      APP_RELEASE_DATE: ${APP_RELEASE_DATE:-2026-06-29}
+      USE_LOCAL_DB: ${USE_LOCAL_DB:-true}
+      MONGO_URI_LOCAL: ${MONGO_URI_LOCAL:-mongodb://mongo:27017/app}
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/app}
+      SYNC_AUTO_ENABLED: ${SYNC_AUTO_ENABLED:-false}
+      SYNC_NODE_ROLE: ${SYNC_NODE_ROLE:-local}
+      SYNC_REMOTE_URL: ${SYNC_REMOTE_URL:-}
+      AI_HINTS_ENABLED: ${AI_HINTS_ENABLED:-false}
+      CLOUDINARY_ENABLED: ${CLOUDINARY_ENABLED:-false}
+      LOCAL_UPLOADS_ENABLED: ${LOCAL_UPLOADS_ENABLED:-true}
+      BACKUP_ENABLED: ${BACKUP_ENABLED:-true}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      BACKUP_DIR: /app/backend/backups
+      AUDIO_CACHE_TTL_MS: ${AUDIO_CACHE_TTL_MS:-1296000000}
+      UPDATE_INSTALL_ENABLED: ${UPDATE_INSTALL_ENABLED:-false}
+      UPDATE_INSTALL_DIR: ${UPDATE_INSTALL_DIR:-/app/backend/updates/staged}
+      UPDATE_ROLLBACK_DIR: ${UPDATE_ROLLBACK_DIR:-/app/backend/updates/rollback}
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+      AWS_CONTROL_API_URL: ${AWS_CONTROL_API_URL:-}
+      AWS_CONTROL_API_KEY: ${AWS_CONTROL_API_KEY:-}
+      AWS_SCHOOL_ID: ${AWS_SCHOOL_ID:-SCHOOL001}
+      AWS_NODE_ID: ${AWS_NODE_ID:-SCHOOL001-LAB-01}
+      AWS_UPDATES_BUCKET: ${AWS_UPDATES_BUCKET:-}
+      AWS_SCHOOL_DATA_BUCKET: ${AWS_SCHOOL_DATA_BUCKET:-}
+      AWS_SYNC_ENABLED: ${AWS_SYNC_ENABLED:-false}
+      AWS_SYNC_INTERVAL_MS: ${AWS_SYNC_INTERVAL_MS:-60000}
+      AWS_SYNC_START_DELAY_MS: ${AWS_SYNC_START_DELAY_MS:-10000}
+      AWS_BACKUP_SYNC_ENABLED: ${AWS_BACKUP_SYNC_ENABLED:-true}
+      AWS_VIDEO_SYNC_ENABLED: ${AWS_VIDEO_SYNC_ENABLED:-true}
+      AWS_UPDATE_CHECK_ENABLED: ${AWS_UPDATE_CHECK_ENABLED:-true}
+      AWS_UPDATE_CHANNEL: ${AWS_UPDATE_CHANNEL:-stable}
+      AWS_SYNC_MARK_UPLOADED_RECORDS: ${AWS_SYNC_MARK_UPLOADED_RECORDS:-false}
+    ports:
+      - "${FRONTEND_PORT:-6050}:80"
     depends_on:
       mongo:
         condition: service_healthy
     volumes:
       - uploads_data:/app/uploads
+      - backups_data:/app/backend/backups
+      - updates_data:/app/backend/updates
       - audio_cache:/app/backend/data/audio-cache
 
-  # ── MongoDB ──────────────────────────────────────────────────────────────
   mongo:
     image: mongo:7
     container_name: shiksha-mongo
     restart: unless-stopped
-    ports:
-      - "27017:27017"
     environment:
       MONGO_INITDB_DATABASE: app
     volumes:
       - mongo_data:/data/db
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok'"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 10s
 
 volumes:
   mongo_data:
   uploads_data:
+  backups_data:
+  updates_data:
   audio_cache:

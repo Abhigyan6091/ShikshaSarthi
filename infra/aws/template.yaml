@@ -1,0 +1,320 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: ShikshaSarthi Phase 2 lightweight AWS control plane.
+
+Parameters:
+  ControlApiKey:
+    Type: String
+    NoEcho: true
+    Description: API key required for protected control endpoints.
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    CodeUri: src/
+    Timeout: 15
+    MemorySize: 256
+    Environment:
+      Variables:
+        CONTROL_API_KEY: !Ref ControlApiKey
+        UPDATES_BUCKET: !Ref ShikshaUpdatesBucket
+        SCHOOL_DATA_BUCKET: !Ref ShikshaSchoolDataBucket
+        SCHOOLS_TABLE: !Ref SchoolsTable
+        VERSIONS_TABLE: !Ref VersionsTable
+        SYNC_LOGS_TABLE: !Ref SyncLogsTable
+Resources:
+  ShikshaUpdatesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  ShikshaSchoolDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  SchoolsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: schoolId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: schoolId
+          KeyType: HASH
+
+  VersionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: version
+          AttributeType: S
+      KeySchema:
+        - AttributeName: version
+          KeyType: HASH
+
+  SyncLogsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: schoolId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: schoolId
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
+
+  ControlHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowHeaders:
+          - content-type
+          - x-api-key
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+
+  FunctionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:PutItem
+              - dynamodb:Scan
+              - dynamodb:UpdateItem
+            Resource:
+              - !GetAtt SchoolsTable.Arn
+              - !GetAtt VersionsTable.Arn
+              - !GetAtt SyncLogsTable.Arn
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+            Resource:
+              - !Sub "${ShikshaUpdatesBucket.Arn}/releases/*"
+              - !Sub "${ShikshaSchoolDataBucket.Arn}/schools/*"
+
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/health.handler
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /health
+            Method: GET
+
+  GetLatestVersionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/getLatestVersion.handler
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /version/latest
+            Method: GET
+
+  PublishVersionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/publishVersion.handler
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /version/publish
+            Method: POST
+
+  RegisterSchoolFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/registerSchool.handler
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /school/register
+            Method: POST
+
+  HeartbeatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/heartbeat.handler
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /school/heartbeat
+            Method: POST
+
+  GetSchoolStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/getSchoolStatus.handler
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /school/{schoolId}/status
+            Method: GET
+
+  RequestSyncUploadUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/requestSyncUploadUrl.handler
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /sync/request-upload-url
+            Method: POST
+
+  RequestSyncDownloadUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/requestSyncDownloadUrl.handler
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /sync/request-download-url
+            Method: POST
+
+  CompleteSyncFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/completeSync.handler
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /sync/complete
+            Method: POST
+
+  RequestBackupUploadUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/requestBackupUploadUrl.handler
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /backup/request-upload-url
+            Method: POST
+
+  CompleteBackupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/completeBackup.handler
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /backup/complete
+            Method: POST
+
+  RequestVideoUploadUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/requestVideoUploadUrl.handler
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /video/request-upload-url
+            Method: POST
+
+  CompleteVideoUploadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/completeVideoUpload.handler
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /video/complete
+            Method: POST
+
+Outputs:
+  ApiEndpoint:
+    Description: HTTP API endpoint for the ShikshaSarthi control plane.
+    Value: !Sub "https://${ControlHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  UpdatesBucketName:
+    Description: S3 bucket for latest.json, release packages, image tar files, and installers.
+    Value: !Ref ShikshaUpdatesBucket
+  SchoolDataBucketName:
+    Description: S3 bucket for school backups, videos, sync payloads, and logs.
+    Value: !Ref ShikshaSchoolDataBucket
+  SchoolsTableName:
+    Value: !Ref SchoolsTable
+  VersionsTableName:
+    Value: !Ref VersionsTable
+  SyncLogsTableName:
+    Value: !Ref SyncLogsTable

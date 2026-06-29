@@ -1,0 +1,199 @@
+name: Release ShikshaSarthi
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version without v prefix"
+        required: true
+        type: string
+      channel:
+        description: "Update channel"
+        required: true
+        default: "stable"
+        type: choice
+        options:
+          - stable
+          - beta
+
+permissions:
+  contents: write
+  id-token: write
+
+env:
+  NODE_VERSION: "20"
+  RELEASE_CHANNEL: ${{ github.event.inputs.channel || 'stable' }}
+
+jobs:
+  build-web-and-update:
+    name: Build Docker update package
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      package_name: ${{ steps.package.outputs.package_name }}
+      manifest_name: aws-update-manifest.json
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          npm version "$VERSION" --no-git-tag-version
+          npm --prefix backend version "$VERSION" --no-git-tag-version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          VITE_API_URL: /.
+          VITE_CLOUDINARY_ENABLED: "false"
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --build-arg VITE_API_URL=/. \
+            --build-arg VITE_CLOUDINARY_ENABLED=false \
+            -t shiksha-sarthi:local-school \
+            -t shiksha-sarthi:${{ steps.version.outputs.version }} \
+            .
+
+      - name: Save Docker image
+        run: |
+          mkdir -p dist-release
+          docker save shiksha-sarthi:local-school -o dist-release/shiksha-sarthi-image-${{ steps.version.outputs.version }}.tar
+
+      - name: Build update bundle
+        id: package
+        run: |
+          scripts/package-update-bundle.sh "${{ steps.version.outputs.version }}"
+          echo "package_name=shiksha-sarthi-update-${{ steps.version.outputs.version }}.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Upload update artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: shiksha-sarthi-update-${{ steps.version.outputs.version }}
+          path: |
+            dist-release/shiksha-sarthi-update-${{ steps.version.outputs.version }}.zip
+            dist-release/shiksha-sarthi-update-${{ steps.version.outputs.version }}.zip.sha256
+            dist-release/aws-update-manifest.json
+
+  build-desktop-windows:
+    name: Build Windows exe
+    runs-on: windows-latest
+    needs: build-web-and-update
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: shikshasarthi-launcher/desktop-wrapper/package-lock.json
+
+      - name: Install desktop dependencies
+        working-directory: shikshasarthi-launcher/desktop-wrapper
+        run: npm ci
+
+      - name: Build exe
+        working-directory: shikshasarthi-launcher/desktop-wrapper
+        run: npx electron-builder --win --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShikshaSarthi-Windows-${{ needs.build-web-and-update.outputs.version }}
+          path: shikshasarthi-launcher/desktop-wrapper/dist/*.exe
+
+  build-desktop-linux:
+    name: Build Linux deb
+    runs-on: ubuntu-latest
+    needs: build-web-and-update
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: shikshasarthi-launcher/desktop-wrapper/package-lock.json
+
+      - name: Install desktop dependencies
+        working-directory: shikshasarthi-launcher/desktop-wrapper
+        run: npm ci
+
+      - name: Build deb
+        working-directory: shikshasarthi-launcher/desktop-wrapper
+        run: npx electron-builder --linux deb --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShikshaSarthi-Linux-${{ needs.build-web-and-update.outputs.version }}
+          path: shikshasarthi-launcher/desktop-wrapper/dist/*.deb
+
+  publish-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs:
+      - build-web-and-update
+      - build-desktop-windows
+      - build-desktop-linux
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-artifacts/**/*
+          generate_release_notes: true
+
+  publish-aws:
+    name: Publish AWS update package
+    runs-on: ubuntu-latest
+    needs: build-web-and-update
+    if: ${{ vars.AWS_UPDATES_BUCKET != '' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: shiksha-sarthi-update-${{ needs.build-web-and-update.outputs.version }}
+          path: dist-release
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
+
+      - name: Upload package and manifest to S3
+        shell: bash
+        run: |
+          VERSION="${{ needs.build-web-and-update.outputs.version }}"
+          CHANNEL="${{ env.RELEASE_CHANNEL }}"
+          BUCKET="${{ vars.AWS_UPDATES_BUCKET }}"
+          aws s3 cp "dist-release/shiksha-sarthi-update-$VERSION.zip" "s3://$BUCKET/updates/$CHANNEL/shiksha-sarthi-update-$VERSION.zip"
+          aws s3 cp "dist-release/shiksha-sarthi-update-$VERSION.zip.sha256" "s3://$BUCKET/updates/$CHANNEL/shiksha-sarthi-update-$VERSION.zip.sha256"
+          aws s3 cp "dist-release/aws-update-manifest.json" "s3://$BUCKET/updates/$CHANNEL/manifest.json"

@@ -4,6 +4,7 @@ const AudioQuestion = require("../models/AudioQuestion");
 const AudioQuizAttempt = require("../models/AudioQuizAttempt");
 const audioCache = require("../utils/audioCache");
 const { ensureCloudUrlLocalized } = require("../sync/mediaSyncService");
+const { appConfig } = require("../config/appConfig");
 const path = require('path');
 const fs = require('fs');
 
@@ -244,7 +245,7 @@ router.get("/:class/:subject/:topic", async (req, res) => {
       .filter((url) => isHttpUrl(url));
 
     // Start caching in background (don't wait for it)
-    if (audioUrls.length > 0) {
+    if (appConfig.cloudinaryEnabled && audioUrls.length > 0) {
       audioCache.batchDownload(audioUrls).then(results => {
         console.log(`Audio caching complete: ${results.success.length} cached, ${results.failed.length} failed`);
       }).catch(err => {
@@ -263,7 +264,7 @@ router.get("/:class/:subject/:topic", async (req, res) => {
         continue;
       }
 
-      if (isHttpUrl(normalizedAudio) && normalizedAudio.includes("res.cloudinary.com")) {
+      if (appConfig.cloudinaryEnabled && isHttpUrl(normalizedAudio) && normalizedAudio.includes("res.cloudinary.com")) {
         try {
           const localized = await ensureCloudUrlLocalized(normalizedAudio);
           if (localized && localized.localUrl) {

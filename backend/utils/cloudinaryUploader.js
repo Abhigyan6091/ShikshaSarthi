@@ -2,8 +2,13 @@ const fs = require("fs");
 const path = require("path");
 const fetch = require("node-fetch");
 const FormData = require("form-data");
+const { appConfig } = require("../config/appConfig");
 
 function ensureCloudinaryConfig() {
+  if (!appConfig.cloudinaryEnabled) {
+    throw new Error("Cloudinary uploads are disabled in offline mode");
+  }
+
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET || "ml_default";
 

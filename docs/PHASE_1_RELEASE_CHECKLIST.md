@@ -1,0 +1,28 @@
+# Phase 1 Release Checklist
+
+- [ ] App starts locally with `docker compose up -d --build`
+- [ ] MongoDB connects
+- [ ] `GET /health` returns local-school mode
+- [ ] `GET /app/version` returns version, release date, mode, and node role
+- [ ] `GET /app/status` returns database, storage, sync, and feature status
+- [ ] Super Admin login works
+- [ ] School Admin login works
+- [ ] Teacher login works
+- [ ] Student login works
+- [ ] Questions load
+- [ ] Quizzes work
+- [ ] Reports work
+- [ ] Uploads are stored locally
+- [ ] Uploaded media is served from local `/uploads` or `/media` paths
+- [ ] Gemini is disabled without crashes
+- [ ] Cloudinary is disabled without crashes
+- [ ] Backup creation works
+- [ ] Backup listing works
+- [ ] LAN access works from another device through `http://<server-ip>:6050`
+- [ ] Restart does not delete MongoDB data
+- [ ] Restart does not delete uploads
+- [ ] `docker compose down` followed by `docker compose up -d` does not delete data
+- [ ] No secrets committed
+- [ ] No real API keys committed
+- [ ] `UPDATE_API_KEY` has no hardcoded production fallback
+- [ ] Windows helper scripts exist for future installer/EXE packaging

@@ -35,11 +35,45 @@ ShikshaSarthi is a comprehensive educational platform designed for NMMS (Nationa
 
 ## Quick Start
 
+## Local School Server Deployment
+
+Phase 1 supports running ShikshaSarthi as an offline-first school LAN server. AWS sync, Tailscale, Gemini, and Cloudinary are not required for this phase. Internet is optional after Docker images and dependencies are installed.
+
+```sh
+cp .env.local-school.example .env
+docker compose up -d --build
+```
+
+Open the app on the server:
+
+```text
+http://localhost:6050
+```
+
+Teachers and students on the same LAN can open:
+
+```text
+http://<server-ip>:6050
+```
+
+In local-school mode, Gemini AI hints and Cloudinary uploads are disabled by default. Uploads, MongoDB data, backups, and audio cache are stored in Docker volumes so restarts do not delete school data.
+
+Useful commands:
+
+```sh
+./scripts/health-check.sh
+./scripts/backup-local-school.sh
+./scripts/logs-local-school.sh
+./scripts/stop-local-school.sh
+```
+
+See `docs/LOCAL_SCHOOL_DEPLOYMENT.md` for the full school IT guide and `docs/PHASE_1_RELEASE_CHECKLIST.md` for release testing.
+
 ### Prerequisites
 
 - Node.js & npm ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
 - MongoDB database
-- Gemini API key (for AI-powered hints)
+- Gemini API key (optional; disabled by default in local-school mode)
 
 ### Installation
 
@@ -62,7 +96,7 @@ npm install
 # GEMINI_API_KEY=your_gemini_api_key
 
 # Create .env in root directory with:
-# VITE_API_URL=http://localhost:5000
+# VITE_API_URL=/.
 ```
 
 ### Running the Application
@@ -265,3 +299,8 @@ For issues, questions, or contributions, please open an issue on GitHub.
 ---
 
 **Built with ❤️ for NMMS aspirants**
+### Phase 3 Update And Sync
+
+Phase 3 adds guarded update staging/rollback and manual AWS sync export upload.
+
+See [docs/PHASE_3_UPDATE_AND_SYNC.md](docs/PHASE_3_UPDATE_AND_SYNC.md).

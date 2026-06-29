@@ -11,7 +11,7 @@
   "scripts": {
     "start": "electron .",
     "build": "electron-builder --win",
-    "build:linux": "electron-builder --linux"
+    "build:linux": "electron-builder --linux deb"
   },
   "author": "ShikshaSarthi <admin@shikshasarthi.com>",
   "license": "ISC",
@@ -31,10 +31,7 @@
       "target": "portable"
     },
     "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
+      "target": ["deb"],
       "category": "Education"
     },
     "files": [
@@ -44,25 +41,26 @@
     ],
     "extraResources": [
       {
-        "from": "../",
+        "from": "../../",
         "to": "launcher-data",
         "filter": [
-          "docker-compose.yml",
-          ".env",
-          "sync-agent/**/*",
-          "update-agent/**/*",
-          "Dockerfile.lean"
-        ]
-      },
-      {
-        "from": "../../",
-        "to": "app-source",
-        "filter": [
-          "backend/**/*",
-          "dist/**/*",
-          "nginx.conf",
-          "docker-entrypoint.sh",
-          "Dockerfile.lean"
+          "**/*",
+          "!.git/**/*",
+          "!.env",
+          "!backend/.env",
+          "!node_modules/**/*",
+          "!backend/node_modules/**/*",
+          "!shikshasarthi-launcher/desktop-wrapper/node_modules/**/*",
+          "!backend/backups/**/*",
+          "!backend/uploads/**/*",
+          "!backend/data/audio-cache/**/*",
+          "!uploads/**/*",
+          "!dist/**/*",
+          "!dist-release/**/*",
+          "!releases/**/*",
+          "!shikshasarthi-launcher/data/**/*",
+          "!QuestionGenerator/VQG/**/*",
+          "!question_bank/textbooks/**/*"
         ]
       }
     ]

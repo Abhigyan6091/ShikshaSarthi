@@ -1,0 +1,10 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "shiksha-sarthi-control-plane"
+resolve_s3 = true
+s3_prefix = "shiksha-sarthi-control-plane"
+region = "ap-south-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "ControlApiKey=\"replace-with-a-long-random-value\""
+confirm_changeset = true

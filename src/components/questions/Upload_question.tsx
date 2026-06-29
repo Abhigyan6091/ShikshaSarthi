@@ -1,5 +1,6 @@
 import { useState } from "react";
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || "";
+const CLOUDINARY_ENABLED = import.meta.env.VITE_CLOUDINARY_ENABLED === "true";
 export default function SimpleQuestionForm() {
   const initialFormState = {
     subject: "",
@@ -75,6 +76,10 @@ export default function SimpleQuestionForm() {
   };
 
   const uploadToCloudinary = async (file, resource_type = "image") => {
+    if (!CLOUDINARY_ENABLED) {
+      return null;
+    }
+
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", "ml_default");
@@ -115,7 +120,7 @@ export default function SimpleQuestionForm() {
         uploadedLocalPath = localUpload.localPath || "";
         uploadedCloudUrl = localUpload.cloudUrl || "";
       } catch (localError) {
-        // Fallback to direct cloud upload if local media endpoint is unavailable.
+        // Fallback to direct cloud upload only when explicitly enabled.
         uploadedUrl = await uploadToCloudinary(file, isVideo ? "video" : "image");
         uploadedCloudUrl = uploadedUrl || "";
       }

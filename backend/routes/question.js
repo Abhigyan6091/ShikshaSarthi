@@ -1,34 +1,51 @@
 const express = require("express");
 const router = express.Router();
 const Question = require("../models/Question");
+const { appConfig } = require("../config/appConfig");
 require("dotenv").config();
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const OFFLINE_HINT_MESSAGE = "AI hints are unavailable in offline mode.";
 
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+async function generateAiHint({ question, options }) {
+  if (!appConfig.aiHintsEnabled) {
+    return OFFLINE_HINT_MESSAGE;
+  }
 
-// Create question with Gemini-generated hint
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    return OFFLINE_HINT_MESSAGE;
+  }
+
+  const geminiApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+  const prompt = `Provide a helpful hint (max 50 words) for this multiple-choice question in hindi:\nQuestion: ${question}\nOptions: ${(options || []).join(", ")}\nHint:`;
+
+  try {
+    const geminiResponse = await fetch(geminiApiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    });
+
+    if (!geminiResponse.ok) {
+      console.warn(`Gemini hint generation failed with status ${geminiResponse.status}`);
+      return OFFLINE_HINT_MESSAGE;
+    }
+
+    const geminiData = await geminiResponse.json();
+    return geminiData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || OFFLINE_HINT_MESSAGE;
+  } catch (error) {
+    console.warn("Gemini hint generation skipped:", error.message);
+    return OFFLINE_HINT_MESSAGE;
+  }
+}
+
+// Create question with optional Gemini-generated hint.
 router.post("/", async (req, res) => {
   try {
-    let { subject, topic, class: className, question, options, hint } = req.body;
+    let { question, options, hint } = req.body;
 
     if (!hint?.text || hint.text.trim() === "") {
-      const prompt = `Provide a helpful hint (max 50 words) for this multiple-choice question in hindi:\nQuestion: ${question}\nOptions: ${options.join(", ")}\nHint:`;
-
-      const requestBody = {
-        contents: [{ parts: [{ text: prompt }] }],
-      };
-
-      const geminiResponse = await fetch(GEMINI_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
-
-      const geminiData = await geminiResponse.json();
-
-      const generatedHint = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-      hint = { ...hint, text: generatedHint };
+      hint = { ...hint, text: await generateAiHint({ question, options }) };
     }
 
     const questionToSave = new Question({ ...req.body, hint });
@@ -60,7 +77,7 @@ router.post("/teacher", async (req, res) => {
 });
 
 // Get all questions
-router.get("/", async (req, res) => {
+router.get("/", async (_req, res) => {
   try {
     const questions = await Question.find();
     res.status(200).json(questions);
@@ -109,7 +126,6 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-
 router.get("/all/topics/:subject", async (req, res) => {
   try {
     const { subject } = req.params;
@@ -140,7 +156,7 @@ router.get("/topics/:class/:subject", async (req, res) => {
     const { class: className, subject } = req.params;
     const topics = await Question.distinct("topic", {
       class: className,
-      subject: subject,
+      subject,
     });
     res.status(200).json({ class: className, subject, topics });
   } catch (err) {
@@ -162,6 +178,4 @@ router.get("/:class/:subject/:topic", async (req, res) => {
   }
 });
 
-
 module.exports = router;
-

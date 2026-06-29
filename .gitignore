@@ -3,6 +3,10 @@ logs
 *.log
 .env
 .env*
+!.env.example
+!.env.local-school.example
+!.env.central-aws.example
+!backend/.env.example
 .env*.local
 npm-debug.log*
 yarn-debug.log*
@@ -11,6 +15,15 @@ pnpm-debug.log*
 lerna-debug.log*
 
 uploads
+backend/backups/*
+!backend/backups/.gitkeep
+backend/updates/downloaded/*
+!backend/updates/downloaded/.gitkeep
+backend/updates/update-state.json
+dist-release/
+releases/
+infra/aws/samconfig.toml
+infra/aws/.aws-sam/
 node_modules
 dist
 dist-ssr

@@ -1,0 +1,12 @@
+{
+  "name": "shiksha-sarthi-aws-control-plane",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.614.0",
+    "@aws-sdk/client-s3": "^3.614.0",
+    "@aws-sdk/lib-dynamodb": "^3.614.0",
+    "@aws-sdk/s3-request-presigner": "^3.614.0"
+  }
+}
