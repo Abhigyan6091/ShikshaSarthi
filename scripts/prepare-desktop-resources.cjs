@@ -78,7 +78,8 @@ if (!fs.existsSync(backendLock)) {
 
 if (process.env.SKIP_BACKEND_NPM_CI !== 'true') {
   console.log('Installing backend production dependencies for desktop bundle...');
-  execFileSync('npm', ['ci', '--omit=dev'], {
+  const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  execFileSync(npmCommand, ['ci', '--omit=dev'], {
     cwd: backendRoot,
     stdio: 'inherit',
     env: process.env,
