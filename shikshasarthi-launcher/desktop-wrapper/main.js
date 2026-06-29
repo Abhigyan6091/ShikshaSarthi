@@ -58,7 +58,6 @@ function createWindow() {
         width: 900,
         height: 700,
         resizable: true,
-        icon: path.join(__dirname, 'icon.ico'),
         title: 'ShikshaSarthi Hub',
         show: false,
         backgroundColor: '#0f172a',

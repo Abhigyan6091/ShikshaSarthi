@@ -10,8 +10,9 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --win",
-    "build:linux": "electron-builder --linux deb"
+    "prepare:resources": "node ../../scripts/prepare-desktop-resources.cjs",
+    "build": "npm run prepare:resources && electron-builder --win",
+    "build:linux": "npm run prepare:resources && electron-builder --linux deb"
   },
   "author": "ShikshaSarthi <admin@shikshasarthi.com>",
   "license": "ISC",
@@ -27,7 +28,6 @@
     "productName": "ShikshaSarthi",
     "publish": null,
     "win": {
-      "icon": "icon.ico",
       "target": "portable"
     },
     "linux": {
@@ -41,26 +41,10 @@
     ],
     "extraResources": [
       {
-        "from": "../../",
+        "from": "launcher-data",
         "to": "launcher-data",
         "filter": [
-          "**/*",
-          "!.git/**/*",
-          "!.env",
-          "!backend/.env",
-          "!node_modules/**/*",
-          "!backend/node_modules/**/*",
-          "!shikshasarthi-launcher/desktop-wrapper/node_modules/**/*",
-          "!backend/backups/**/*",
-          "!backend/uploads/**/*",
-          "!backend/data/audio-cache/**/*",
-          "!uploads/**/*",
-          "!dist/**/*",
-          "!dist-release/**/*",
-          "!releases/**/*",
-          "!shikshasarthi-launcher/data/**/*",
-          "!QuestionGenerator/VQG/**/*",
-          "!question_bank/textbooks/**/*"
+          "**/*"
         ]
       }
     ]
