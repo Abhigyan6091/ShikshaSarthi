@@ -308,8 +308,17 @@
             cloudText.textContent = 'Online when internet is available';
         }
 
-        window.electronAPI.onDockerStatus((status) => {
-            if (status === 'running') {
+        window.electronAPI.onDockerStatus((payload) => {
+            const status = typeof payload === 'string' ? payload : payload?.state;
+            const message = typeof payload === 'object' ? payload?.message : '';
+
+            if (status === 'starting') {
+                dockerDot.className = 'dot warn';
+                dockerText.textContent = 'Starting...';
+                runtimeLogs.style.color = 'var(--status-warn)';
+                runtimeLogs.innerText = '> Starting Docker Engine services...\n> Waiting for local containers.';
+                isDockerReady = false;
+            } else if (status === 'running') {
                 dockerDot.className = 'dot ok';
                 dockerText.textContent = 'Operational';
                 runtimeLogs.style.color = 'var(--status-ok)';
@@ -320,7 +329,7 @@
                 dockerDot.className = 'dot err';
                 dockerText.textContent = 'Faulted';
                 runtimeLogs.style.color = 'var(--status-err)';
-                runtimeLogs.innerHTML = '> ENGINE ERROR: Docker processes failed.<br>> ACTION: Please ensure <b>Docker Desktop</b> is running on this laptop and try again.';
+                runtimeLogs.innerText = `> ENGINE ERROR: Docker services failed.\n> ACTION: ${message || 'Start Docker Engine/Compose and try again.'}`;
                 isDockerReady = false;
             }
         });
