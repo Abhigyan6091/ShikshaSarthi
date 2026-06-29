@@ -31,7 +31,7 @@ async function repairLocalPasswordFromAtlas({
   lookupQuery,
   candidatePassword,
 }) {
-  const sourceUri = String(process.env.MONGO_URI || "").trim();
+  const sourceUri = String(process.env.SYNC_SOURCE_URI || process.env.MONGO_URI_REMOTE || process.env.MONGO_URI || "").trim();
   const sourceDbName = String(process.env.SYNC_SOURCE_DB_NAME || "test").trim();
 
   if (!sourceUri || !model || !lookupQuery || !candidatePassword) {
@@ -212,7 +212,7 @@ async function repairAuthCollectionHashes({ sourceDb, model, key }) {
 }
 
 async function repairAllLocalAuthPasswordsFromAtlas() {
-  const sourceUri = String(process.env.MONGO_URI || "").trim();
+  const sourceUri = String(process.env.SYNC_SOURCE_URI || process.env.MONGO_URI_REMOTE || process.env.MONGO_URI || "").trim();
   const sourceDbName = String(process.env.SYNC_SOURCE_DB_NAME || "test").trim();
 
   if (!AUTH_HASH_REPAIR_ENABLED) {

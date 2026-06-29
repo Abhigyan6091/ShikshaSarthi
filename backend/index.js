@@ -1,11 +1,13 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
 require("dotenv").config();
 
 process.env.APP_MODE = process.env.APP_MODE || "local-school";
 process.env.USE_LOCAL_DB = process.env.USE_LOCAL_DB || "true";
-process.env.SYNC_AUTO_ENABLED = process.env.SYNC_AUTO_ENABLED || "false";
+process.env.SYNC_AUTO_ENABLED = process.env.SYNC_AUTO_ENABLED || "true";
 process.env.SYNC_NODE_ROLE = process.env.SYNC_NODE_ROLE || "local";
 process.env.AI_HINTS_ENABLED = process.env.AI_HINTS_ENABLED || "false";
 process.env.CLOUDINARY_ENABLED = process.env.CLOUDINARY_ENABLED || "false";
@@ -116,6 +118,15 @@ app.use("/api/aws", awsRoutes);
 // serves the VQG frontend + API under /vqg/*.
 app.use("/vqg", vqgRouter);
 
+const frontendDistDir = process.env.FRONTEND_DIST_DIR
+  ? path.resolve(process.env.FRONTEND_DIST_DIR)
+  : null;
+const frontendIndexPath = frontendDistDir ? path.join(frontendDistDir, "index.html") : null;
+
+if (frontendDistDir && fs.existsSync(frontendIndexPath)) {
+  app.use(express.static(frontendDistDir));
+}
+
 app.get("/health", (_req, res) => {
   const status = getPublicStatus(mongoose, UPLOAD_ROOT);
   res.status(status.ok ? 200 : 503).json({
@@ -182,9 +193,15 @@ app.get("/hi", (_req, res) => {
   res.send("Welcome to the NMMS Prep API!");
 });
 
-app.get("/", (_req, res) => {
-  res.send("Backend is working");
-});
+if (frontendDistDir && fs.existsSync(frontendIndexPath)) {
+  app.use((_req, res) => {
+    res.sendFile(frontendIndexPath);
+  });
+} else {
+  app.get("/", (_req, res) => {
+    res.send("Backend is working");
+  });
+}
 
 const PORT = appConfig.port;
 

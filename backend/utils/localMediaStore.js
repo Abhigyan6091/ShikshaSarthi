@@ -3,7 +3,7 @@ const path = require("path");
 const crypto = require("crypto");
 
 const PROJECT_ROOT = path.join(__dirname, "..", "..");
-const UPLOAD_ROOT = path.join(PROJECT_ROOT, "uploads");
+const UPLOAD_ROOT = path.resolve(process.env.UPLOAD_ROOT || path.join(PROJECT_ROOT, "uploads"));
 
 const MEDIA_DIRECTORIES = {
   images: path.join(UPLOAD_ROOT, "images"),

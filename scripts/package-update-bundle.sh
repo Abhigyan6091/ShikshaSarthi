@@ -8,22 +8,10 @@ RELEASE_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 OUT_DIR="$ROOT_DIR/dist-release"
 WORK_DIR="$OUT_DIR/update-bundle"
 PACKAGE_NAME="shiksha-sarthi-update-$VERSION.zip"
-IMAGE_TAR="${IMAGE_TAR:-$OUT_DIR/shiksha-sarthi-image-$VERSION.tar}"
 
 rm -rf "$WORK_DIR"
-mkdir -p "$WORK_DIR/scripts" "$OUT_DIR"
-
-if [[ -f "$IMAGE_TAR" ]]; then
-  cp "$IMAGE_TAR" "$WORK_DIR/docker-image.tar"
-else
-  echo "Warning: IMAGE_TAR not found at $IMAGE_TAR; bundle will not include a Docker image." >&2
-fi
-
-cp "$ROOT_DIR/docker-compose.yml" "$WORK_DIR/docker-compose.yml"
+mkdir -p "$WORK_DIR" "$OUT_DIR"
 cp "$ROOT_DIR/.env.local-school.example" "$WORK_DIR/.env.local-school.example"
-cp "$ROOT_DIR/scripts/apply-update.sh" "$WORK_DIR/scripts/apply-update.sh"
-cp "$ROOT_DIR/scripts/rollback-update.sh" "$WORK_DIR/scripts/rollback-update.sh"
-cp "$ROOT_DIR/scripts/backup-local-school.sh" "$WORK_DIR/scripts/backup-local-school.sh"
 
 cat > "$WORK_DIR/release-metadata.json" <<JSON
 {
@@ -32,9 +20,9 @@ cat > "$WORK_DIR/release-metadata.json" <<JSON
   "channel": "$CHANNEL",
   "releaseDate": "$RELEASE_DATE",
   "port": 6050,
-  "packageType": "full-docker-app-update",
+  "packageType": "desktop-installer-update",
   "preserves": [
-    "mongo_data",
+    "local_mongodb_data",
     "uploads_data",
     "backups_data",
     "updates_data",
@@ -61,7 +49,7 @@ cat > "$OUT_DIR/aws-update-manifest.json" <<JSON
   "packageSha256": "$SHA256",
   "mandatory": false,
   "releaseNotes": [
-    "Full app update package. Local MongoDB volumes and uploads are preserved."
+    "Desktop installer release. Local MongoDB data, credentials, uploads, and backups are preserved in the app data directory."
   ]
 }
 JSON

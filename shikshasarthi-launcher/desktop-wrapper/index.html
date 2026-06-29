@@ -239,8 +239,8 @@
                     <div class="status-badge"><div class="dot ok"></div> Connected</div>
                 </div>
                 <div class="status-row">
-                    <span class="status-label">Docker Container Engine</span>
-                    <div class="status-badge" id="docker-ui-status"><div class="dot warn" id="docker-dot"></div> <span id="docker-text">Starting...</span></div>
+                    <span class="status-label">Local Database & API Runtime</span>
+                    <div class="status-badge" id="runtime-ui-status"><div class="dot warn" id="runtime-dot"></div> <span id="runtime-text">Starting...</span></div>
                 </div>
                 <div class="status-row">
                     <span class="status-label">AWS Updates & Sync</span>
@@ -254,7 +254,7 @@
             <div>
                 <h2 class="panel-title">System Execution</h2>
                 <p id="instruction-text" class="instructions">
-                    Waiting for Docker container services to finalize startup. The web interface will be accessible shortly.
+                    Waiting for the local database and classroom API to finish startup. The web interface will be accessible shortly.
                 </p>
                 <div id="runtime-logs" class="logs">
                     > Executing health verification...
@@ -281,13 +281,13 @@
         const launchBtn = document.getElementById('launch-btn');
         const runtimeLogs = document.getElementById('runtime-logs');
 
-        const dockerDot = document.getElementById('docker-dot');
-        const dockerText = document.getElementById('docker-text');
+        const runtimeDot = document.getElementById('runtime-dot');
+        const runtimeText = document.getElementById('runtime-text');
         const cloudDot = document.getElementById('cloud-dot');
         const cloudText = document.getElementById('cloud-text');
 
         let currentUrl = 'http://localhost:6050';
-        let isDockerReady = false;
+        let isRuntimeReady = false;
 
         async function init() {
             const info = await window.electronAPI.getServerInfo();
@@ -308,36 +308,36 @@
             cloudText.textContent = 'Online when internet is available';
         }
 
-        window.electronAPI.onDockerStatus((payload) => {
+        window.electronAPI.onRuntimeStatus((payload) => {
             const status = typeof payload === 'string' ? payload : payload?.state;
             const message = typeof payload === 'object' ? payload?.message : '';
 
             if (status === 'starting') {
-                dockerDot.className = 'dot warn';
-                dockerText.textContent = 'Starting...';
+                runtimeDot.className = 'dot warn';
+                runtimeText.textContent = 'Starting...';
                 runtimeLogs.style.color = 'var(--status-warn)';
-                runtimeLogs.innerText = '> Starting Docker Engine services...\n> Waiting for local containers.';
-                isDockerReady = false;
+                runtimeLogs.innerText = '> Starting local database and API services...\n> Preparing offline classroom data.';
+                isRuntimeReady = false;
             } else if (status === 'running') {
-                dockerDot.className = 'dot ok';
-                dockerText.textContent = 'Operational';
+                runtimeDot.className = 'dot ok';
+                runtimeText.textContent = 'Operational';
                 runtimeLogs.style.color = 'var(--status-ok)';
-                runtimeLogs.innerText = '> All container processes online.\n> Ready to accept connections.';
-                isDockerReady = true;
+                runtimeLogs.innerText = '> Local database and API are online.\n> Ready to accept LAN connections.';
+                isRuntimeReady = true;
                 launchBtn.disabled = false;
             } else if (status === 'error') {
-                dockerDot.className = 'dot err';
-                dockerText.textContent = 'Faulted';
+                runtimeDot.className = 'dot err';
+                runtimeText.textContent = 'Faulted';
                 runtimeLogs.style.color = 'var(--status-err)';
-                runtimeLogs.innerText = `> ENGINE ERROR: Docker services failed.\n> ACTION: ${message || 'Start Docker Engine/Compose and try again.'}`;
-                isDockerReady = false;
+                runtimeLogs.innerText = `> RUNTIME ERROR: Local services failed.\n> ACTION: ${message || 'Restart ShikshaSarthi and try again.'}`;
+                isRuntimeReady = false;
             }
         });
 
         launchBtn.addEventListener('click', () => {
-            if (!isDockerReady) {
+            if (!isRuntimeReady) {
                 runtimeLogs.style.color = 'var(--status-warn)';
-                runtimeLogs.innerText = '> WARN: Forcing browser launch while engine is faulted...';
+                runtimeLogs.innerText = '> WARN: Opening dashboard before local services report ready...';
             }
             window.electronAPI.openExternal(currentUrl);
         });

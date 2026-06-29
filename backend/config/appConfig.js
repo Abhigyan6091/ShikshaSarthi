@@ -21,16 +21,59 @@ function readString(name, defaultValue = "") {
 
 function getLanAddress() {
   const interfaces = os.networkInterfaces();
+  const candidates = [];
 
-  for (const addresses of Object.values(interfaces)) {
+  for (const [name, addresses] of Object.entries(interfaces)) {
     for (const address of addresses || []) {
-      if (address.family === "IPv4" && !address.internal) {
-        return address.address;
-      }
+      if (address.family !== "IPv4" || address.internal) continue;
+      if (isIgnoredInterface(name) || isIgnoredAddress(address.address)) continue;
+
+      candidates.push({
+        address: address.address,
+        score: scoreLanAddress(name, address.address),
+      });
     }
   }
 
+  candidates.sort((left, right) => right.score - left.score);
+  if (candidates[0]) return candidates[0].address;
+
   return "<server-ip>";
+}
+
+function isIgnoredInterface(name = "") {
+  const normalized = String(name).toLowerCase();
+  return (
+    normalized.includes("docker") ||
+    normalized.startsWith("br-") ||
+    normalized.startsWith("veth") ||
+    normalized.startsWith("virbr") ||
+    normalized.startsWith("tailscale") ||
+    normalized.startsWith("zt") ||
+    normalized.startsWith("wg") ||
+    normalized.startsWith("tun") ||
+    normalized.startsWith("tap") ||
+    normalized.startsWith("ogstun")
+  );
+}
+
+function isIgnoredAddress(address = "") {
+  return address.startsWith("169.254.") || address.startsWith("100.");
+}
+
+function isPrivateLanAddress(address = "") {
+  const parts = address.split(".").map((part) => Number(part));
+  if (parts.length !== 4 || parts.some((part) => Number.isNaN(part))) return false;
+
+  const [a, b] = parts;
+  return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+}
+
+function scoreLanAddress(name, address) {
+  let score = 0;
+  if (isPrivateLanAddress(address)) score += 100;
+  if (/^(wl|wlan|wifi|en|eth)/i.test(name)) score += 50;
+  return score;
 }
 
 const appConfig = {

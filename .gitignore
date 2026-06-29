@@ -50,6 +50,7 @@ create-superadmin.js
 # Sync state files (ephemeral, regenerated at runtime)
 backend/data/sync-state.json
 backend/data/media-map.json
+backend/data/school-seed.ejson
 
 # Secret scripts with hardcoded API keys
 translatetohindi.js

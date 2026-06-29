@@ -488,7 +488,7 @@ async function runAutoSyncCycle(options = {}) {
   const originalRemoteUrl = normalizeRemoteUrl(options.remoteUrl || process.env.SYNC_REMOTE_URL);
   const ignoreLoopbackRemote = shouldIgnoreLoopbackRemote(originalRemoteUrl);
   const configuredRemoteUrl = ignoreLoopbackRemote ? "" : originalRemoteUrl;
-  const sourceUri = String(process.env.MONGO_URI || "").trim();
+  const sourceUri = String(process.env.SYNC_SOURCE_URI || process.env.MONGO_URI_REMOTE || process.env.MONGO_URI || "").trim();
   const sourceDbName = String(process.env.SYNC_SOURCE_DB_NAME || "test").trim();
 
   cycleInProgress = true;

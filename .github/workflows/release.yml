@@ -29,7 +29,7 @@ env:
 
 jobs:
   build-web-and-update:
-    name: Build Docker update package
+    name: Build web update package
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -65,20 +65,6 @@ jobs:
           VITE_API_URL: /.
           VITE_CLOUDINARY_ENABLED: "false"
 
-      - name: Build Docker image
-        run: |
-          docker build \
-            --build-arg VITE_API_URL=/. \
-            --build-arg VITE_CLOUDINARY_ENABLED=false \
-            -t shiksha-sarthi:local-school \
-            -t shiksha-sarthi:${{ steps.version.outputs.version }} \
-            .
-
-      - name: Save Docker image
-        run: |
-          mkdir -p dist-release
-          docker save shiksha-sarthi:local-school -o dist-release/shiksha-sarthi-image-${{ steps.version.outputs.version }}.tar
-
       - name: Build update bundle
         id: package
         run: |
@@ -105,7 +91,18 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: shikshasarthi-launcher/desktop-wrapper/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            shikshasarthi-launcher/desktop-wrapper/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          VITE_API_URL: /.
+          VITE_CLOUDINARY_ENABLED: "false"
 
       - name: Install desktop dependencies
         working-directory: shikshasarthi-launcher/desktop-wrapper
@@ -117,6 +114,24 @@ jobs:
 
       - name: Prepare bundled app resources
         run: node scripts/prepare-desktop-resources.cjs
+
+      - name: Download MongoDB runtime
+        run: node scripts/download-mongodb-runtime.cjs
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: ${{ (vars.AWS_SCHOOL_DATA_BUCKET || 'shiksha-sarthi-control-shikshaschooldatabucket-s3uqfy75e4ai') != '' }}
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
+
+      - name: Download current school seed from S3
+        if: ${{ (vars.AWS_SCHOOL_DATA_BUCKET || 'shiksha-sarthi-control-shikshaschooldatabucket-s3uqfy75e4ai') != '' }}
+        shell: bash
+        run: |
+          mkdir -p shikshasarthi-launcher/desktop-wrapper/launcher-data/backend/data
+          aws s3 cp "s3://${{ vars.AWS_SCHOOL_DATA_BUCKET || 'shiksha-sarthi-control-shikshaschooldatabucket-s3uqfy75e4ai' }}/seeds/current/school-seed.ejson" \
+            "shikshasarthi-launcher/desktop-wrapper/launcher-data/backend/data/school-seed.ejson"
 
       - name: Build exe
         working-directory: shikshasarthi-launcher/desktop-wrapper
@@ -141,7 +156,18 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: shikshasarthi-launcher/desktop-wrapper/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            shikshasarthi-launcher/desktop-wrapper/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          VITE_API_URL: /.
+          VITE_CLOUDINARY_ENABLED: "false"
 
       - name: Install desktop dependencies
         working-directory: shikshasarthi-launcher/desktop-wrapper
@@ -153,6 +179,24 @@ jobs:
 
       - name: Prepare bundled app resources
         run: node scripts/prepare-desktop-resources.cjs
+
+      - name: Download MongoDB runtime
+        run: node scripts/download-mongodb-runtime.cjs
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: ${{ (vars.AWS_SCHOOL_DATA_BUCKET || 'shiksha-sarthi-control-shikshaschooldatabucket-s3uqfy75e4ai') != '' }}
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
+
+      - name: Download current school seed from S3
+        if: ${{ (vars.AWS_SCHOOL_DATA_BUCKET || 'shiksha-sarthi-control-shikshaschooldatabucket-s3uqfy75e4ai') != '' }}
+        shell: bash
+        run: |
+          mkdir -p shikshasarthi-launcher/desktop-wrapper/launcher-data/backend/data
+          aws s3 cp "s3://${{ vars.AWS_SCHOOL_DATA_BUCKET || 'shiksha-sarthi-control-shikshaschooldatabucket-s3uqfy75e4ai' }}/seeds/current/school-seed.ejson" \
+            "shikshasarthi-launcher/desktop-wrapper/launcher-data/backend/data/school-seed.ejson"
 
       - name: Build deb
         working-directory: shikshasarthi-launcher/desktop-wrapper

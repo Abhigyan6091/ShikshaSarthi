@@ -1,11 +1,14 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const { exec, execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const os = require('os');
 const fs = require('fs');
 const http = require('http');
+const net = require('net');
 
 let mainWindow;
+let mongoProcess = null;
+let backendProcess = null;
 
 // Helper to read .env manually since dotenv is not a dependency
 function getEnv() {
@@ -32,6 +35,28 @@ function ensureEnvFile(resourcesPath) {
     if (!fs.existsSync(envPath) && fs.existsSync(examplePath)) {
         fs.copyFileSync(examplePath, envPath);
     }
+}
+
+function readEnvFile(resourcesPath) {
+    const envPath = path.join(resourcesPath, '.env');
+    const env = {};
+
+    if (!fs.existsSync(envPath)) return env;
+
+    const content = fs.readFileSync(envPath, 'utf8');
+    content.split(/\r?\n/).forEach((line) => {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) return;
+
+        const separatorIndex = trimmed.indexOf('=');
+        if (separatorIndex === -1) return;
+
+        const key = trimmed.slice(0, separatorIndex).trim();
+        const value = trimmed.slice(separatorIndex + 1).trim();
+        if (key) env[key] = value;
+    });
+
+    return env;
 }
 
 function getLocalIp() {
@@ -128,19 +153,212 @@ function checkLocalHealth(port, callback) {
     request.on('error', () => callback(false));
 }
 
-function dockerErrorMessage(error, stderr) {
-    const details = String(stderr || error?.message || '').trim();
-    const linuxHint = 'Docker Engine/Compose is not reachable. On Linux, install Docker Engine and run: sudo systemctl start docker';
-    const windowsHint = 'Docker Engine/Compose is not reachable. Install/start Docker Engine or Docker Desktop with WSL2 backend.';
-    const macHint = 'Docker Engine/Compose is not reachable. Start Docker Engine or Docker Desktop.';
+function getRuntimePaths(resourcesPath) {
+    const runtimeRoot = path.join(app.getPath('userData'), 'runtime');
+    const dataRoot = path.join(app.getPath('userData'), 'data');
+    const mongoPort = process.env.SHIKSHA_MONGO_PORT || '27018';
 
-    const hint = process.platform === 'linux'
-        ? linuxHint
-        : process.platform === 'win32'
-            ? windowsHint
-            : macHint;
+    return {
+        runtimeRoot,
+        dataRoot,
+        dbPath: path.join(dataRoot, 'mongodb'),
+        uploadRoot: path.join(dataRoot, 'uploads'),
+        backupDir: path.join(dataRoot, 'backups'),
+        updateDir: path.join(dataRoot, 'updates'),
+        audioCacheDir: path.join(dataRoot, 'audio-cache'),
+        mongoPort,
+        mongoUri: `mongodb://127.0.0.1:${mongoPort}/app`,
+        frontendDistDir: path.join(resourcesPath, 'dist'),
+        seedPath: path.join(resourcesPath, 'backend', 'data', 'school-seed.ejson'),
+    };
+}
 
-    return details ? `${hint}\n${details}` : hint;
+function findMongoBinary(resourcesPath) {
+    const binaryName = process.platform === 'win32' ? 'mongod.exe' : 'mongod';
+    const candidates = [
+        path.join(resourcesPath, 'mongodb', 'bin', binaryName),
+        path.join(resourcesPath, 'mongodb-runtime', 'bin', binaryName),
+        binaryName,
+    ];
+
+    return candidates.find((candidate) => {
+        if (candidate === binaryName) return true;
+        return fs.existsSync(candidate);
+    });
+}
+
+function ensureRuntimeDirectories(paths) {
+    [
+        paths.runtimeRoot,
+        paths.dataRoot,
+        paths.dbPath,
+        paths.uploadRoot,
+        paths.backupDir,
+        paths.updateDir,
+        paths.audioCacheDir,
+    ].forEach((directory) => fs.mkdirSync(directory, { recursive: true }));
+}
+
+function waitForTcpPort(port, timeoutMs = 30000) {
+    const startedAt = Date.now();
+
+    return new Promise((resolve, reject) => {
+        const probe = () => {
+            const socket = net.createConnection({ host: '127.0.0.1', port: Number(port) });
+
+            socket.once('connect', () => {
+                socket.destroy();
+                resolve();
+            });
+            socket.once('error', () => {
+                socket.destroy();
+                if (Date.now() - startedAt > timeoutMs) {
+                    reject(new Error(`Timed out waiting for MongoDB on port ${port}`));
+                    return;
+                }
+                setTimeout(probe, 500);
+            });
+        };
+
+        probe();
+    });
+}
+
+function runNodeScript(scriptPath, args, env) {
+    return new Promise((resolve, reject) => {
+        const child = spawn(process.execPath, [scriptPath, ...args], {
+            cwd: path.dirname(scriptPath),
+            env: {
+                ...process.env,
+                ...env,
+                ELECTRON_RUN_AS_NODE: '1',
+            },
+            windowsHide: true,
+            stdio: ['ignore', 'pipe', 'pipe'],
+        });
+
+        let stdout = '';
+        let stderr = '';
+        child.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
+        child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+        child.on('error', reject);
+        child.on('exit', (code) => {
+            if (code === 0) {
+                resolve({ stdout, stderr });
+                return;
+            }
+            reject(new Error(stderr || stdout || `Node script failed with exit code ${code}`));
+        });
+    });
+}
+
+async function startLocalRuntime(resourcesPath) {
+    const paths = getRuntimePaths(resourcesPath);
+    const fileEnv = readEnvFile(resourcesPath);
+    const mongoBinary = findMongoBinary(resourcesPath);
+
+    if (!mongoBinary) {
+        throw new Error('Bundled MongoDB runtime is missing. Reinstall ShikshaSarthi using the latest installer.');
+    }
+
+    ensureRuntimeDirectories(paths);
+
+    mongoProcess = spawn(mongoBinary, [
+        '--dbpath', paths.dbPath,
+        '--bind_ip', '127.0.0.1',
+        '--port', String(paths.mongoPort),
+        '--quiet',
+    ], {
+        cwd: paths.runtimeRoot,
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    mongoProcess.on('exit', (code) => {
+        if (code !== 0 && mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('runtime-status', {
+                state: 'error',
+                message: `Local MongoDB process exited with code ${code}.`,
+            });
+        }
+    });
+
+    await waitForTcpPort(paths.mongoPort);
+
+    const runtimeEnv = {
+        ...fileEnv,
+        NODE_ENV: 'production',
+        APP_MODE: fileEnv.APP_MODE || 'local-school',
+        USE_LOCAL_DB: 'true',
+        PORT: fileEnv.FRONTEND_PORT || '6050',
+        FRONTEND_PORT: fileEnv.FRONTEND_PORT || '6050',
+        FRONTEND_DIST_DIR: paths.frontendDistDir,
+        MONGO_URI: paths.mongoUri,
+        MONGO_URI_LOCAL: paths.mongoUri,
+        SYNC_AUTO_ENABLED: fileEnv.SYNC_AUTO_ENABLED || 'true',
+        SYNC_NODE_ROLE: fileEnv.SYNC_NODE_ROLE || 'local',
+        SYNC_SOURCE_URI: fileEnv.SYNC_SOURCE_URI || fileEnv.MONGO_URI_REMOTE || '',
+        SYNC_SOURCE_DB_NAME: fileEnv.SYNC_SOURCE_DB_NAME || 'app',
+        UPLOAD_ROOT: paths.uploadRoot,
+        BACKUP_DIR: paths.backupDir,
+        UPDATE_DOWNLOAD_DIR: path.join(paths.updateDir, 'downloaded'),
+        UPDATE_INSTALL_DIR: path.join(paths.updateDir, 'staged'),
+        UPDATE_ROLLBACK_DIR: path.join(paths.updateDir, 'rollback'),
+        AUDIO_CACHE_DIR: paths.audioCacheDir,
+        LOCAL_UPLOADS_ENABLED: 'true',
+        BACKUP_ENABLED: 'true',
+        AWS_SYNC_MARK_UPLOADED_RECORDS: fileEnv.AWS_SYNC_MARK_UPLOADED_RECORDS || 'true',
+    };
+
+    const importScript = path.join(resourcesPath, 'backend', 'scripts', 'importSchoolSeed.js');
+    if (fs.existsSync(paths.seedPath) && fs.existsSync(importScript)) {
+        await runNodeScript(importScript, [paths.seedPath], runtimeEnv);
+    }
+
+    const backendScript = path.join(resourcesPath, 'backend', 'index.js');
+    backendProcess = spawn(process.execPath, [backendScript], {
+        cwd: path.join(resourcesPath, 'backend'),
+        env: {
+            ...process.env,
+            ...runtimeEnv,
+            ELECTRON_RUN_AS_NODE: '1',
+        },
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
+    });
+
+    backendProcess.on('exit', (code) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('runtime-status', {
+                state: 'error',
+                message: `Local backend process exited with code ${code}.`,
+            });
+        }
+    });
+
+    await waitForHttpHealth(runtimeEnv.PORT);
+}
+
+function waitForHttpHealth(port, timeoutMs = 45000) {
+    const startedAt = Date.now();
+
+    return new Promise((resolve, reject) => {
+        const probe = () => {
+            checkLocalHealth(port, (ok) => {
+                if (ok) {
+                    resolve();
+                    return;
+                }
+                if (Date.now() - startedAt > timeoutMs) {
+                    reject(new Error(`Timed out waiting for backend health on port ${port}`));
+                    return;
+                }
+                setTimeout(probe, 750);
+            });
+        };
+
+        probe();
+    });
 }
 
 function createWindow() {
@@ -167,32 +385,23 @@ function createWindow() {
 
     const isDev = !app.isPackaged;
     const resourcesPath = isDev ? path.join(__dirname, '..', '..') : path.join(process.resourcesPath, 'launcher-data');
-    const execOptions = { cwd: resourcesPath, windowsHide: true, shell: true };
     ensureEnvFile(resourcesPath);
 
     mainWindow.webContents.once('did-finish-load', () => {
-        mainWindow.webContents.send('docker-status', { state: 'starting' });
+        mainWindow.webContents.send('runtime-status', { state: 'starting' });
     });
 
-    exec(`docker compose up -d`, { ...execOptions, timeout: 180000 }, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Error starting Docker: ${error.message}`);
-            const env = getEnv();
-            checkLocalHealth(env.FRONTEND_PORT || '6050', (isHealthy) => {
-                if (isHealthy) {
-                    mainWindow.webContents.send('docker-status', { state: 'running' });
-                    return;
-                }
-
-                mainWindow.webContents.send('docker-status', {
-                    state: 'error',
-                    message: dockerErrorMessage(error, stderr)
-                });
+    startLocalRuntime(resourcesPath)
+        .then(() => {
+            mainWindow.webContents.send('runtime-status', { state: 'running' });
+        })
+        .catch((error) => {
+            console.error(`Error starting local runtime: ${error.message}`);
+            mainWindow.webContents.send('runtime-status', {
+                state: 'error',
+                message: error.message,
             });
-            return;
-        }
-        mainWindow.webContents.send('docker-status', { state: 'running' });
-    });
+        });
 }
 ipcMain.on('open-external', (event, url) => {
     const { shell } = require('electron');
@@ -201,6 +410,11 @@ ipcMain.on('open-external', (event, url) => {
 
 app.whenReady().then(() => {
     createWindow();
+});
+
+app.on('before-quit', () => {
+    if (backendProcess && !backendProcess.killed) backendProcess.kill();
+    if (mongoProcess && !mongoProcess.killed) mongoProcess.kill();
 });
 
 ipcMain.handle('get-server-info', async () => {

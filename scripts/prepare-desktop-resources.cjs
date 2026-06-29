@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 const repoRoot = path.resolve(__dirname, '..');
 const targetRoot = path.join(repoRoot, 'shikshasarthi-launcher', 'desktop-wrapper', 'launcher-data');
@@ -14,7 +15,6 @@ const excluded = new Set([
   'backend/data/audio-cache',
   'backend/updates/downloaded',
   'uploads',
-  'dist',
   'dist-release',
   'releases',
   'shikshasarthi-launcher/data',
@@ -64,4 +64,25 @@ function copyTree(source, destination) {
 
 fs.rmSync(targetRoot, { recursive: true, force: true });
 copyTree(repoRoot, targetRoot);
+
+const frontendIndex = path.join(targetRoot, 'dist', 'index.html');
+if (!fs.existsSync(frontendIndex)) {
+  throw new Error('Frontend build is missing. Run npm run build before preparing desktop resources.');
+}
+
+const backendRoot = path.join(targetRoot, 'backend');
+const backendLock = path.join(backendRoot, 'package-lock.json');
+if (!fs.existsSync(backendLock)) {
+  throw new Error('Backend package-lock.json is missing; cannot bundle backend production dependencies.');
+}
+
+if (process.env.SKIP_BACKEND_NPM_CI !== 'true') {
+  console.log('Installing backend production dependencies for desktop bundle...');
+  execFileSync('npm', ['ci', '--omit=dev'], {
+    cwd: backendRoot,
+    stdio: 'inherit',
+    env: process.env,
+  });
+}
+
 console.log(`Prepared desktop resources at ${path.relative(repoRoot, targetRoot)}`);
