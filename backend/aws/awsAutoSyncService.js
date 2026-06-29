@@ -1,5 +1,6 @@
 const { appConfig } = require("../config/appConfig");
-const { manualSyncPlaceholder, sendHeartbeat } = require("./awsSyncClient");
+const { runCloudMergeSync } = require("./awsCloudSyncClient");
+const { sendHeartbeat } = require("./awsSyncClient");
 
 const DEFAULT_INTERVAL_MS = Number(process.env.AWS_SYNC_INTERVAL_MS || 60_000);
 const DEFAULT_START_DELAY_MS = Number(process.env.AWS_SYNC_START_DELAY_MS || 10_000);
@@ -15,6 +16,7 @@ const state = {
   lastSuccessAt: null,
   lastError: null,
   lastUpload: null,
+  lastMerge: null,
 };
 
 function getAwsAutoSyncState() {
@@ -45,17 +47,22 @@ async function runAwsAutoSyncCycle({ trigger = "auto" } = {}) {
 
   try {
     const heartbeat = await sendHeartbeat();
-    const sync = await manualSyncPlaceholder({ mode: "pending", trigger });
+    const sync = await runCloudMergeSync({ trigger });
 
-    state.lastUpload = {
-      uploaded: Boolean(sync.uploaded),
-      totalRecords: sync.export?.totalRecords || 0,
-      key: sync.export?.key || null,
+    state.lastMerge = {
+      ok: Boolean(sync.ok),
+      scope: sync.scope || null,
+      pendingRecords: sync.summary?.pendingRecords || 0,
+      acceptedRecords: sync.summary?.acceptedRecords || 0,
+      downloadedRecords: sync.summary?.downloadedRecords || 0,
+      appliedInserted: sync.summary?.appliedInserted || 0,
+      appliedUpdated: sync.summary?.appliedUpdated || 0,
       checkedAt: new Date().toISOString(),
     };
+    state.lastUpload = state.lastMerge;
 
-    if (!sync.ok && !sync.uploaded) {
-      throw new Error(sync.message || sync.upload?.lastError || sync.complete?.lastError || "AWS sync upload failed");
+    if (!sync.ok) {
+      throw new Error(sync.error || "AWS cloud merge sync failed");
     }
 
     state.lastSuccessAt = new Date().toISOString();

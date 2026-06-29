@@ -119,6 +119,7 @@ Resources:
             Resource:
               - !Sub "${ShikshaUpdatesBucket.Arn}/releases/*"
               - !Sub "${ShikshaSchoolDataBucket.Arn}/schools/*"
+              - !Sub "${ShikshaSchoolDataBucket.Arn}/cloud-sync/*"
 
   HealthFunction:
     Type: AWS::Serverless::Function
@@ -244,6 +245,38 @@ Resources:
           Properties:
             ApiId: !Ref ControlHttpApi
             Path: /sync/complete
+            Method: POST
+
+  PushSyncRecordsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/pushSyncRecords.handler
+      Timeout: 30
+      MemorySize: 512
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /sync/push
+            Method: POST
+
+  PullSyncRecordsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: handlers/pullSyncRecords.handler
+      Timeout: 30
+      MemorySize: 512
+      Policies:
+        - !Ref FunctionPolicy
+      Events:
+        Route:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ControlHttpApi
+            Path: /sync/pull
             Method: POST
 
   RequestBackupUploadUrlFunction:

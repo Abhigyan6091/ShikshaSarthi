@@ -4,6 +4,7 @@ const { uploadLatestBackup } = require("../aws/awsBackupClient");
 const { uploadVideo } = require("../aws/awsVideoClient");
 const { getLatestVersion } = require("../aws/awsUpdateClient");
 const { manualSyncPlaceholder, sendHeartbeat } = require("../aws/awsSyncClient");
+const { pullCloudRecords, pushPendingRecords, runCloudMergeSync } = require("../aws/awsCloudSyncClient");
 const { getAwsAutoSyncState, runAwsAutoSyncCycle } = require("../aws/awsAutoSyncService");
 
 const router = express.Router();
@@ -59,7 +60,7 @@ router.get("/version/latest", async (req, res) => {
 
 router.post("/sync/manual", async (req, res) => {
   try {
-    const result = await manualSyncPlaceholder(req.body || {});
+    const result = await runCloudMergeSync(req.body || {});
     res.status(result.ok ? 200 : result.enabled === false ? 200 : 502).json(result);
   } catch (error) {
     res.status(500).json({
@@ -67,6 +68,37 @@ router.post("/sync/manual", async (req, res) => {
       message: "Manual sync failed.",
       error: error.message,
     });
+  }
+});
+
+router.post("/sync/export-upload", async (req, res) => {
+  try {
+    const result = await manualSyncPlaceholder(req.body || {});
+    res.status(result.ok ? 200 : result.enabled === false ? 200 : 502).json(result);
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      message: "Export upload sync failed.",
+      error: error.message,
+    });
+  }
+});
+
+router.post("/sync/push", async (req, res) => {
+  try {
+    const result = await pushPendingRecords(req.body || {});
+    res.status(result.ok ? 200 : 502).json(result);
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+router.post("/sync/pull", async (req, res) => {
+  try {
+    const result = await pullCloudRecords(req.body || {});
+    res.status(result.ok ? 200 : 502).json(result);
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
   }
 });
 

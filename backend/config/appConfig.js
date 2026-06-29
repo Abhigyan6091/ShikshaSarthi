@@ -104,6 +104,7 @@ const appConfig = {
     videoSyncEnabled: readBoolean("AWS_VIDEO_SYNC_ENABLED", true),
     updateCheckEnabled: readBoolean("AWS_UPDATE_CHECK_ENABLED", true),
     updateChannel: readString("AWS_UPDATE_CHANNEL", "stable"),
+    syncScope: readString("AWS_SYNC_SCOPE", "global"),
   },
   updatesDir: path.resolve(process.env.UPDATE_DOWNLOAD_DIR || path.join(__dirname, "..", "updates", "downloaded")),
   updateInstallEnabled: readBoolean("UPDATE_INSTALL_ENABLED", false),

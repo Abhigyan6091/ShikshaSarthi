@@ -51,6 +51,7 @@ create-superadmin.js
 backend/data/sync-state.json
 backend/data/media-map.json
 backend/data/school-seed.ejson
+backend/data/aws-cloud-sync-state.json
 
 # Secret scripts with hardcoded API keys
 translatetohindi.js

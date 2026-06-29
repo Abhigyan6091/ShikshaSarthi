@@ -45,9 +45,12 @@ module.exports = {
   createDownloadUrl,
   createUploadUrl,
   dynamo,
+  GetObjectCommand,
   GetCommand,
   latestVersion,
   PutCommand,
   ScanCommand,
+  s3,
+  PutObjectCommand,
   UpdateCommand,
 };

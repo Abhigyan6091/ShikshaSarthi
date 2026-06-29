@@ -308,6 +308,7 @@ async function startLocalRuntime(resourcesPath) {
         LOCAL_UPLOADS_ENABLED: 'true',
         BACKUP_ENABLED: 'true',
         AWS_SYNC_MARK_UPLOADED_RECORDS: fileEnv.AWS_SYNC_MARK_UPLOADED_RECORDS || 'true',
+        AWS_SYNC_SCOPE: fileEnv.AWS_SYNC_SCOPE || 'global',
     };
 
     const importScript = path.join(resourcesPath, 'backend', 'scripts', 'importSchoolSeed.js');
