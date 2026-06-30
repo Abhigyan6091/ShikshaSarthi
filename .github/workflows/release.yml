@@ -72,6 +72,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
 
+      - name: Install backend dependencies
+        if: ${{ vars.AWS_SCHOOL_DATA_BUCKET != '' }}
+        working-directory: backend
+        run: npm ci --omit=dev
+
       - name: Refresh school seed from AWS cloud-sync
         if: ${{ vars.AWS_SCHOOL_DATA_BUCKET != '' }}
         shell: bash
