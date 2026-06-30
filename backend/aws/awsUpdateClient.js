@@ -95,4 +95,46 @@ async function downloadUpdatePackage() {
   return state;
 }
 
-module.exports = { checkForUpdate, compareSemver, downloadUpdatePackage, getLatestVersion };
+async function downloadInstaller() {
+  const latest = await getLatestVersion({ withUrl: true });
+  if (!latest.ok) {
+    return { ok: false, downloaded: false, error: latest.lastError || "Could not fetch latest version" };
+  }
+
+  const info = latest.data;
+  const version = info.latestVersion || info.version;
+  const isWindows = process.platform === "win32";
+  const installerUrl = isWindows ? info.windowsInstallerUrl : info.linuxInstallerUrl;
+  const installerKey = isWindows ? info.windowsInstallerKey : info.linuxInstallerKey;
+
+  if (!installerUrl) {
+    return {
+      ok: false,
+      downloaded: false,
+      error: `Latest version does not include a ${isWindows ? "Windows" : "Linux"} installer URL`,
+    };
+  }
+
+  fs.mkdirSync(appConfig.updatesDir, { recursive: true });
+  const extension = isWindows ? "exe" : "deb";
+  const fileName = path
+    .basename(installerKey || `ShikshaSarthi-${version}.${extension}`)
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+  const filePath = path.join(appConfig.updatesDir, fileName);
+
+  const response = await fetch(installerUrl);
+  if (!response.ok) {
+    return { ok: false, downloaded: false, error: `Download failed with HTTP ${response.status}` };
+  }
+
+  await new Promise((resolve, reject) => {
+    const output = fs.createWriteStream(filePath);
+    response.body.pipe(output);
+    response.body.on("error", reject);
+    output.on("finish", resolve);
+  });
+
+  return { ok: true, downloaded: true, filePath, version, platform: process.platform };
+}
+
+module.exports = { checkForUpdate, compareSemver, downloadInstaller, downloadUpdatePackage, getLatestVersion };

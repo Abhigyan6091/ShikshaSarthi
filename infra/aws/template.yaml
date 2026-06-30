@@ -118,8 +118,11 @@ Resources:
               - s3:PutObject
             Resource:
               - !Sub "${ShikshaUpdatesBucket.Arn}/releases/*"
+              - !Sub "${ShikshaUpdatesBucket.Arn}/installers/*"
+              - !Sub "${ShikshaUpdatesBucket.Arn}/updates/*"
               - !Sub "${ShikshaSchoolDataBucket.Arn}/schools/*"
               - !Sub "${ShikshaSchoolDataBucket.Arn}/cloud-sync/*"
+              - !Sub "${ShikshaSchoolDataBucket.Arn}/seeds/*"
 
   HealthFunction:
     Type: AWS::Serverless::Function

@@ -1,0 +1,43 @@
+SHIKSHASARTHI SCHOOL SERVER - END USER LICENSE AGREEMENT
+
+Last updated: 2026-06-30
+
+PLEASE READ THIS AGREEMENT CAREFULLY BEFORE INSTALLING SHIKSHASARTHI.
+By clicking "I Agree" and installing this software, you accept the terms below.
+If you do not agree, do not install the software.
+
+1. LICENSE GRANT
+   S3 Lab, IIT Bhilai ("the Licensor") grants the school/institution ("you")
+   a non-exclusive, non-transferable license to install and run ShikshaSarthi
+   on computers operated by your institution for educational purposes.
+
+2. INSTALLATION AND DATA
+   ShikshaSarthi installs its application files under your chosen program
+   directory (default: Program Files) and stores all school data — the local
+   database, uploaded files, synced audio/video content, and backups — under
+   a separate data directory (ProgramData) so that your data is preserved
+   across application updates.
+
+3. DATA OWNERSHIP AND PRIVACY
+   All student, teacher, and school records created or stored by the software
+   remain the property of your institution. When cloud sync is enabled, data
+   is transmitted to the institution's authorized AWS control plane solely to
+   synchronize and back up your own school's records.
+
+4. UPDATES
+   The software may check for and install updates. Updates replace application
+   files only and do not delete your school data.
+
+5. NO WARRANTY
+   The software is provided "AS IS" without warranty of any kind. The Licensor
+   is not liable for any data loss or damages arising from its use. You are
+   responsible for maintaining backups of your data.
+
+6. RESTRICTIONS
+   You may not reverse engineer, resell, or redistribute the software without
+   written permission from the Licensor.
+
+By installing ShikshaSarthi you acknowledge that you have read and agree to
+this Agreement.
+
+(c) S3 Lab, IIT Bhilai. All rights reserved.

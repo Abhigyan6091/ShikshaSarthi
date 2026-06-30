@@ -19,6 +19,8 @@ exports.handler = async (event) => {
     packageKey: body.packageKey || null,
     packageSha256: body.packageSha256 || body.sha256 || null,
     manifestKey: body.manifestKey || null,
+    windowsInstallerKey: body.windowsInstallerKey || null,
+    linuxInstallerKey: body.linuxInstallerKey || null,
     releaseNotes: Array.isArray(body.releaseNotes) ? body.releaseNotes : [],
     createdAt: nowIso(),
   };

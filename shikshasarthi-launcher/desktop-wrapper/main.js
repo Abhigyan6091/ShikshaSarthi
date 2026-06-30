@@ -153,12 +153,26 @@ function checkLocalHealth(port, callback) {
     request.on('error', () => callback(false));
 }
 
+function getDataBaseDir() {
+    // School data (local DB, uploads, synced audio/video, backups, update cache)
+    // lives under a shared, upgrade-safe location separate from the app code in
+    // Program Files. On Windows that is ProgramData so every account on a lab PC
+    // shares one database and updates never touch it.
+    if (process.platform === 'win32') {
+        const programData = process.env.PROGRAMDATA || 'C:\\ProgramData';
+        return path.join(programData, 'ShikshaSarthi');
+    }
+    return app.getPath('userData');
+}
+
 function getRuntimePaths(resourcesPath) {
-    const runtimeRoot = path.join(app.getPath('userData'), 'runtime');
-    const dataRoot = path.join(app.getPath('userData'), 'data');
+    const baseDir = getDataBaseDir();
+    const runtimeRoot = path.join(baseDir, 'runtime');
+    const dataRoot = path.join(baseDir, 'data');
     const mongoPort = process.env.SHIKSHA_MONGO_PORT || '27018';
 
     return {
+        baseDir,
         runtimeRoot,
         dataRoot,
         dbPath: path.join(dataRoot, 'mongodb'),
@@ -166,11 +180,28 @@ function getRuntimePaths(resourcesPath) {
         backupDir: path.join(dataRoot, 'backups'),
         updateDir: path.join(dataRoot, 'updates'),
         audioCacheDir: path.join(dataRoot, 'audio-cache'),
+        logDir: path.join(dataRoot, 'logs'),
         mongoPort,
         mongoUri: `mongodb://127.0.0.1:${mongoPort}/app`,
         frontendDistDir: path.join(resourcesPath, 'dist'),
         seedPath: path.join(resourcesPath, 'backend', 'data', 'school-seed.ejson'),
     };
+}
+
+// If a previous build kept its database under the per-user userData path,
+// copy it once into the new shared data root so testers don't lose data.
+function migrateLegacyData(paths) {
+    try {
+        if (fs.existsSync(paths.dbPath) && fs.readdirSync(paths.dbPath).length > 0) return;
+        const legacyDbPath = path.join(app.getPath('userData'), 'data', 'mongodb');
+        if (legacyDbPath === paths.dbPath) return;
+        if (fs.existsSync(legacyDbPath) && fs.readdirSync(legacyDbPath).length > 0) {
+            fs.mkdirSync(paths.dbPath, { recursive: true });
+            fs.cpSync(legacyDbPath, paths.dbPath, { recursive: true });
+        }
+    } catch (error) {
+        console.error(`Legacy data migration skipped: ${error.message}`);
+    }
 }
 
 function findMongoBinary(resourcesPath) {
@@ -196,7 +227,31 @@ function ensureRuntimeDirectories(paths) {
         paths.backupDir,
         paths.updateDir,
         paths.audioCacheDir,
+        paths.logDir,
     ].forEach((directory) => fs.mkdirSync(directory, { recursive: true }));
+}
+
+// Tee a child process's stdout/stderr to a log file and keep the last few KB
+// in memory so we can surface the real failure reason to the UI.
+function attachProcessLogging(child, logFilePath) {
+    const tail = { text: '' };
+    let stream = null;
+    try {
+        stream = fs.createWriteStream(logFilePath, { flags: 'a' });
+        stream.write(`\n----- started ${new Date().toISOString()} -----\n`);
+    } catch (_error) {
+        stream = null;
+    }
+
+    const onChunk = (chunk) => {
+        const text = chunk.toString();
+        if (stream) stream.write(text);
+        tail.text = (tail.text + text).slice(-4000);
+    };
+
+    if (child.stdout) child.stdout.on('data', onChunk);
+    if (child.stderr) child.stderr.on('data', onChunk);
+    return tail;
 }
 
 function waitForTcpPort(port, timeoutMs = 30000) {
@@ -262,6 +317,7 @@ async function startLocalRuntime(resourcesPath) {
     }
 
     ensureRuntimeDirectories(paths);
+    migrateLegacyData(paths);
 
     mongoProcess = spawn(mongoBinary, [
         '--dbpath', paths.dbPath,
@@ -274,16 +330,23 @@ async function startLocalRuntime(resourcesPath) {
         stdio: ['ignore', 'pipe', 'pipe'],
     });
 
+    const mongoLog = attachProcessLogging(mongoProcess, path.join(paths.logDir, 'mongod.log'));
+
     mongoProcess.on('exit', (code) => {
         if (code !== 0 && mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('runtime-status', {
                 state: 'error',
-                message: `Local MongoDB process exited with code ${code}.`,
+                message: `Local MongoDB process exited with code ${code}.${mongoLog.text ? `\n\n${mongoLog.text.trim()}` : ''}`,
             });
         }
     });
 
-    await waitForTcpPort(paths.mongoPort);
+    try {
+        await waitForTcpPort(paths.mongoPort);
+    } catch (error) {
+        const detail = mongoLog.text ? `\n\nMongoDB log:\n${mongoLog.text.trim()}` : '';
+        throw new Error(`${error.message}. The bundled database engine did not start. This often means the Visual C++ runtime is missing; reinstall using the official installer.${detail}`);
+    }
 
     const runtimeEnv = {
         ...fileEnv,
@@ -328,16 +391,23 @@ async function startLocalRuntime(resourcesPath) {
         stdio: ['ignore', 'pipe', 'pipe'],
     });
 
+    const backendLog = attachProcessLogging(backendProcess, path.join(paths.logDir, 'backend.log'));
+
     backendProcess.on('exit', (code) => {
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('runtime-status', {
                 state: 'error',
-                message: `Local backend process exited with code ${code}.`,
+                message: `Local backend process exited with code ${code}.${backendLog.text ? `\n\n${backendLog.text.trim()}` : ''}`,
             });
         }
     });
 
-    await waitForHttpHealth(runtimeEnv.PORT);
+    try {
+        await waitForHttpHealth(runtimeEnv.PORT);
+    } catch (error) {
+        const detail = backendLog.text ? `\n\nBackend log:\n${backendLog.text.trim()}` : '';
+        throw new Error(`${error.message}.${detail}`);
+    }
 }
 
 function waitForHttpHealth(port, timeoutMs = 45000) {
@@ -362,7 +432,19 @@ function waitForHttpHealth(port, timeoutMs = 45000) {
     });
 }
 
+function getAppIconPath() {
+    const isDev = !app.isPackaged;
+    const candidates = isDev
+        ? [path.join(__dirname, '..', '..', 'public', 'favicon.ico')]
+        : [
+            path.join(process.resourcesPath, 'launcher-data', 'dist', 'favicon.ico'),
+            path.join(process.resourcesPath, 'launcher-data', 'public', 'favicon.ico'),
+        ];
+    return candidates.find((candidate) => fs.existsSync(candidate));
+}
+
 function createWindow() {
+    const iconPath = getAppIconPath();
     mainWindow = new BrowserWindow({
         width: 900,
         height: 700,
@@ -370,6 +452,7 @@ function createWindow() {
         title: 'ShikshaSarthi Hub',
         show: false,
         backgroundColor: '#0f172a',
+        ...(iconPath ? { icon: iconPath } : {}),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
@@ -409,9 +492,22 @@ ipcMain.on('open-external', (event, url) => {
     shell.openExternal(url);
 });
 
-app.whenReady().then(() => {
-    createWindow();
-});
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!gotSingleInstanceLock) {
+    app.quit();
+} else {
+    app.on('second-instance', () => {
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.focus();
+        }
+    });
+
+    app.whenReady().then(() => {
+        createWindow();
+    });
+}
 
 app.on('before-quit', () => {
     if (backendProcess && !backendProcess.killed) backendProcess.kill();
@@ -425,4 +521,31 @@ ipcMain.handle('get-server-info', async () => {
         port: env.FRONTEND_PORT || '6050',
         role: env.NODE_ROLE || 'SCHOOL'
     };
+});
+
+// Run a downloaded installer and quit so it can replace the app in place.
+// The NSIS (Windows) installer stops this app, overwrites Program Files, and
+// preserves all ProgramData (database, media, backups). On Linux we reveal the
+// .deb for the operator to install with their package manager.
+ipcMain.handle('install-update', async (_event, installerPath) => {
+    const { shell } = require('electron');
+
+    if (!installerPath || !fs.existsSync(installerPath)) {
+        return { ok: false, error: 'Installer file was not found. Download the update again.' };
+    }
+
+    try {
+        if (process.platform === 'win32') {
+            const child = spawn(installerPath, [], { detached: true, stdio: 'ignore' });
+            child.unref();
+            setTimeout(() => app.quit(), 1500);
+            return { ok: true, launched: true };
+        }
+
+        // Linux: best-effort reveal; operator installs the .deb.
+        shell.showItemInFolder(installerPath);
+        return { ok: true, launched: false, revealed: true, message: 'Installer downloaded. Open it to finish updating.' };
+    } catch (error) {
+        return { ok: false, error: error.message };
+    }
 });

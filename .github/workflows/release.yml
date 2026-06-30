@@ -65,6 +65,24 @@ jobs:
           VITE_API_URL: /.
           VITE_CLOUDINARY_ENABLED: "false"
 
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: ${{ vars.AWS_SCHOOL_DATA_BUCKET != '' }}
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
+
+      - name: Refresh school seed from AWS cloud-sync
+        if: ${{ vars.AWS_SCHOOL_DATA_BUCKET != '' }}
+        shell: bash
+        run: |
+          node backend/scripts/buildSeedFromCloudSync.js \
+            "${{ vars.AWS_SCHOOL_DATA_BUCKET }}" \
+            "${{ vars.AWS_SYNC_SCOPE || 'global' }}" \
+            backend/data/school-seed.ejson
+          aws s3 cp backend/data/school-seed.ejson \
+            "s3://${{ vars.AWS_SCHOOL_DATA_BUCKET }}/seeds/current/school-seed.ejson"
+
       - name: Build update bundle
         id: package
         run: |
@@ -118,6 +136,9 @@ jobs:
       - name: Download MongoDB runtime
         run: node scripts/download-mongodb-runtime.cjs
 
+      - name: Download Visual C++ runtime for installer
+        run: node scripts/download-vc-redist.cjs
+
       - uses: aws-actions/configure-aws-credentials@v4
         if: ${{ (vars.AWS_SCHOOL_DATA_BUCKET || 'shiksha-sarthi-control-shikshaschooldatabucket-s3uqfy75e4ai') != '' }}
         with:
@@ -132,6 +153,21 @@ jobs:
           mkdir -p shikshasarthi-launcher/desktop-wrapper/launcher-data/backend/data
           aws s3 cp "s3://${{ vars.AWS_SCHOOL_DATA_BUCKET || 'shiksha-sarthi-control-shikshaschooldatabucket-s3uqfy75e4ai' }}/seeds/current/school-seed.ejson" \
             "shikshasarthi-launcher/desktop-wrapper/launcher-data/backend/data/school-seed.ejson"
+
+      - name: Write live AWS config into bundled .env
+        if: ${{ vars.AWS_CONTROL_API_URL != '' }}
+        shell: bash
+        env:
+          ENV_AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+          ENV_AWS_CONTROL_API_URL: ${{ vars.AWS_CONTROL_API_URL }}
+          ENV_AWS_CONTROL_API_KEY: ${{ secrets.AWS_CONTROL_API_KEY }}
+          ENV_AWS_SCHOOL_ID: ${{ vars.AWS_SCHOOL_ID || 'SCHOOL001' }}
+          ENV_AWS_UPDATES_BUCKET: ${{ vars.AWS_UPDATES_BUCKET }}
+          ENV_AWS_SCHOOL_DATA_BUCKET: ${{ vars.AWS_SCHOOL_DATA_BUCKET }}
+        run: |
+          ENV_FILE="shikshasarthi-launcher/desktop-wrapper/launcher-data/.env"
+          cp shikshasarthi-launcher/desktop-wrapper/launcher-data/.env.local-school.example "$ENV_FILE"
+          node scripts/write-desktop-env.cjs "$ENV_FILE"
 
       - name: Build exe
         working-directory: shikshasarthi-launcher/desktop-wrapper
@@ -197,6 +233,21 @@ jobs:
           mkdir -p shikshasarthi-launcher/desktop-wrapper/launcher-data/backend/data
           aws s3 cp "s3://${{ vars.AWS_SCHOOL_DATA_BUCKET || 'shiksha-sarthi-control-shikshaschooldatabucket-s3uqfy75e4ai' }}/seeds/current/school-seed.ejson" \
             "shikshasarthi-launcher/desktop-wrapper/launcher-data/backend/data/school-seed.ejson"
+
+      - name: Write live AWS config into bundled .env
+        if: ${{ vars.AWS_CONTROL_API_URL != '' }}
+        shell: bash
+        env:
+          ENV_AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+          ENV_AWS_CONTROL_API_URL: ${{ vars.AWS_CONTROL_API_URL }}
+          ENV_AWS_CONTROL_API_KEY: ${{ secrets.AWS_CONTROL_API_KEY }}
+          ENV_AWS_SCHOOL_ID: ${{ vars.AWS_SCHOOL_ID || 'SCHOOL001' }}
+          ENV_AWS_UPDATES_BUCKET: ${{ vars.AWS_UPDATES_BUCKET }}
+          ENV_AWS_SCHOOL_DATA_BUCKET: ${{ vars.AWS_SCHOOL_DATA_BUCKET }}
+        run: |
+          ENV_FILE="shikshasarthi-launcher/desktop-wrapper/launcher-data/.env"
+          cp shikshasarthi-launcher/desktop-wrapper/launcher-data/.env.local-school.example "$ENV_FILE"
+          node scripts/write-desktop-env.cjs "$ENV_FILE"
 
       - name: Build deb
         working-directory: shikshasarthi-launcher/desktop-wrapper
@@ -273,3 +324,30 @@ jobs:
           aws s3 cp "dist-release/aws-update-manifest.json" "s3://$BUCKET/updates/$CHANNEL/manifest.json"
           aws s3 cp "$WINDOWS_INSTALLER" "s3://$BUCKET/installers/$CHANNEL/windows/ShikshaSarthi-$VERSION.exe"
           aws s3 cp "$LINUX_INSTALLER" "s3://$BUCKET/installers/$CHANNEL/linux/ShikshaSarthi-$VERSION.deb"
+
+      - name: Publish version record to control plane
+        if: ${{ vars.AWS_CONTROL_API_URL != '' }}
+        shell: bash
+        env:
+          CONTROL_API_URL: ${{ vars.AWS_CONTROL_API_URL }}
+          CONTROL_API_KEY: ${{ secrets.AWS_CONTROL_API_KEY }}
+        run: |
+          VERSION="${{ needs.build-web-and-update.outputs.version }}"
+          CHANNEL="${{ env.RELEASE_CHANNEL }}"
+          SHA256="$(cut -d ' ' -f1 < "dist-release/shiksha-sarthi-update-$VERSION.zip.sha256")"
+          PAYLOAD=$(cat <<JSON
+          {
+            "version": "$VERSION",
+            "channel": "$CHANNEL",
+            "packageKey": "updates/$CHANNEL/shiksha-sarthi-update-$VERSION.zip",
+            "packageSha256": "$SHA256",
+            "manifestKey": "updates/$CHANNEL/manifest.json",
+            "windowsInstallerKey": "installers/$CHANNEL/windows/ShikshaSarthi-$VERSION.exe",
+            "linuxInstallerKey": "installers/$CHANNEL/linux/ShikshaSarthi-$VERSION.deb"
+          }
+          JSON
+          )
+          curl -fsSL -X POST "$CONTROL_API_URL/version/publish" \
+            -H "content-type: application/json" \
+            -H "x-api-key: $CONTROL_API_KEY" \
+            -d "$PAYLOAD"

@@ -28,11 +28,25 @@
     "productName": "ShikshaSarthi",
     "publish": null,
     "win": {
-      "target": "portable"
+      "target": "nsis",
+      "icon": "../../public/favicon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "license": "build/eula.txt",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "shortcutName": "ShikshaSarthi",
+      "uninstallDisplayName": "ShikshaSarthi",
+      "include": "build/installer.nsh"
     },
     "linux": {
       "target": ["deb"],
-      "category": "Education"
+      "category": "Education",
+      "icon": "../../public/favicon.ico"
     },
     "files": [
       "main.js",

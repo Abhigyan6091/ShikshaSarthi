@@ -22,9 +22,16 @@ exports.handler = async (event) => {
     });
   }
 
-  const packageUrl = includePackageUrl && latest.packageKey
-    ? await createDownloadUrl({ bucket: process.env.UPDATES_BUCKET, key: latest.packageKey })
-    : null;
+  const presign = (key) =>
+    includePackageUrl && key
+      ? createDownloadUrl({ bucket: process.env.UPDATES_BUCKET, key })
+      : Promise.resolve(null);
+
+  const [packageUrl, windowsInstallerUrl, linuxInstallerUrl] = await Promise.all([
+    presign(latest.packageKey),
+    presign(latest.windowsInstallerKey),
+    presign(latest.linuxInstallerKey),
+  ]);
 
   return json(200, {
     ok: true,
@@ -37,6 +44,10 @@ exports.handler = async (event) => {
     packageKey: latest.packageKey || null,
     sha256: latest.packageSha256 || "",
     manifestKey: latest.manifestKey || null,
+    windowsInstallerKey: latest.windowsInstallerKey || null,
+    linuxInstallerKey: latest.linuxInstallerKey || null,
+    windowsInstallerUrl,
+    linuxInstallerUrl,
     releaseNotes: Array.isArray(latest.releaseNotes) ? latest.releaseNotes : [],
     timestamp: nowIso(),
   });
