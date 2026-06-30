@@ -46,6 +46,16 @@ function download(url, destination) {
 
 async function main() {
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+
+  if (fs.existsSync(targetPath)) {
+    const existing = fs.statSync(targetPath);
+    if (existing.size >= 1024 * 1024) {
+      console.log(`Visual C++ redistributable already present at ${path.relative(repoRoot, targetPath)}`);
+      return;
+    }
+    fs.rmSync(targetPath, { force: true });
+  }
+
   console.log(`Downloading Visual C++ redistributable from ${VC_REDIST_URL}`);
   await download(VC_REDIST_URL, targetPath);
 

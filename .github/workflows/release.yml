@@ -141,6 +141,12 @@ jobs:
       - name: Download MongoDB runtime
         run: node scripts/download-mongodb-runtime.cjs
 
+      - name: Cache Visual C++ runtime
+        uses: actions/cache@v4
+        with:
+          path: shikshasarthi-launcher/desktop-wrapper/launcher-data/vc_redist.x64.exe
+          key: vc-redist-x64-2015-2022-v1
+
       - name: Download Visual C++ runtime for installer
         run: node scripts/download-vc-redist.cjs
 
