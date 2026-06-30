@@ -2,14 +2,15 @@ const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
 
-const outPath = path.join(
+const iconDir = path.join(
   __dirname,
   "..",
   "shikshasarthi-launcher",
   "desktop-wrapper",
-  "build",
-  "icon.png"
+  "build"
 );
+const pngPath = path.join(iconDir, "icon.png");
+const icoPath = path.join(iconDir, "icon.ico");
 
 function crc32(buffer) {
   let crc = 0xffffffff;
@@ -33,7 +34,7 @@ function chunk(type, data) {
   return Buffer.concat([length, typeBuffer, data, checksum]);
 }
 
-function writePng({ width, height, pixels }) {
+function createPng({ width, height, pixels }) {
   const rows = [];
   for (let y = 0; y < height; y += 1) {
     const row = Buffer.alloc(1 + width * 4);
@@ -59,18 +60,34 @@ function writePng({ width, height, pixels }) {
   header[12] = 0;
 
   const signature = Buffer.from("89504e470d0a1a0a", "hex");
-  const png = Buffer.concat([
+  return Buffer.concat([
     signature,
     chunk("IHDR", header),
     chunk("IDAT", zlib.deflateSync(Buffer.concat(rows), { level: 9 })),
     chunk("IEND", Buffer.alloc(0)),
   ]);
-
-  fs.mkdirSync(path.dirname(outPath), { recursive: true });
-  fs.writeFileSync(outPath, png);
 }
 
-writePng({
+function createIco(png) {
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(1, 4);
+
+  const directory = Buffer.alloc(16);
+  directory[0] = 0;
+  directory[1] = 0;
+  directory[2] = 0;
+  directory[3] = 0;
+  directory.writeUInt16LE(1, 4);
+  directory.writeUInt16LE(32, 6);
+  directory.writeUInt32LE(png.length, 8);
+  directory.writeUInt32LE(header.length + directory.length, 12);
+
+  return Buffer.concat([header, directory, png]);
+}
+
+const png = createPng({
   width: 256,
   height: 256,
   pixels(x, y) {
@@ -92,4 +109,8 @@ writePng({
   },
 });
 
-console.log(`Desktop icon written to ${outPath}`);
+fs.mkdirSync(iconDir, { recursive: true });
+fs.writeFileSync(pngPath, png);
+fs.writeFileSync(icoPath, createIco(png));
+
+console.log(`Desktop icons written to ${iconDir}`);
