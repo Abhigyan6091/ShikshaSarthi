@@ -12,7 +12,7 @@
     "start": "electron .",
     "prepare:resources": "node ../../scripts/prepare-desktop-resources.cjs",
     "build": "npm run prepare:resources && electron-builder --win",
-    "build:linux": "npm run prepare:resources && electron-builder --linux deb"
+    "build:linux": "npm run prepare:resources && node ../../scripts/create-desktop-icons.cjs && electron-builder --linux deb"
   },
   "author": "ShikshaSarthi <admin@shikshasarthi.com>",
   "license": "ISC",
@@ -46,7 +46,7 @@
     "linux": {
       "target": ["deb"],
       "category": "Education",
-      "icon": "../../public/favicon.ico"
+      "icon": "build/icon.png"
     },
     "files": [
       "main.js",

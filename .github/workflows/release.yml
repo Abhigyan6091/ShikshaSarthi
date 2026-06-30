@@ -254,6 +254,9 @@ jobs:
           cp shikshasarthi-launcher/desktop-wrapper/launcher-data/.env.local-school.example "$ENV_FILE"
           node scripts/write-desktop-env.cjs "$ENV_FILE"
 
+      - name: Generate desktop icons
+        run: node scripts/create-desktop-icons.cjs
+
       - name: Build deb
         working-directory: shikshasarthi-launcher/desktop-wrapper
         run: npx electron-builder --linux deb --publish never
