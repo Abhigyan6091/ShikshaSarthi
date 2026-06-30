@@ -69,7 +69,6 @@ import QuizAnalytics from "./pages/teacher/QuizAnalyticsFinal"; // Updated to fi
 import Analytics from "./pages/teacher/Analytics";
 import AddMyQuestion from "./pages/teacher/AddMyquestion";
 import QuizDetails from "./pages/teacher/QuizDetails";
-import QuestionGenerator from "./pages/teacher/QuestionGenerator";
 import QuizAnalyticsPage from "./pages/teacher/QuizAnalyticsPage";
 import ManageClasses from "./pages/teacher/ManageClasses";
 import ClassStudents from "./pages/teacher/ClassStudents";
@@ -190,7 +189,6 @@ const AppRoutes = () => {
       <Route path="/addmyquestion" element={<AddMyQuestion></AddMyQuestion>}></Route>
       <Route path="/teacher/quiz-details/:quizId" element={<QuizDetails />} />
       <Route path="/teacher/quiz-analytics/:quizId" element={<QuizAnalyticsPage />} />
-      <Route path="/teacher/question-generator" element={<QuestionGenerator />} />
       <Route path="/teacher/all-questions" element={<AllQuestions />} />
 
 

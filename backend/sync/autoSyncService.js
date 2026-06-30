@@ -13,7 +13,11 @@ const { SYNC_MODELS } = require("./modelRegistry");
 const { syncCloudMediaToLocal } = require("./mediaSyncService");
 const { repairAllLocalAuthPasswordsFromAtlas } = require("./authPasswordRepair");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
+// Honor APP_STATE_DIR (writable ProgramData) when packaged; backend code dir
+// is read-only under Program Files.
+const DATA_DIR = process.env.APP_STATE_DIR
+  ? path.resolve(process.env.APP_STATE_DIR)
+  : path.join(__dirname, "..", "data");
 const STATE_FILE = path.join(DATA_DIR, "sync-state.json");
 
 const AUTO_SYNC_ENABLED = String(process.env.SYNC_AUTO_ENABLED || "true").toLowerCase() !== "false";

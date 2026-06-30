@@ -6,7 +6,11 @@ const { pipeline } = require("stream/promises");
 const { ensureUploadDirectories, MEDIA_DIRECTORIES } = require("../utils/localMediaStore");
 const { SYNC_MODELS } = require("./modelRegistry");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
+// Honor APP_STATE_DIR (writable ProgramData) when packaged; backend code dir
+// is read-only under Program Files.
+const DATA_DIR = process.env.APP_STATE_DIR
+  ? path.resolve(process.env.APP_STATE_DIR)
+  : path.join(__dirname, "..", "data");
 const MEDIA_MAP_FILE = path.join(DATA_DIR, "media-map.json");
 
 const MEDIA_DOWNLOAD_TIMEOUT_MS = Number(process.env.SYNC_MEDIA_TIMEOUT_MS || 300_000);

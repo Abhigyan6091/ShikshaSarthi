@@ -7,7 +7,11 @@ const {
   markRecordsSynced,
 } = require("../sync/syncService");
 
-const DATA_DIR = path.join(__dirname, "..", "data");
+// Honor APP_STATE_DIR so runtime state is written to a writable location
+// (ProgramData) instead of the read-only Program Files install dir.
+const DATA_DIR = process.env.APP_STATE_DIR
+  ? path.resolve(process.env.APP_STATE_DIR)
+  : path.join(__dirname, "..", "data");
 const STATE_FILE = path.join(DATA_DIR, "aws-cloud-sync-state.json");
 
 function readState() {

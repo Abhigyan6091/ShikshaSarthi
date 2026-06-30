@@ -364,46 +364,6 @@ const TeacherDashboard: React.FC = () => {
               </CardFooter>
             </Card>
 
-            <Card className="border-2 border-emerald-500/30 hover:border-emerald-500/50 transition-colors bg-gradient-to-br from-emerald-50 to-white">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-xl mb-1 flex items-center gap-2">
-                      <Video className="h-6 w-6 text-emerald-600" />
-                      Question Generator
-                    </CardTitle>
-                    <CardDescription>AI-powered video question generation</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-600 space-y-2">
-                  <li className="flex items-center gap-2">
-                    <span className="text-green-500">✓</span>
-                    Upload videos & auto-analyze scenes
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-green-500">✓</span>
-                    AI generates MCQ questions from content
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-green-500">✓</span>
-                    8 question categories (temporal, causal, etc.)
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-green-500">✓</span>
-                    Export as JSON/CSV with TTS explanations
-                  </li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Link to="/teacher/question-generator" className="w-full">
-                  <Button className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white">
-                    Open Generator
-                  </Button>
-                </Link>
-              </CardFooter>
-            </Card>
           </div>
 
           {/* Subject Stats */}

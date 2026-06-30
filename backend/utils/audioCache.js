@@ -4,8 +4,12 @@ const https = require('https');
 const http = require('http');
 const crypto = require('crypto');
 
-// Cache directory
-const CACHE_DIR = path.join(__dirname, '..', 'data', 'audio-cache');
+// Cache directory. In the packaged desktop app the backend lives under
+// read-only Program Files, so honor AUDIO_CACHE_DIR (set to a writable
+// ProgramData location) and only fall back to the local path in dev.
+const CACHE_DIR = process.env.AUDIO_CACHE_DIR
+  ? path.resolve(process.env.AUDIO_CACHE_DIR)
+  : path.join(__dirname, '..', 'data', 'audio-cache');
 const FALLBACK_AUDIO_CACHE_TTL_MS = 15 * 24 * 60 * 60 * 1000; // 15 days
 const DEFAULT_AUDIO_CACHE_TTL_MS = Number(process.env.AUDIO_CACHE_TTL_MS || FALLBACK_AUDIO_CACHE_TTL_MS);
 const deleteTimers = new Map();

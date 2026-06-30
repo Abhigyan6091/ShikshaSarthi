@@ -55,7 +55,6 @@ const updateRoutes = require("./routes/updates");
 const phaseTwoUpdateRoutes = require("./routes/update");
 const backupRoutes = require("./routes/backup");
 const awsRoutes = require("./routes/aws");
-const vqgRouter = require("./vqgRouter");
 
 const app = express();
 app.use(cors());
@@ -113,10 +112,6 @@ app.use("/api/updates", updateRoutes);
 app.use("/api/update", phaseTwoUpdateRoutes);
 app.use("/api/backup", backupRoutes);
 app.use("/api/aws", awsRoutes);
-
-// Mounts the VQG router which manages the FastAPI subprocess and
-// serves the VQG frontend + API under /vqg/*.
-app.use("/vqg", vqgRouter);
 
 const frontendDistDir = process.env.FRONTEND_DIST_DIR
   ? path.resolve(process.env.FRONTEND_DIST_DIR)

@@ -323,7 +323,7 @@ router.get("/:class/:subject/:topic", async (req, res) => {
 router.get('/audio/:filename', async (req, res) => {
   try {
     const { filename } = req.params;
-    const filePath = path.join(__dirname, '..', 'data', 'audio-cache', filename);
+    const filePath = path.join(audioCache.CACHE_DIR, filename);
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ message: 'Audio file not found' });
