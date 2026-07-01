@@ -13,6 +13,7 @@ const DATA_DIR = process.env.APP_STATE_DIR
   ? path.resolve(process.env.APP_STATE_DIR)
   : path.join(__dirname, "..", "data");
 const STATE_FILE = path.join(DATA_DIR, "aws-cloud-sync-state.json");
+const CLOUD_PULL_CURSOR_VERSION = 2;
 
 function readState() {
   try {
@@ -103,7 +104,8 @@ async function pushPendingRecords({ collections, limit } = {}) {
 
 async function pullCloudRecords({ collections, limit, forceFull = false } = {}) {
   const state = readState();
-  const since = forceFull ? null : state.lastCloudPullAt || null;
+  const needsCursorMigration = state.cloudPullCursorVersion !== CLOUD_PULL_CURSOR_VERSION;
+  const since = forceFull || needsCursorMigration ? null : state.lastCloudPullAt || null;
   const pull = await request("/sync/pull", {
     method: "POST",
     timeoutMs: Number(process.env.AWS_SYNC_REQUEST_TIMEOUT_MS || 30000),
@@ -137,9 +139,11 @@ async function pullCloudRecords({ collections, limit, forceFull = false } = {}) 
     : { summary: { received: 0, inserted: 0, updated: 0, skipped: 0, failed: 0 }, results: [] };
 
   const nextState = writeState({
-    lastCloudPullAt: pull.data?.serverTime || new Date().toISOString(),
+    lastCloudPullAt: pull.data?.cursorTime || pull.data?.serverTime || new Date().toISOString(),
+    cloudPullCursorVersion: CLOUD_PULL_CURSOR_VERSION,
     scope: pull.data?.scope || cloudScope(),
     lastDownloadedRecords: downloadedRecords,
+    lastCursorMigrationAt: needsCursorMigration ? new Date().toISOString() : state.lastCursorMigrationAt,
   });
 
   return {

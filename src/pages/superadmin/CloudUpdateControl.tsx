@@ -177,7 +177,7 @@ const CloudUpdateControl: React.FC = () => {
           </div>
           <div className="rounded-lg border bg-white p-4">
             <p className="text-xs uppercase text-gray-500 font-medium">Current Version</p>
-            <p className="mt-1 text-lg font-bold text-gray-900">{versionStatus?.currentVersion || '1.0.0'}</p>
+            <p className="mt-1 text-lg font-bold text-gray-900">{versionStatus?.currentVersion || 'Unknown'}</p>
             <p className="text-sm text-gray-600">Latest: {versionStatus?.latestVersion || 'Unknown'}</p>
           </div>
           <div className="rounded-lg border bg-white p-4">
@@ -218,6 +218,9 @@ const CloudUpdateControl: React.FC = () => {
             <p className="text-xs uppercase text-gray-500 font-medium">School / Node</p>
             <p className="mt-1 text-lg font-bold text-gray-900">{syncStatus?.schoolId || cloudStatus?.schoolId || 'SCHOOL001'}</p>
             <p className="text-sm text-gray-500">{syncStatus?.nodeId || '—'}</p>
+            <p className="text-xs text-gray-500">
+              {(cloudStatus?.nodeRole || 'local')} / {(cloudStatus?.syncScope || 'global')}
+            </p>
           </div>
         </div>
         <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">

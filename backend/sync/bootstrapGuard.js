@@ -1,4 +1,6 @@
 const { runAutoSyncCycle } = require("./autoSyncService");
+const { appConfig } = require("../config/appConfig");
+const { pullCloudRecords } = require("../aws/awsCloudSyncClient");
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -12,6 +14,17 @@ async function ensureRecordWithBootstrap(loadRecord, options = {}) {
   const retries = Number(options.retries || 3);
   const delayMs = Number(options.delayMs || 1200);
   const trigger = options.trigger || "auth";
+  const triggerCollections = {
+    "student-login": ["students"],
+    "teacher-login": ["teachers"],
+    "schooladmin-login": ["schoolAdmins"],
+    "superadmin-login": ["superAdmins"],
+  };
+  const collections = Array.isArray(options.collections) && options.collections.length
+    ? options.collections
+    : triggerCollections[trigger]
+      ? triggerCollections[trigger]
+    : undefined;
 
   let record = await loadRecord();
   if (record) {
@@ -19,10 +32,16 @@ async function ensureRecordWithBootstrap(loadRecord, options = {}) {
   }
 
   for (let attempt = 0; attempt < retries; attempt += 1) {
-    const cycle = await runAutoSyncCycle({
-      trigger: `${trigger}-bootstrap`,
-      forceBootstrap: true,
-    });
+    const cycle = appConfig.aws.syncEnabled
+      ? await pullCloudRecords({
+          collections,
+          forceFull: true,
+          limit: Number(process.env.AWS_BOOTSTRAP_PULL_LIMIT || process.env.AWS_SYNC_PULL_LIMIT || 5000),
+        })
+      : await runAutoSyncCycle({
+          trigger: `${trigger}-bootstrap`,
+          forceBootstrap: true,
+        });
 
     if (cycle && cycle.skipped && cycle.reason === "in-progress") {
       await sleep(delayMs);

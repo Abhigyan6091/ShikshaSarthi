@@ -118,6 +118,12 @@ jobs:
             package-lock.json
             shikshasarthi-launcher/desktop-wrapper/package-lock.json
 
+      - name: Stamp app and backend version
+        shell: bash
+        run: |
+          npm version "${{ needs.build-web-and-update.outputs.version }}" --no-git-tag-version
+          npm --prefix backend version "${{ needs.build-web-and-update.outputs.version }}" --no-git-tag-version
+
       - name: Install web dependencies
         run: npm ci
 
@@ -209,6 +215,12 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             shikshasarthi-launcher/desktop-wrapper/package-lock.json
+
+      - name: Stamp app and backend version
+        shell: bash
+        run: |
+          npm version "${{ needs.build-web-and-update.outputs.version }}" --no-git-tag-version
+          npm --prefix backend version "${{ needs.build-web-and-update.outputs.version }}" --no-git-tag-version
 
       - name: Install web dependencies
         run: npm ci

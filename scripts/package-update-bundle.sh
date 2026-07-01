@@ -12,6 +12,8 @@ PACKAGE_NAME="shiksha-sarthi-update-$VERSION.zip"
 rm -rf "$WORK_DIR"
 mkdir -p "$WORK_DIR" "$OUT_DIR"
 cp "$ROOT_DIR/.env.local-school.example" "$WORK_DIR/.env.local-school.example"
+sed -i.bak "s/^APP_VERSION=.*/APP_VERSION=$VERSION/" "$WORK_DIR/.env.local-school.example"
+rm -f "$WORK_DIR/.env.local-school.example.bak"
 
 cat > "$WORK_DIR/release-metadata.json" <<JSON
 {

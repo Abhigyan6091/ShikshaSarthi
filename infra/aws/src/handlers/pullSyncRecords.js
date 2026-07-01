@@ -1,6 +1,7 @@
 const { dynamo, PutCommand } = require("../lib/aws");
 const {
   DEFAULT_COLLECTIONS,
+  deltaTimestamp,
   filterDelta,
   readCollectionState,
   sanitizeScope,
@@ -39,6 +40,7 @@ exports.handler = async (event) => {
   const collections = {};
   const collectionStats = {};
   let totalRecords = 0;
+  let cursorTime = null;
 
   for (const collectionName of selectedCollections) {
     const current = await readCollectionState({
@@ -47,6 +49,12 @@ exports.handler = async (event) => {
       collectionName,
     });
     const records = filterDelta(current.records, { since, limit });
+    for (const record of records) {
+      const recordCursor = deltaTimestamp(record);
+      if (!cursorTime || recordCursor.getTime() > cursorTime.getTime()) {
+        cursorTime = recordCursor;
+      }
+    }
     collections[collectionName] = records;
     collectionStats[collectionName] = {
       key: current.key,
@@ -80,6 +88,7 @@ exports.handler = async (event) => {
     nodeId,
     since,
     serverTime: timestamp,
+    cursorTime: cursorTime ? cursorTime.toISOString() : timestamp,
     totalRecords,
     collections,
     stats: collectionStats,

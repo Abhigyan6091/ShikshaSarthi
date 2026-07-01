@@ -7,7 +7,7 @@ require("dotenv").config();
 
 process.env.APP_MODE = process.env.APP_MODE || "local-school";
 process.env.USE_LOCAL_DB = process.env.USE_LOCAL_DB || "true";
-process.env.SYNC_AUTO_ENABLED = process.env.SYNC_AUTO_ENABLED || "true";
+process.env.SYNC_AUTO_ENABLED = process.env.SYNC_AUTO_ENABLED || "false";
 process.env.SYNC_NODE_ROLE = process.env.SYNC_NODE_ROLE || "local";
 process.env.AI_HINTS_ENABLED = process.env.AI_HINTS_ENABLED || "false";
 process.env.CLOUDINARY_ENABLED = process.env.CLOUDINARY_ENABLED || "false";
@@ -74,13 +74,25 @@ app.use("/uploads", express.static(UPLOAD_ROOT));
 const { useLocalDb, mongoUri } = getMongoUri();
 const sanitizedMongoUri = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, "//$1:***@");
 
+function hasLegacySyncSource() {
+  return Boolean(
+    appConfig.syncRemoteUrl ||
+      String(process.env.SYNC_SOURCE_URI || "").trim() ||
+      String(process.env.MONGO_URI_REMOTE || "").trim()
+  );
+}
+
 mongoose
   .connect(mongoUri)
   .then(() => {
     console.log("MongoDB status: connected");
     console.log(`Database mode: ${useLocalDb ? "local" : "remote"}`);
     console.log(`Mongo URI: ${sanitizedMongoUri}`);
-    startAutoSync();
+    if (appConfig.syncAutoEnabled && hasLegacySyncSource()) {
+      startAutoSync();
+    } else if (appConfig.syncAutoEnabled) {
+      console.log("Legacy direct sync skipped: no SYNC_REMOTE_URL or SYNC_SOURCE_URI configured");
+    }
     startAwsAutoSync();
   })
   .catch((err) => {
@@ -155,6 +167,7 @@ app.get("/app/status", (_req, res) => {
     ok: database.connected,
     mode: appConfig.mode,
     version: appConfig.version,
+    nodeRole: appConfig.nodeRole,
     database: {
       connected: database.connected,
       name: database.name || "app",
@@ -170,6 +183,11 @@ app.get("/app/status", (_req, res) => {
       lastError: syncState.lastError || null,
     },
     awsSync: getAwsAutoSyncState(),
+    aws: {
+      schoolId: appConfig.aws.schoolId,
+      nodeId: appConfig.aws.nodeId,
+      syncScope: appConfig.aws.syncScope,
+    },
     network: {
       localUrl: `http://localhost:${appConfig.frontendPort}`,
       lanUrl: `http://${getLanAddress()}:${appConfig.frontendPort}`,

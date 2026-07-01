@@ -8,6 +8,26 @@ const { applyDownloadedUpdate, getUpdateState, rollbackUpdate } = require("../ut
 
 const router = express.Router();
 
+function launchInstaller(filePath) {
+  if (process.platform === "win32") {
+    return new Promise((resolve, reject) => {
+      const child = spawn("cmd.exe", ["/c", "start", "", filePath], {
+        detached: true,
+        stdio: "ignore",
+        windowsHide: true,
+      });
+
+      child.once("error", reject);
+      child.once("spawn", () => {
+        child.unref();
+        resolve();
+      });
+    });
+  }
+
+  return Promise.resolve();
+}
+
 router.get("/check", async (_req, res) => {
   try {
     const result = await checkForUpdate();
@@ -57,8 +77,7 @@ router.post("/install-now", async (req, res) => {
     }
 
     if (process.platform === "win32") {
-      const child = spawn(filePath, [], { detached: true, stdio: "ignore" });
-      child.unref();
+      await launchInstaller(filePath);
       return res.status(200).json({ ok: true, launched: true, message: "Installer started. The app will close to finish updating." });
     }
 

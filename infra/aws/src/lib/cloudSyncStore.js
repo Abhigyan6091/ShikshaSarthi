@@ -108,10 +108,26 @@ function parseTimestamp(value) {
   return Number.isNaN(parsed.getTime()) ? new Date(0) : parsed;
 }
 
-function normalizeRecord(record, { schoolId, nodeId, now = new Date().toISOString() } = {}) {
+function cloudTimestamp(record) {
+  return parseTimestamp(record && record._sync && record._sync.cloudUpdatedAt);
+}
+
+function deltaTimestamp(record) {
+  const cloudDate = cloudTimestamp(record);
+  if (cloudDate.getTime() > 0) return cloudDate;
+  return parseTimestamp(record && (record.updatedAt || record.createdAt));
+}
+
+function normalizeRecord(record, {
+  schoolId,
+  nodeId,
+  now = new Date().toISOString(),
+  preserveCloudUpdatedAt = false,
+} = {}) {
   const normalized = { ...(record || {}) };
   const id = normalizeId(normalized._id);
   if (!id) return null;
+  const existingCloudUpdatedAt = normalized._sync && normalized._sync.cloudUpdatedAt;
 
   normalized._id = id;
   normalized.updatedAt = parseTimestamp(normalized.updatedAt || normalized.createdAt || now).toISOString();
@@ -121,7 +137,9 @@ function normalizeRecord(record, { schoolId, nodeId, now = new Date().toISOStrin
     ...(normalized._sync || {}),
     schoolId,
     nodeId,
-    cloudUpdatedAt: now,
+    cloudUpdatedAt: preserveCloudUpdatedAt
+      ? parseTimestamp(existingCloudUpdatedAt || normalized.updatedAt || now).toISOString()
+      : now,
   };
   delete normalized.__v;
 
@@ -132,7 +150,7 @@ function mergeRecords(existingRecords, incomingRecords, context) {
   const byId = new Map();
 
   for (const record of existingRecords || []) {
-    const normalized = normalizeRecord(record, context);
+    const normalized = normalizeRecord(record, { ...context, preserveCloudUpdatedAt: true });
     if (normalized) byId.set(normalized._id, normalized);
   }
 
@@ -176,14 +194,15 @@ function filterDelta(records, { since, limit }) {
   const maxRecords = Math.max(1, Math.min(Number(limit || 500), 5000));
 
   return (records || [])
-    .filter((record) => !sinceDate || parseTimestamp(record.updatedAt).getTime() > sinceDate.getTime())
-    .sort((left, right) => String(left.updatedAt || "").localeCompare(String(right.updatedAt || "")))
+    .filter((record) => !sinceDate || deltaTimestamp(record).getTime() > sinceDate.getTime())
+    .sort((left, right) => deltaTimestamp(left).getTime() - deltaTimestamp(right).getTime())
     .slice(0, maxRecords);
 }
 
 module.exports = {
   DEFAULT_COLLECTIONS,
   filterDelta,
+  deltaTimestamp,
   mergeRecords,
   readCollectionState,
   sanitizeScope,

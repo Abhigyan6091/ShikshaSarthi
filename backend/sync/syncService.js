@@ -143,6 +143,7 @@ async function applySingleRecord(model, collectionName, record, { markSynced }) 
       normalizedRecord,
       { upsert: true, runValidators: false, skipSyncMetadata: true, timestamps: false }
     );
+    await markDuplicateIdsSynced(model, normalizedRecord._id);
 
     return {
       collection: collectionName,
@@ -168,6 +169,7 @@ async function applySingleRecord(model, collectionName, record, { markSynced }) 
     normalizedRecord,
     { upsert: true, runValidators: false, skipSyncMetadata: true, timestamps: false }
   );
+  await markDuplicateIdsSynced(model, normalizedRecord._id);
 
   return {
     collection: collectionName,
@@ -375,6 +377,27 @@ function normalizeRecordForSyncExport(record) {
   return normalizedId ? { ...normalized, _id: normalizedId } : normalized;
 }
 
+function idCandidatesFor(id) {
+  const normalizedId = normalizeRecordId(id);
+  if (!normalizedId) return [];
+
+  if (mongoose.Types.ObjectId.isValid(normalizedId)) {
+    return [normalizedId, new mongoose.Types.ObjectId(normalizedId)];
+  }
+
+  return [normalizedId];
+}
+
+async function markDuplicateIdsSynced(model, id) {
+  const idCandidates = idCandidatesFor(id);
+  if (!idCandidates.length) return null;
+
+  return model.collection.updateMany(
+    { _id: { $in: idCandidates } },
+    { $set: { synced: true } }
+  );
+}
+
 function normalizeSyncValue(value) {
   if (!value) return value;
   if (value instanceof Date) return value.toISOString();
@@ -413,12 +436,7 @@ async function markRecordsSynced(rawPayload) {
       continue;
     }
 
-    const idCandidates = uniqueIds.flatMap((id) => {
-      if (mongoose.Types.ObjectId.isValid(id)) {
-        return [id, new mongoose.Types.ObjectId(id)];
-      }
-      return [id];
-    });
+    const idCandidates = uniqueIds.flatMap(idCandidatesFor);
 
     const writeResult = await model.collection.updateMany(
       { _id: { $in: idCandidates } },

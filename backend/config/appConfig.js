@@ -19,6 +19,16 @@ function readString(name, defaultValue = "") {
   return String(value);
 }
 
+function resolveAppVersion() {
+  const packagedVersion = backendPackageJson.version || "1.0.0";
+
+  // APP_VERSION used to be copied into installed .env files, so older school
+  // servers can keep reporting 1.0.0 after a successful program update. Use
+  // the packaged backend version as the source of truth; APP_VERSION_OVERRIDE
+  // remains available for an intentional operator/CI override.
+  return readString("APP_VERSION_OVERRIDE", packagedVersion);
+}
+
 function getLanAddress() {
   const interfaces = os.networkInterfaces();
   const candidates = [];
@@ -79,7 +89,7 @@ function scoreLanAddress(name, address) {
 const appConfig = {
   serviceName: "ShikshaSarthi",
   mode: readString("APP_MODE", "local-school"),
-  version: readString("APP_VERSION", backendPackageJson.version || "1.0.0"),
+  version: resolveAppVersion(),
   releaseDate: readString("APP_RELEASE_DATE", null),
   port: Number(process.env.PORT || process.env.BACKEND_PORT || 5000),
   frontendPort: Number(process.env.FRONTEND_PORT || 6050),

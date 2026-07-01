@@ -59,6 +59,14 @@ function readEnvFile(resourcesPath) {
     return env;
 }
 
+function getPackagedAppVersion() {
+    try {
+        return app.getVersion();
+    } catch (_error) {
+        return '1.0.15';
+    }
+}
+
 function getLocalIp() {
     const interfaces = os.networkInterfaces();
     const defaultInterface = getDefaultRouteInterface();
@@ -351,6 +359,7 @@ async function startLocalRuntime(resourcesPath) {
     const runtimeEnv = {
         ...fileEnv,
         NODE_ENV: 'production',
+        APP_VERSION_OVERRIDE: getPackagedAppVersion(),
         APP_MODE: fileEnv.APP_MODE || 'local-school',
         USE_LOCAL_DB: 'true',
         PORT: fileEnv.FRONTEND_PORT || '6050',
@@ -358,7 +367,7 @@ async function startLocalRuntime(resourcesPath) {
         FRONTEND_DIST_DIR: paths.frontendDistDir,
         MONGO_URI: paths.mongoUri,
         MONGO_URI_LOCAL: paths.mongoUri,
-        SYNC_AUTO_ENABLED: fileEnv.SYNC_AUTO_ENABLED || 'true',
+        SYNC_AUTO_ENABLED: fileEnv.SYNC_AUTO_ENABLED || 'false',
         SYNC_NODE_ROLE: fileEnv.SYNC_NODE_ROLE || 'local',
         SYNC_SOURCE_URI: fileEnv.SYNC_SOURCE_URI || fileEnv.MONGO_URI_REMOTE || '',
         SYNC_SOURCE_DB_NAME: fileEnv.SYNC_SOURCE_DB_NAME || 'app',
@@ -522,7 +531,7 @@ ipcMain.handle('get-server-info', async () => {
     return {
         ip: getLocalIp(),
         port: env.FRONTEND_PORT || '6050',
-        role: env.NODE_ROLE || 'SCHOOL'
+        role: env.SYNC_NODE_ROLE || env.NODE_ROLE || 'SCHOOL'
     };
 });
 
@@ -539,8 +548,10 @@ ipcMain.handle('install-update', async (_event, installerPath) => {
 
     try {
         if (process.platform === 'win32') {
-            const child = spawn(installerPath, [], { detached: true, stdio: 'ignore' });
-            child.unref();
+            const openError = await shell.openPath(installerPath);
+            if (openError) {
+                return { ok: false, error: openError };
+            }
             setTimeout(() => app.quit(), 1500);
             return { ok: true, launched: true };
         }

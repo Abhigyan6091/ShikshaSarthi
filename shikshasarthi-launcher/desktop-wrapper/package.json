@@ -1,6 +1,6 @@
 {
   "name": "shikshasarthi-launcher",
-  "version": "1.0.0",
+  "version": "1.0.15",
   "description": "Desktop Launcher for ShikshaSarthi School Server",
   "repository": {
     "type": "git",
@@ -44,7 +44,9 @@
       "include": "build/installer.nsh"
     },
     "linux": {
-      "target": ["deb"],
+      "target": [
+        "deb"
+      ],
       "category": "Education",
       "icon": "build/icon.png"
     },

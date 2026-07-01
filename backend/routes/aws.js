@@ -18,6 +18,10 @@ router.get("/status", async (_req, res) => {
       enabled: Boolean(appConfig.aws.controlApiUrl),
       reachable: false,
       schoolId: appConfig.aws.schoolId,
+      nodeId: appConfig.aws.nodeId,
+      mode: appConfig.mode,
+      nodeRole: appConfig.nodeRole,
+      syncScope: appConfig.aws.syncScope,
       lastCheckedAt: new Date().toISOString(),
       lastError: error.message,
       features: {

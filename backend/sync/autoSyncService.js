@@ -20,7 +20,7 @@ const DATA_DIR = process.env.APP_STATE_DIR
   : path.join(__dirname, "..", "data");
 const STATE_FILE = path.join(DATA_DIR, "sync-state.json");
 
-const AUTO_SYNC_ENABLED = String(process.env.SYNC_AUTO_ENABLED || "true").toLowerCase() !== "false";
+const AUTO_SYNC_ENABLED = String(process.env.SYNC_AUTO_ENABLED || "false").toLowerCase() !== "false";
 const AUTO_SYNC_INTERVAL_MS = Number(process.env.SYNC_AUTO_INTERVAL_MS || 1_200_000);
 const AUTO_SYNC_START_DELAY_MS = Number(process.env.SYNC_AUTO_START_DELAY_MS || 5_000);
 const REMOTE_TIMEOUT_MS = Number(process.env.SYNC_REMOTE_TIMEOUT_MS || 10_000);
