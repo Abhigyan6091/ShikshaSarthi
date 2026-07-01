@@ -201,6 +201,46 @@
             background-color: #006abc;
         }
 
+        .btn-launch:disabled {
+            background-color: #2a2a2a;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn-secondary {
+            flex: 1;
+            background-color: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: var(--radius);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.15s, border-color 0.15s;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: #242424;
+            border-color: #555;
+        }
+
+        .btn-secondary:disabled {
+            color: #666;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
         /* Footer */
         .footer-bar {
             padding: 16px 32px;
@@ -261,10 +301,22 @@
                 </div>
             </div>
 
-            <button id="launch-btn" class="btn-launch">
-                Open Web Dashboard
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-            </button>
+            <div>
+                <div class="btn-row">
+                    <button id="sync-btn" class="btn-secondary" disabled>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                        Sync Now
+                    </button>
+                    <button id="update-btn" class="btn-secondary" disabled>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.99 6.57 2.6"></path><polyline points="21 3 21 9 15 9"></polyline></svg>
+                        Check for Updates
+                    </button>
+                </div>
+                <button id="launch-btn" class="btn-launch">
+                    Open Web Dashboard
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -285,13 +337,18 @@
         const runtimeText = document.getElementById('runtime-text');
         const cloudDot = document.getElementById('cloud-dot');
         const cloudText = document.getElementById('cloud-text');
+        const syncBtn = document.getElementById('sync-btn');
+        const updateBtn = document.getElementById('update-btn');
 
         let currentUrl = 'http://localhost:6050';
+        // Local backend (loopback) for control actions; the displayed IP is for LAN clients.
+        let backendBase = 'http://127.0.0.1:6050';
         let isRuntimeReady = false;
+        let actionBusy = false;
 
         async function init() {
             const info = await window.electronAPI.getServerInfo();
-            
+
             roleTag.textContent = info.role;
             if (info.role === 'MASTER') {
                 roleSubtitle.textContent = 'Hub Management Node';
@@ -302,10 +359,97 @@
             }
 
             currentUrl = `http://${info.ip}:${info.port}`;
+            backendBase = `http://127.0.0.1:${info.port}`;
             serverUrl.textContent = info.ip + ':' + info.port;
 
             cloudDot.className = 'dot warn';
             cloudText.textContent = 'Online when internet is available';
+        }
+
+        function setLog(text, color) {
+            runtimeLogs.style.color = color || 'var(--text-muted)';
+            runtimeLogs.innerText = text;
+        }
+
+        function setActionButtons(enabled) {
+            syncBtn.disabled = !enabled;
+            updateBtn.disabled = !enabled;
+        }
+
+        async function syncNow() {
+            if (actionBusy || !isRuntimeReady) return;
+            actionBusy = true;
+            setActionButtons(false);
+            setLog('> Syncing with AWS cloud (uploading local changes, downloading updates)...', 'var(--status-warn)');
+            try {
+                const res = await fetch(`${backendBase}/api/aws/sync/run`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trigger: 'launcher' })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    const s = (data.sync && data.sync.summary) || {};
+                    setLog(`> Sync complete.\n> Uploaded ${s.acceptedRecords ?? 0} record(s), downloaded ${s.downloadedRecords ?? 0}, applied ${(s.appliedInserted ?? 0) + (s.appliedUpdated ?? 0)}.`, 'var(--status-ok)');
+                } else if (data.skipped) {
+                    setLog(`> Sync skipped: ${data.reason || 'already running'}.`, 'var(--status-warn)');
+                } else {
+                    setLog(`> Sync failed: ${data.error || (data.state && data.state.lastError) || 'unknown error'}.`, 'var(--status-err)');
+                }
+            } catch (err) {
+                setLog(`> Sync request failed: ${err.message}. Is this device online?`, 'var(--status-err)');
+            } finally {
+                actionBusy = false;
+                setActionButtons(true);
+            }
+        }
+
+        async function checkUpdates() {
+            if (actionBusy || !isRuntimeReady) return;
+            actionBusy = true;
+            setActionButtons(false);
+            setLog('> Checking AWS for a newer version...', 'var(--status-warn)');
+            try {
+                const res = await fetch(`${backendBase}/api/update/check`);
+                const info = await res.json();
+                if (info.lastError && !info.updateAvailable) {
+                    setLog(`> Update check failed: ${info.lastError}.`, 'var(--status-err)');
+                    return;
+                }
+                if (!info.updateAvailable) {
+                    setLog(`> You are up to date (version ${info.currentVersion || 'current'}).`, 'var(--status-ok)');
+                    return;
+                }
+                const proceed = confirm(`A new version is available.\n\nCurrent: ${info.currentVersion}\nLatest: ${info.latestVersion}\n\nDownload and install now? The app will close to finish updating. Your data is preserved.`);
+                if (!proceed) {
+                    setLog(`> Update ${info.latestVersion} available. Install postponed.`, 'var(--status-warn)');
+                    return;
+                }
+                setLog(`> Downloading installer for ${info.latestVersion}... this may take a few minutes.`, 'var(--status-warn)');
+                const dl = await fetch(`${backendBase}/api/update/download-installer`, { method: 'POST' });
+                const dlData = await dl.json();
+                if (!dlData.ok || !dlData.filePath) {
+                    setLog(`> Download failed: ${dlData.error || 'installer not available'}.`, 'var(--status-err)');
+                    return;
+                }
+                setLog('> Installer downloaded. Launching installer; the app will now close...', 'var(--status-ok)');
+                const inst = await fetch(`${backendBase}/api/update/install-now`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filePath: dlData.filePath })
+                });
+                const instData = await inst.json();
+                if (!instData.ok) {
+                    setLog(`> Could not start installer: ${instData.error || 'unknown error'}.`, 'var(--status-err)');
+                } else if (instData.launched === false) {
+                    setLog(`> ${instData.message || 'Installer downloaded. Open it to finish updating.'}`, 'var(--status-warn)');
+                }
+            } catch (err) {
+                setLog(`> Update request failed: ${err.message}. Is this device online?`, 'var(--status-err)');
+            } finally {
+                actionBusy = false;
+                setActionButtons(true);
+            }
         }
 
         window.electronAPI.onRuntimeStatus((payload) => {
@@ -318,6 +462,7 @@
                 runtimeLogs.style.color = 'var(--status-warn)';
                 runtimeLogs.innerText = '> Starting local database and API services...\n> Preparing offline classroom data.';
                 isRuntimeReady = false;
+                setActionButtons(false);
             } else if (status === 'running') {
                 runtimeDot.className = 'dot ok';
                 runtimeText.textContent = 'Operational';
@@ -325,12 +470,14 @@
                 runtimeLogs.innerText = '> Local database and API are online.\n> Ready to accept LAN connections.';
                 isRuntimeReady = true;
                 launchBtn.disabled = false;
+                if (!actionBusy) setActionButtons(true);
             } else if (status === 'error') {
                 runtimeDot.className = 'dot err';
                 runtimeText.textContent = 'Faulted';
                 runtimeLogs.style.color = 'var(--status-err)';
                 runtimeLogs.innerText = `> RUNTIME ERROR: Local services failed.\n> ACTION: ${message || 'Restart ShikshaSarthi and try again.'}`;
                 isRuntimeReady = false;
+                setActionButtons(false);
             }
         });
 
@@ -341,6 +488,9 @@
             }
             window.electronAPI.openExternal(currentUrl);
         });
+
+        syncBtn.addEventListener('click', syncNow);
+        updateBtn.addEventListener('click', checkUpdates);
 
         init();
     </script>
