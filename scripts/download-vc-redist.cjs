@@ -13,34 +13,48 @@ const targetPath = path.resolve(
     path.join(repoRoot, 'shikshasarthi-launcher', 'desktop-wrapper', 'launcher-data', 'vc_redist.x64.exe')
 );
 
-function download(url, destination) {
+function download(url, destination, redirectsLeft = 5) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(destination);
 
-    https
-      .get(url, (response) => {
-        if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
-          file.close();
-          fs.rmSync(destination, { force: true });
-          download(response.headers.location, destination).then(resolve, reject);
-          return;
-        }
-
-        if (response.statusCode !== 200) {
-          file.close();
-          fs.rmSync(destination, { force: true });
-          reject(new Error(`vc_redist download failed with HTTP ${response.statusCode}`));
-          return;
-        }
-
-        response.pipe(file);
-        file.on('finish', () => file.close(resolve));
-      })
-      .on('error', (error) => {
+    const request = https.get(url, (response) => {
+      if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
+        // Drain the redirect response so its socket is released; an unconsumed
+        // response keeps Node's event loop alive and hangs the process (and the
+        // CI step) forever after the real download finishes.
+        response.resume();
         file.close();
         fs.rmSync(destination, { force: true });
-        reject(error);
-      });
+        if (redirectsLeft <= 0) {
+          reject(new Error('vc_redist download exceeded redirect limit'));
+          return;
+        }
+        download(response.headers.location, destination, redirectsLeft - 1).then(resolve, reject);
+        return;
+      }
+
+      if (response.statusCode !== 200) {
+        response.resume();
+        file.close();
+        fs.rmSync(destination, { force: true });
+        reject(new Error(`vc_redist download failed with HTTP ${response.statusCode}`));
+        return;
+      }
+
+      response.pipe(file);
+      file.on('finish', () => file.close(resolve));
+    });
+
+    // Fail fast instead of hanging the CI job if the connection stalls.
+    request.setTimeout(120000, () => {
+      request.destroy(new Error('vc_redist download timed out'));
+    });
+
+    request.on('error', (error) => {
+      file.close();
+      fs.rmSync(destination, { force: true });
+      reject(error);
+    });
   });
 }
 
@@ -66,7 +80,12 @@ async function main() {
   console.log(`Visual C++ redistributable ready at ${path.relative(repoRoot, targetPath)}`);
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exit(1);
-});
+main()
+  .then(() => {
+    // Force exit so a lingering keep-alive socket can never hang the CI step.
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error(error.message);
+    process.exit(1);
+  });

@@ -28,8 +28,11 @@ function download(url, destination) {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(destination);
 
-    https.get(url, (response) => {
+    const request = https.get(url, (response) => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
+        // Drain the redirect response so its socket is released; an unconsumed
+        // response keeps Node's event loop alive and can hang the CI step.
+        response.resume();
         file.close();
         fs.rmSync(destination, { force: true });
         download(response.headers.location, destination).then(resolve, reject);
@@ -37,6 +40,7 @@ function download(url, destination) {
       }
 
       if (response.statusCode !== 200) {
+        response.resume();
         file.close();
         fs.rmSync(destination, { force: true });
         reject(new Error(`MongoDB download failed with HTTP ${response.statusCode}`));
@@ -47,7 +51,13 @@ function download(url, destination) {
       file.on('finish', () => {
         file.close(resolve);
       });
-    }).on('error', (error) => {
+    });
+
+    request.setTimeout(300000, () => {
+      request.destroy(new Error('MongoDB download timed out'));
+    });
+
+    request.on('error', (error) => {
       file.close();
       fs.rmSync(destination, { force: true });
       reject(error);
@@ -104,7 +114,12 @@ async function main() {
   console.log(`MongoDB runtime ready at ${path.relative(repoRoot, targetRoot)}`);
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exit(1);
-});
+main()
+  .then(() => {
+    // Force exit so a lingering keep-alive socket can never hang the CI step.
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error(error.message);
+    process.exit(1);
+  });
