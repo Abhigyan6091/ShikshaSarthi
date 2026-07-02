@@ -1,0 +1,15 @@
+export { class6MathsQuestionBank } from "./class6_maths_bilingual.js";
+export { class6ScienceQuestionBank } from "./class6_science_bilingual.js";
+export { class6SocialQuestionBank } from "./class6_social_bilingual.js";
+export { class7MathematicsQuestionBank } from "./class7_maths_bilingual.js";
+export { class7ScienceQuestionBank } from "./class7_science_bilingual.js";
+export { class7SocialQuestionBank } from "./class7_social_bilingual.js";
+export { class8MathsQuestionBank } from "./class8_maths_bilingual.js";
+export { class8ScienceQuestionBank } from "./class8_science_bilingual.js";
+export { class8SocialQuestionBank } from "./class8_social_bilingual.js";
+export { class9MathsQuestionBank } from "./class9_maths_bilingual.js";
+export { class9ScienceQuestionBank } from "./class9_science_bilingual.js";
+export { class9SocialQuestionBank } from "./class9_social_bilingual.js";
+export { class10MathsQuestionBank } from "./class10_maths_bilingual.js";
+export { class10ScienceQuestionBank } from "./class10_science_bilingual.js";
+export { class10SocialQuestionBank } from "./class10_social_bilingual.js";

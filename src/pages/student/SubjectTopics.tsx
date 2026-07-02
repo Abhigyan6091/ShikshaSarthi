@@ -76,8 +76,16 @@ const physicsTopics = [
           `${API_URL}/questions/topics/${className}/${subject}`
         );
 
-        if (res.data && Array.isArray(res.data.topics)) {
-          setTopics(res.data.topics);
+        const receivedTopics = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.topics)
+            ? res.data.topics
+            : Array.isArray(res.data?.data?.topics)
+              ? res.data.data.topics
+              : null;
+
+        if (receivedTopics) {
+          setTopics(receivedTopics.map((topic) => String(topic)));
         } else {
           setError("Invalid topics data received from server.");
           setTopics([]);

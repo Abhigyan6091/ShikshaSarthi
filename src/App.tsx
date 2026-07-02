@@ -56,6 +56,7 @@ import ExperimentPage from "./pages/student/experimentSimulation/ExperimentPage"
 import LabQuiz from "./pages/student/experimentSimulation/LabQuiz";
 import ExperimentAnalytics from "./pages/student/experimentSimulation/ExperimentAnalytics";
 import GyanKiYatra from "./pages/student/GyanKiYatra";
+import AdaptiveTest from "./pages/student/AdaptiveTest";
 
 // Question Page
 import Upload_question from "./components/questions/Upload_question";
@@ -140,6 +141,7 @@ const AppRoutes = () => {
       <Route path="/student/experiments/analytics" element={<ExperimentAnalytics />} />
       <Route path="/student/experiments/:subject/quiz" element={<LabQuiz />} />
       <Route path="/student/practice" element={<StudentPractice />} />
+      <Route path="/student/adaptive-test" element={<AdaptiveTest />} />
       <Route path="/student/practice/:subject" element={<SubjectTopics />} />
       <Route path="/student/practice/vocab" element={<VocabularyQuizPage />} />
       <Route path="/student/practice/:subject/:topic" element={<PracticeQuiz />} />

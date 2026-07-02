@@ -36,7 +36,8 @@ import {
   Video,
   Puzzle,
   Sparkles,
-  FlaskConical
+  FlaskConical,
+  BrainCircuit
 } from "lucide-react";
 import SubjectIcon from "@/components/SubjectIcon";
 
@@ -53,6 +54,9 @@ const StudentDashboard: React.FC = () => {
     username?: string;
     createdAt?: string;
     profilePhoto?: string;
+    adaptiveRating?: {
+      rating?: number;
+    };
     quizAttempted: {
       quizId: string;
       score: {
@@ -66,6 +70,17 @@ const StudentDashboard: React.FC = () => {
 
   const [quizId, setQuizId] = useState("");
   const [loading, setLoading] = useState(true);
+  const [language, setLanguage] = useState(() => localStorage.getItem("appLanguage") || "hi");
+
+  useEffect(() => {
+    const handleLanguageChange = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      setLanguage(detail?.language || localStorage.getItem("appLanguage") || "hi");
+    };
+
+    window.addEventListener("appLanguageChanged", handleLanguageChange);
+    return () => window.removeEventListener("appLanguageChanged", handleLanguageChange);
+  }, []);
 
   useEffect(() => {
     const localData = localStorage.getItem("student");
@@ -155,6 +170,7 @@ const StudentDashboard: React.FC = () => {
   };
 
   const stats = calculateStats();
+  const isHindi = language === "hi";
   
 
   const subjectProgress = [
@@ -239,8 +255,9 @@ const StudentDashboard: React.FC = () => {
       <main className="flex-1 py-6 md:py-8">
         <div className="edu-container">
           {/* Welcome Section with Student Info */}
-          <div className="mb-8">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+          <div className="mb-8 rounded-2xl border border-blue-100 bg-white/80 p-5 shadow-sm backdrop-blur md:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <Avatar className="h-16 w-16 ring-4 ring-edu-blue/20">
                 <AvatarImage src={student.profilePhoto ? `${API_URL}/${student.profilePhoto.replace(/^\//, '')}` : ''} alt={student.name} className="object-cover" />
                 <AvatarFallback className="bg-gradient-to-br from-edu-blue to-edu-purple text-white text-2xl font-bold">
@@ -249,9 +266,17 @@ const StudentDashboard: React.FC = () => {
               </Avatar>
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                  Welcome back, {student.name}! 👋
+                  {isHindi ? "नमस्ते" : "Welcome back"}, {student.name}!
                 </h1>
-                <p className="text-gray-600">Ready to ace your NMMS preparation today?</p>
+                <p className="text-gray-600">
+                  {isHindi ? "आज की तैयारी के लिए अपना अभ्यास, टेस्ट और रिपोर्ट यहीं से शुरू करें।" : "Start practice, tests, and reports from one focused workspace."}
+                </p>
+              </div>
+              </div>
+              <div className="rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 px-5 py-4 text-white shadow-md">
+                <p className="text-xs font-medium uppercase tracking-wide text-blue-100">{isHindi ? "Adaptive Rating" : "Adaptive Rating"}</p>
+                <p className="text-3xl font-bold">{student?.adaptiveRating?.rating || "Start"}</p>
+                <p className="text-xs text-blue-100">{isHindi ? "टेस्ट देकर rating पाएं" : "Take a test to calibrate"}</p>
               </div>
             </div>
 
@@ -310,24 +335,55 @@ const StudentDashboard: React.FC = () => {
           </div>
 
           {/* Actions - Moved to Top */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            <Card className="border-2 border-edu-blue/20 hover:border-edu-blue/40 transition-colors">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">{isHindi ? "आज क्या करना है?" : "What do you want to do today?"}</h2>
+              <p className="text-sm text-gray-600">{isHindi ? "तेज access के लिए मुख्य learning tools." : "Main learning tools with quick access."}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 mb-12">
+            <Card className="group border-0 bg-white shadow-sm ring-1 ring-blue-100 transition hover:-translate-y-1 hover:shadow-lg">
               <CardHeader>
-                <BookOpen className="h-10 w-10 text-edu-blue mb-2" />
-                <CardTitle>Practice Questions</CardTitle>
+                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-700 group-hover:bg-blue-600 group-hover:text-white">
+                  <BookOpen className="h-6 w-6" />
+                </div>
+                <CardTitle>{isHindi ? "Practice Questions" : "Practice Questions"}</CardTitle>
                 <CardDescription>
-                  Attempt subject-specific practice questions
+                  {isHindi ? "विषय के अनुसार अभ्यास करें" : "Attempt subject-specific practice questions"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-500">
-                  Select a subject and practice MCQ questions to improve your
-                  skills for the NMMS exam.
+                  {isHindi ? "विषय चुनें और NMMS तैयारी के लिए MCQ अभ्यास करें।" : "Select a subject and practice MCQ questions to improve your NMMS skills."}
                 </p>
               </CardContent>
               <CardFooter>
                 <Link to="/student/practice" className="w-full">
-                  <Button className="w-full">Start Practice</Button>
+                  <Button className="w-full">{isHindi ? "Practice शुरू करें" : "Start Practice"}</Button>
+                </Link>
+              </CardFooter>
+            </Card>
+
+            <Card className="group border-0 bg-gradient-to-br from-cyan-600 to-blue-700 text-white shadow-md transition hover:-translate-y-1 hover:shadow-xl md:col-span-2 xl:col-span-1">
+              <CardHeader>
+                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 text-white">
+                  <BrainCircuit className="h-7 w-7" />
+                </div>
+                <CardTitle>{isHindi ? "Adaptive Test" : "Adaptive Test"}</CardTitle>
+                <CardDescription className="text-cyan-50">
+                  {isHindi ? "Subject-wise या mixed MARS test" : "Subject-wise or mixed MARS test"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-cyan-50">
+                  {isHindi ? "10, 20, 30 या 40 questions चुनें। हर question आपके answer के हिसाब से adapt होगा।" : "Choose 10, 20, 30, or 40 questions. Each next question adapts to your answers."}
+                </p>
+              </CardContent>
+              <CardFooter>
+                <Link to="/student/adaptive-test" className="w-full">
+                  <Button className="w-full bg-white text-blue-700 hover:bg-cyan-50">
+                    {isHindi ? "Adaptive Test शुरू करें" : "Start Adaptive Test"}
+                  </Button>
                 </Link>
               </CardFooter>
             </Card>

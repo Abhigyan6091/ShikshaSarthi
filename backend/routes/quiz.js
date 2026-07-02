@@ -5,6 +5,9 @@ const Quiz = require("../models/Quiz");
 const Teacher = require("../models/Teacher"); // adjust the path as needed
 const Question = require("../models/Question");
 const StudentReport = require("../models/StudentReport");
+const adaptiveTestRoutes = require("./adaptiveTest");
+
+router.use("/adaptive-test", adaptiveTestRoutes);
 
 // Helper: find a teacher by either their custom teacherId or MongoDB _id
 async function findTeacherByIdentifier(identifier) {

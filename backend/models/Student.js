@@ -31,6 +31,50 @@ const studentSchema = new mongoose.Schema({
       attemptedAt: { type: Date, default: Date.now }
     }
   ],
+  adaptiveRating: {
+    rating: Number,
+    velocity: { type: Number, default: 0 },
+    attempts: { type: Number, default: 0 },
+    streak: { type: Number, default: 0 },
+    variance: { type: Number, default: 100 },
+    recentOutcomes: [{ type: Number }],
+    momentum: { type: String, default: "steady" },
+    weakTopics: [{ type: String }],
+    updatedAt: Date
+  },
+  adaptiveTestAttempts: [
+    {
+      className: String,
+      ratingBefore: Number,
+      ratingAfter: Number,
+      ratingChange: Number,
+      correct: Number,
+      incorrect: Number,
+      total: Number,
+      weakTopics: [{ type: String }],
+      startedAt: Date,
+      completedAt: { type: Date, default: Date.now },
+      answers: [
+        {
+          questionId: String,
+          question: String,
+          questionHindi: String,
+          options: [String],
+          optionsHindi: [String],
+          selectedOptionIndex: Number,
+          correctAnswerIndex: Number,
+          isCorrect: Boolean,
+          hintUsed: Boolean,
+          timeSpentMs: Number,
+          explanation: String,
+          explanationHindi: String,
+          ratingBefore: Number,
+          ratingAfter: Number,
+          ratingChange: Number
+        }
+      ]
+    }
+  ],
   createdAt: { type: Date, default: Date.now }
 });
 

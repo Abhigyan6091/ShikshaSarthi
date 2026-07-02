@@ -1,11 +1,54 @@
 const express = require("express");
 const router = express.Router();
+const path = require("path");
 const Question = require("../models/Question");
 const { appConfig } = require("../config/appConfig");
 const { requireAuth } = require("../middleware/auth");
+const { flattenQuestionBank } = require("../services/marsAdaptiveEngine");
 require("dotenv").config();
 
 const OFFLINE_HINT_MESSAGE = "AI hints are unavailable in offline mode.";
+
+const SUBJECT_ALIASES = {
+  "गणित": "maths",
+  maths: "maths",
+  mathematics: "maths",
+  "विज्ञान": "science",
+  science: "science",
+  "सामाजिक विज्ञान": "social",
+  social: "social",
+  "social science": "social",
+};
+
+async function loadLocalQuestionBank() {
+  const bankPath = path.resolve(__dirname, "../../question_bank/index.js");
+  return import(`file://${bankPath}`);
+}
+
+function normalizeSubject(subject = "") {
+  return SUBJECT_ALIASES[decodeURIComponent(String(subject)).trim().toLowerCase()] || decodeURIComponent(String(subject)).trim();
+}
+
+async function getLocalQuestions(className, subject) {
+  const bankModule = await loadLocalQuestionBank();
+  const normalizedSubject = normalizeSubject(subject);
+  return flattenQuestionBank(bankModule, className).filter((question) => question.subject === normalizedSubject);
+}
+
+function toPracticeQuestion(question) {
+  return {
+    _id: question.id,
+    question: question.questionHindi || question.question,
+    questionImage: "",
+    options: question.optionsHindi?.length ? question.optionsHindi : question.options,
+    correctAnswer: question.optionsHindi?.[question.correctAnswerIndex] || question.correctAnswer,
+    hint: {
+      text: question.hintsHindi?.[0] || question.hints?.[0] || "",
+      image: "",
+      video: "",
+    },
+  };
+}
 
 async function generateAiHint({ question, options }) {
   if (!appConfig.aiHintsEnabled) {
@@ -246,7 +289,21 @@ router.get("/topics/:class/:subject", async (req, res) => {
       class: className,
       subject,
     });
-    res.status(200).json({ class: className, subject, topics });
+    if (topics.length > 0) {
+      return res.status(200).json({ class: className, subject, topics });
+    }
+
+    const localQuestions = await getLocalQuestions(className, subject);
+    const localTopics = Array.from(
+      new Map(
+        localQuestions.map((question) => [
+          question.topicId,
+          question.chapterTitleHindi || question.chapterTitle || question.topicId,
+        ])
+      ).values()
+    );
+
+    res.status(200).json({ class: className, subject, topics: localTopics });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -260,7 +317,20 @@ router.get("/:class/:subject/:topic", async (req, res) => {
       subject,
       topic,
     });
-    res.status(200).json(questions);
+    if (questions.length > 0) {
+      return res.status(200).json(questions);
+    }
+
+    const decodedTopic = decodeURIComponent(topic);
+    const localQuestions = await getLocalQuestions(className, subject);
+    const matchingQuestions = localQuestions.filter(
+      (question) =>
+        question.topicId === decodedTopic ||
+        question.chapterTitle === decodedTopic ||
+        question.chapterTitleHindi === decodedTopic
+    );
+
+    res.status(200).json(matchingQuestions.map(toPracticeQuestion));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

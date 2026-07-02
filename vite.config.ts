@@ -9,6 +9,18 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 6091,
     proxy: {
+      '/students': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/quizzes': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/questions': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
       '/vqg': {
         target: 'http://localhost:5000',
         changeOrigin: true,

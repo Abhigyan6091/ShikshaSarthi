@@ -19,7 +19,8 @@ import {
   Menu,
   Wifi,
   WifiOff,
-  Settings
+  Settings,
+  Languages
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -36,6 +37,7 @@ const Header: React.FC = () => {
   const [userName, setUserName] = useState<string>('');
   const [profilePhoto, setProfilePhoto] = useState<string>('');
   const [studentId, setStudentId] = useState<string>('');
+  const [language, setLanguage] = useState<string>(() => localStorage.getItem('appLanguage') || 'hi');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean>(() => {
     if (typeof window === 'undefined') {
@@ -135,6 +137,13 @@ const Header: React.FC = () => {
     navigate('/login');
   };
 
+  const toggleLanguage = () => {
+    const nextLanguage = language === 'hi' ? 'en' : 'hi';
+    setLanguage(nextLanguage);
+    localStorage.setItem('appLanguage', nextLanguage);
+    window.dispatchEvent(new CustomEvent('appLanguageChanged', { detail: { language: nextLanguage } }));
+  };
+
   const getDashboardPath = () => {
     switch(userRole) {
       case 'superadmin': return '/superadmin';
@@ -186,6 +195,11 @@ const Header: React.FC = () => {
                   Dashboard
                 </Button>
               </Link>
+
+              <Button variant="outline" size="sm" onClick={toggleLanguage}>
+                <Languages className="h-4 w-4 mr-2" />
+                {language === 'hi' ? 'English' : 'हिंदी'}
+              </Button>
               
               {/* User Profile Button */}
               {userRole === 'student' && studentId ? (
@@ -294,6 +308,11 @@ const Header: React.FC = () => {
                         </Button>
                       </Link>
                     </SheetClose>
+
+                    <Button variant="ghost" className="w-full justify-start" onClick={toggleLanguage}>
+                      <Languages className="h-4 w-4 mr-2" />
+                      {language === 'hi' ? 'Switch to English' : 'हिंदी में बदलें'}
+                    </Button>
 
                     {userRole === 'student' && studentId && (
                       <SheetClose asChild>
