@@ -6,7 +6,7 @@ const Teacher = require("../models/Teacher");
 const Student = require("../models/Student");
 const School = require("../models/School");
 const { ensureRecordWithBootstrap } = require("../sync/bootstrapGuard");
-const { signAuthToken } = require("../middleware/auth");
+const { requireAuth, signAuthToken } = require("../middleware/auth");
 const { checkLoginRateLimit } = require("../middleware/loginRateLimiter");
 
 // SuperAdmin Login
@@ -237,6 +237,78 @@ router.get("/schools/:schoolId/class/:className/students", async (req, res) => {
       class: req.params.className
     });
     res.status(200).json(students);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Superadmin can delete any school profile.
+router.delete("/schools/:schoolId", requireAuth("superadmin"), async (req, res) => {
+  try {
+    const school = await School.findOneAndUpdate(
+      { schoolId: req.params.schoolId },
+      { isDeleted: true },
+      { new: true }
+    );
+    if (!school) return res.status(404).json({ message: "School not found" });
+    res.status(200).json({ message: "School deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Superadmin can delete any school admin profile.
+router.delete("/schooladmins/:username", requireAuth("superadmin"), async (req, res) => {
+  try {
+    const schoolAdmin = await SchoolAdmin.findOneAndUpdate(
+      { username: req.params.username },
+      { isDeleted: true },
+      { new: true }
+    );
+    if (!schoolAdmin) return res.status(404).json({ message: "School admin not found" });
+    res.status(200).json({ message: "School admin deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Superadmin can delete any teacher profile.
+router.delete("/teachers/:teacherId", requireAuth("superadmin"), async (req, res) => {
+  try {
+    const teacher = await Teacher.findOneAndUpdate(
+      { teacherId: req.params.teacherId },
+      { isDeleted: true },
+      { new: true }
+    );
+    if (!teacher) return res.status(404).json({ message: "Teacher not found" });
+
+    await SchoolAdmin.updateMany(
+      { schoolId: teacher.schoolId },
+      { $pull: { teachers: teacher.teacherId } }
+    );
+
+    res.status(200).json({ message: "Teacher deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Superadmin can delete any student profile.
+router.delete("/students/:studentId", requireAuth("superadmin"), async (req, res) => {
+  try {
+    const student = await Student.findOneAndUpdate(
+      { studentId: req.params.studentId },
+      { isDeleted: true },
+      { new: true }
+    );
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    await SchoolAdmin.updateMany(
+      { schoolId: student.schoolId },
+      { $pull: { students: student.studentId } }
+    );
+
+    res.status(200).json({ message: "Student deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

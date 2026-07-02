@@ -1,0 +1,474 @@
+import React, { useMemo, useState } from 'react';
+import axios from 'axios';
+import Cookies from 'js-cookie';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/use-toast';
+import { BookOpen, CheckCircle, Loader2, Plus, Search } from 'lucide-react';
+
+const API_URL = import.meta.env.VITE_API_URL;
+
+type SlotType = 'mcq' | 'custom' | 'audio' | 'video' | 'puzzle';
+type CountField = 'timeLimit' | 'mcqCount' | 'customCount' | 'audioCount' | 'videoCount' | 'puzzleCount';
+type ApiRecord = Record<string, unknown>;
+
+interface QuestionChoice {
+  _id: string;
+  question: string;
+  subject?: string;
+  class?: string;
+  topic?: string;
+  type: SlotType;
+  options?: string[];
+  correctAnswer?: string;
+  parentVideoId?: string;
+  questionIndex?: number;
+}
+
+interface QuestionSlot {
+  index: number;
+  type: SlotType;
+  question: QuestionChoice | null;
+}
+
+const unwrapTeacher = (raw: string | null) => {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed.teacher || parsed;
+  } catch {
+    return null;
+  }
+};
+
+const resolveTeacherId = () => {
+  const fromCookie = unwrapTeacher(Cookies.get('teacher') || null);
+  const fromTeacherStorage = unwrapTeacher(localStorage.getItem('teacher'));
+  const fromCurrentUser = unwrapTeacher(localStorage.getItem('currentUser'));
+  const teacher = fromCookie || fromTeacherStorage || fromCurrentUser;
+  return teacher?.teacherId || teacher?._id || '';
+};
+
+const asString = (value: unknown, fallback = '') => typeof value === 'string' ? value : fallback;
+
+const asRecordArray = (value: unknown): ApiRecord[] => Array.isArray(value)
+  ? value.filter((item): item is ApiRecord => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
+  : [];
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as { error?: string; message?: string } | undefined;
+    return data?.error || data?.message || error.message || fallback;
+  }
+  return error instanceof Error ? error.message : fallback;
+};
+
+const emptyCustom = {
+  subject: '',
+  class: '',
+  topic: '',
+  question: '',
+  optionsText: '',
+  correctAnswer: '',
+  hintText: '',
+};
+
+const CreateQuizNewFixed: React.FC = () => {
+  const { toast } = useToast();
+  const [config, setConfig] = useState({
+    quizId: '',
+    timeLimit: 60,
+    mcqCount: 0,
+    customCount: 0,
+    audioCount: 0,
+    videoCount: 0,
+    puzzleCount: 0,
+    startTime: '',
+    endTime: '',
+  });
+  const [slots, setSlots] = useState<QuestionSlot[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+  const [choices, setChoices] = useState<QuestionChoice[]>([]);
+  const [query, setQuery] = useState('');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [loadingChoices, setLoadingChoices] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [customDraft, setCustomDraft] = useState(emptyCustom);
+
+  const totalQuestions = config.mcqCount + config.customCount + config.audioCount + config.videoCount + config.puzzleCount;
+
+  const updateCount = (field: CountField, value: number) => {
+    setConfig((prev) => ({ ...prev, [field]: Math.max(0, value || 0) }));
+  };
+
+  const generateSlots = () => {
+    if (!config.quizId.trim() || !config.startTime || !config.endTime || totalQuestions <= 0) {
+      toast({ title: 'Missing details', description: 'Quiz ID, timing, and at least one question are required.', variant: 'destructive' });
+      return;
+    }
+
+    const next: QuestionSlot[] = [];
+    const pushSlots = (type: SlotType, count: number) => {
+      for (let i = 0; i < count; i += 1) {
+        next.push({ index: next.length, type, question: null });
+      }
+    };
+
+    pushSlots('mcq', config.mcqCount);
+    pushSlots('custom', config.customCount);
+    pushSlots('audio', config.audioCount);
+    pushSlots('video', config.videoCount);
+    pushSlots('puzzle', config.puzzleCount);
+    setSlots(next);
+  };
+
+  const openSlot = async (slotIndex: number) => {
+    const slot = slots[slotIndex];
+    setSelectedSlot(slotIndex);
+    setQuery('');
+    setChoices([]);
+    setDialogOpen(true);
+
+    if (slot.type === 'custom') {
+      setCustomDraft(emptyCustom);
+      return;
+    }
+
+    setLoadingChoices(true);
+    try {
+      let mapped: QuestionChoice[] = [];
+      if (slot.type === 'mcq') {
+        const response = await axios.get(`${API_URL}/questions`);
+        mapped = asRecordArray(response.data).map((question) => ({
+          _id: asString(question._id),
+          question: asString(question.question, 'MCQ question'),
+          subject: asString(question.subject),
+          class: asString(question.class),
+          topic: asString(question.topic),
+          type: 'mcq',
+          options: Array.isArray(question.options) ? question.options.map(String) : [],
+          correctAnswer: asString(question.correctAnswer),
+        }));
+      } else if (slot.type === 'audio') {
+        const response = await axios.get(`${API_URL}/audio-questions/`);
+        mapped = asRecordArray(response.data).map((question) => ({
+          _id: asString(question._id),
+          question: asString(question.question) || asString(question.title, 'Audio question'),
+          subject: asString(question.subject),
+          class: asString(question.class),
+          topic: asString(question.topic),
+          type: 'audio',
+          options: Array.isArray(question.options) ? question.options.map(String) : [],
+          correctAnswer: asString(question.correctAnswer),
+        }));
+      } else if (slot.type === 'video') {
+        const response = await axios.get(`${API_URL}/video-questions/`);
+        mapped = asRecordArray(response.data).flatMap((video) => {
+          const videoQuestions = asRecordArray(video.questions);
+          if (videoQuestions.length) {
+            return videoQuestions.map((question, index) => ({
+              _id: `${asString(video._id)}_q${index}`,
+              parentVideoId: asString(video._id),
+              questionIndex: index,
+              question: asString(question.question) || asString(video.videoTitle, 'Video question'),
+              subject: asString(video.subject),
+              class: asString(video.class),
+              topic: asString(video.topic),
+              type: 'video' as SlotType,
+              options: Array.isArray(question.options) ? question.options.map(String) : [],
+              correctAnswer: asString(question.correctAnswer),
+            }));
+          }
+          return [{
+            _id: asString(video._id),
+            parentVideoId: asString(video._id),
+            question: asString(video.videoTitle, 'Video question'),
+            subject: asString(video.subject),
+            class: asString(video.class),
+            topic: asString(video.topic),
+            type: 'video' as SlotType,
+          }];
+        });
+      } else if (slot.type === 'puzzle') {
+        const response = await axios.get(`${API_URL}/puzzles/`);
+        mapped = asRecordArray(response.data).map((puzzle) => ({
+          _id: asString(puzzle._id),
+          question: asString(puzzle.title, 'Puzzle'),
+          subject: asString(puzzle.subject, 'Puzzle'),
+          class: asString(puzzle.class, 'All'),
+          topic: asString(puzzle.topic, 'Puzzle'),
+          type: 'puzzle',
+        }));
+      }
+      setChoices(mapped);
+    } catch (error: unknown) {
+      toast({
+        title: 'Could not load questions',
+        description: getErrorMessage(error, 'Try again'),
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingChoices(false);
+    }
+  };
+
+  const selectChoice = (choice: QuestionChoice) => {
+    if (selectedSlot === null) return;
+    setSlots((prev) => prev.map((slot, index) => index === selectedSlot ? { ...slot, question: choice } : slot));
+    setDialogOpen(false);
+  };
+
+  const saveCustomQuestion = async () => {
+    if (selectedSlot === null) return;
+    const options = customDraft.optionsText.split('\n').map((option) => option.trim()).filter(Boolean);
+    setSaving(true);
+    try {
+      const response = await axios.post(`${API_URL}/questions`, {
+        subject: customDraft.subject,
+        class: customDraft.class,
+        topic: customDraft.topic,
+        question: customDraft.question,
+        options,
+        correctAnswer: customDraft.correctAnswer,
+        hint: { text: customDraft.hintText },
+      });
+      selectChoice({ ...response.data, type: 'custom' });
+      toast({ title: 'Custom question saved', description: 'It was added to the question bank and selected for this quiz.' });
+    } catch (error: unknown) {
+      toast({
+        title: 'Custom question failed',
+        description: getErrorMessage(error, 'Check the fields and correct answer syntax.'),
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredChoices = useMemo(() => {
+    const value = query.trim().toLowerCase();
+    if (!value) return choices;
+    return choices.filter((choice) =>
+      [choice.question, choice.subject, choice.topic, choice.class].filter(Boolean).some((field) => String(field).toLowerCase().includes(value))
+    );
+  }, [choices, query]);
+
+  const handleCreateQuiz = async () => {
+    const teacherId = resolveTeacherId();
+    if (!teacherId) {
+      toast({ title: 'Teacher not found', description: 'Please login again.', variant: 'destructive' });
+      return;
+    }
+    const missing = slots.filter((slot) => !slot.question);
+    if (!slots.length || missing.length) {
+      toast({ title: 'Incomplete quiz', description: `${missing.length || totalQuestions} slots still need questions.`, variant: 'destructive' });
+      return;
+    }
+
+    const questionIds = slots.map((slot) => {
+      if (slot.type === 'video' && slot.question?.parentVideoId) return slot.question.parentVideoId;
+      return slot.question!._id;
+    });
+
+    const videoQuestionMetadata = slots
+      .filter((slot) => slot.type === 'video' && slot.question?.parentVideoId)
+      .map((slot) => ({
+        slotIndex: slot.index,
+        parentVideoId: slot.question!.parentVideoId,
+        questionIndex: slot.question!.questionIndex,
+        questionText: slot.question!.question,
+      }));
+
+    setSaving(true);
+    try {
+      await axios.post(`${API_URL}/quizzes/create`, {
+        quizId: config.quizId.trim(),
+        teacherId,
+        questions: questionIds,
+        videoQuestionMetadata,
+        timeLimit: config.timeLimit,
+        totalQuestions: questionIds.length,
+        questionTypes: {
+          mcq: slots.filter((slot) => slot.type === 'mcq' || slot.type === 'custom').length,
+          custom: slots.filter((slot) => slot.type === 'custom').length,
+          audio: slots.filter((slot) => slot.type === 'audio').length,
+          video: slots.filter((slot) => slot.type === 'video').length,
+          puzzle: slots.filter((slot) => slot.type === 'puzzle').length,
+        },
+        startTime: config.startTime,
+        endTime: config.endTime,
+      });
+      toast({ title: 'Quiz created', description: `${config.quizId} was created successfully.` });
+      setSlots([]);
+      setConfig({
+        quizId: '',
+        timeLimit: 60,
+        mcqCount: 0,
+        customCount: 0,
+        audioCount: 0,
+        videoCount: 0,
+        puzzleCount: 0,
+        startTime: '',
+        endTime: '',
+      });
+    } catch (error: unknown) {
+      toast({
+        title: 'Quiz creation failed',
+        description: getErrorMessage(error, 'Could not create quiz.'),
+        variant: 'destructive',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const selectedSlotType = selectedSlot !== null ? slots[selectedSlot]?.type : null;
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Header />
+      <main className="flex-1 bg-gray-50 py-6 md:py-8">
+        <div className="edu-container">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Advanced Quiz Creator</h1>
+            <p className="mt-1 text-muted-foreground">Create quizzes from bank questions or add custom questions directly.</p>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+            <Card>
+              <CardHeader>
+                <CardTitle>Quiz Configuration</CardTitle>
+                <CardDescription>Custom questions are saved to the question bank.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label>Quiz ID</Label>
+                  <Input value={config.quizId} onChange={(event) => setConfig((prev) => ({ ...prev, quizId: event.target.value }))} />
+                </div>
+                <div>
+                  <Label>Time Limit (minutes)</Label>
+                  <Input type="number" value={config.timeLimit} onChange={(event) => updateCount('timeLimit', Number(event.target.value))} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>MCQ</Label><Input type="number" value={config.mcqCount} onChange={(event) => updateCount('mcqCount', Number(event.target.value))} /></div>
+                  <div><Label>Custom</Label><Input type="number" value={config.customCount} onChange={(event) => updateCount('customCount', Number(event.target.value))} /></div>
+                  <div><Label>Audio</Label><Input type="number" value={config.audioCount} onChange={(event) => updateCount('audioCount', Number(event.target.value))} /></div>
+                  <div><Label>Video</Label><Input type="number" value={config.videoCount} onChange={(event) => updateCount('videoCount', Number(event.target.value))} /></div>
+                  <div><Label>Puzzle</Label><Input type="number" value={config.puzzleCount} onChange={(event) => updateCount('puzzleCount', Number(event.target.value))} /></div>
+                  <div><Label>Total</Label><Input value={totalQuestions} disabled className="bg-gray-50 font-bold" /></div>
+                </div>
+                <div>
+                  <Label>Start Time</Label>
+                  <Input type="datetime-local" value={config.startTime} onChange={(event) => setConfig((prev) => ({ ...prev, startTime: event.target.value }))} />
+                </div>
+                <div>
+                  <Label>End Time</Label>
+                  <Input type="datetime-local" value={config.endTime} onChange={(event) => setConfig((prev) => ({ ...prev, endTime: event.target.value }))} />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button onClick={generateSlots} className="w-full">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Slots
+                </Button>
+              </CardFooter>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Question Slots</CardTitle>
+                <CardDescription>{slots.length ? `${slots.filter((slot) => slot.question).length}/${slots.length} selected` : 'Create slots from the configuration first.'}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {slots.length === 0 ? (
+                  <div className="py-16 text-center text-muted-foreground">
+                    <BookOpen className="mx-auto mb-3 h-12 w-12 opacity-40" />
+                    No slots yet
+                  </div>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {slots.map((slot) => (
+                      <button key={slot.index} onClick={() => openSlot(slot.index)} className="rounded-lg border bg-white p-4 text-left hover:shadow-sm">
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="rounded bg-blue-50 px-2 py-1 text-xs font-semibold uppercase text-blue-700">{slot.type}</span>
+                          {slot.question ? <CheckCircle className="h-5 w-5 text-green-600" /> : null}
+                        </div>
+                        <p className="line-clamp-3 text-sm font-medium">{slot.question?.question || 'Select question'}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+              {slots.length > 0 && (
+                <CardFooter>
+                  <Button onClick={handleCreateQuiz} disabled={saving} className="w-full">
+                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Create Quiz
+                  </Button>
+                </CardFooter>
+              )}
+            </Card>
+          </div>
+        </div>
+      </main>
+      <Footer />
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{selectedSlotType === 'custom' ? 'Create Custom Question' : `Select ${selectedSlotType} Question`}</DialogTitle>
+          </DialogHeader>
+
+          {selectedSlotType === 'custom' ? (
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div><Label>Subject</Label><Input value={customDraft.subject} onChange={(event) => setCustomDraft((prev) => ({ ...prev, subject: event.target.value }))} /></div>
+                <div><Label>Class</Label><Input value={customDraft.class} onChange={(event) => setCustomDraft((prev) => ({ ...prev, class: event.target.value }))} /></div>
+                <div><Label>Topic</Label><Input value={customDraft.topic} onChange={(event) => setCustomDraft((prev) => ({ ...prev, topic: event.target.value }))} /></div>
+              </div>
+              <div><Label>Question</Label><Textarea value={customDraft.question} onChange={(event) => setCustomDraft((prev) => ({ ...prev, question: event.target.value }))} /></div>
+              <div><Label>Options, one per line</Label><Textarea value={customDraft.optionsText} onChange={(event) => setCustomDraft((prev) => ({ ...prev, optionsText: event.target.value }))} /></div>
+              <div><Label>Correct Answer</Label><Input value={customDraft.correctAnswer} onChange={(event) => setCustomDraft((prev) => ({ ...prev, correctAnswer: event.target.value }))} /></div>
+              <div><Label>Hint</Label><Input value={customDraft.hintText} onChange={(event) => setCustomDraft((prev) => ({ ...prev, hintText: event.target.value }))} /></div>
+              <Button onClick={saveCustomQuestion} disabled={saving}>
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save Custom Question
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search questions..." className="pl-10" />
+              </div>
+              {loadingChoices ? (
+                <div className="py-12 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin" /></div>
+              ) : filteredChoices.length === 0 ? (
+                <p className="py-8 text-center text-muted-foreground">No questions found.</p>
+              ) : (
+                <div className="space-y-2">
+                  {filteredChoices.slice(0, 200).map((choice) => (
+                    <button key={choice._id} onClick={() => selectChoice(choice)} className="w-full rounded-md border bg-white p-3 text-left hover:bg-blue-50">
+                      <p className="font-medium">{choice.question}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {[choice.subject, choice.class ? `Class ${choice.class}` : '', choice.topic].filter(Boolean).join(' | ')}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default CreateQuizNewFixed;

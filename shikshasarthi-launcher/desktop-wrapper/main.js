@@ -63,7 +63,7 @@ function getPackagedAppVersion() {
     try {
         return app.getVersion();
     } catch (_error) {
-        return '1.0.15';
+        return '1.0.20';
     }
 }
 

@@ -16,53 +16,83 @@ import {
   Layers,
   MessageSquare,
   Video,
-  Database
+  Database,
+  IdCard,
+  Phone
 } from 'lucide-react';
 import SubjectIcon from '@/components/SubjectIcon';
 
+interface TeacherStudent {
+  _id?: string;
+  studentId?: string;
+  name?: string;
+  phone?: string;
+  class?: string;
+}
+
+interface TeacherQuiz {
+  _id?: string;
+  id?: string;
+  quizId?: string;
+  title?: string;
+  subject?: string;
+  questions?: unknown[];
+  questionCount?: number;
+  attemptedBy?: string[];
+}
+
+interface TeacherSession {
+  _id?: string;
+  id?: string;
+  teacherId?: string;
+  name?: string;
+  teacherName?: string;
+  schoolId?: string;
+  instituteId?: string;
+  role?: string;
+}
+
+const unwrapTeacherSession = (raw: string | undefined | null): TeacherSession | null => {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { teacher?: TeacherSession } & TeacherSession;
+    return parsed.teacher || parsed;
+  } catch {
+    return null;
+  }
+};
+
 const TeacherDashboard: React.FC = () => {
   const { user } = useAuth();
-  const [teacherQuizzes, setTeacherQuizzes] = useState([]);
+  const [teacherQuizzes, setTeacherQuizzes] = useState<TeacherQuiz[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [studentLoading, setStudentLoading] = useState(false);
+  const [showStudentList, setShowStudentList] = useState(false);
+  const [enrolledStudents, setEnrolledStudents] = useState<TeacherStudent[]>([]);
+  const [studentsByClass, setStudentsByClass] = useState<Record<string, TeacherStudent[]>>({});
 
   // Teacher data from cookies
   const [teacherId, setTeacherId] = useState("");
   const [teacherName, setTeacherName] = useState("");
   const [schoolId, setSchoolId] = useState("");
-  const [teacherData, setTeacherData] = useState(null);
+  const [teacherData, setTeacherData] = useState<TeacherSession | null>(null);
 
   // Fetch quizzes created by the teacher
   useEffect(() => {
     const fetchTeacherQuizzes = async () => {
-      const teacherCookie = Cookies.get("teacher");
-      let teacherInfo: any = null;
-
-      if (teacherCookie) {
-        try {
-          const parsedCookie = JSON.parse(teacherCookie);
-          teacherInfo = parsedCookie?.teacher || parsedCookie || null;
-        } catch (cookieParseError) {
-          console.warn('Failed to parse teacher cookie, trying localStorage fallback.', cookieParseError);
-        }
-      }
+      let teacherInfo = unwrapTeacherSession(Cookies.get("teacher"));
 
       if (!teacherInfo) {
         const teacherFromStorage = localStorage.getItem('teacher');
         const currentUser = localStorage.getItem('currentUser');
+        teacherInfo = unwrapTeacherSession(teacherFromStorage);
 
-        try {
-          if (teacherFromStorage) {
-            const parsedTeacherStorage = JSON.parse(teacherFromStorage);
-            teacherInfo = parsedTeacherStorage?.teacher || parsedTeacherStorage || null;
-          } else if (currentUser) {
-            const parsedCurrentUser = JSON.parse(currentUser);
-            if (parsedCurrentUser?.role === 'teacher' || parsedCurrentUser?.teacherId) {
-              teacherInfo = parsedCurrentUser;
-            }
+        if (!teacherInfo) {
+          const parsedCurrentUser = unwrapTeacherSession(currentUser);
+          if (parsedCurrentUser?.role === 'teacher' || parsedCurrentUser?.teacherId) {
+            teacherInfo = parsedCurrentUser;
           }
-        } catch (storageParseError) {
-          console.warn('Failed to parse teacher data from localStorage.', storageParseError);
         }
       }
 
@@ -87,33 +117,49 @@ const TeacherDashboard: React.FC = () => {
           throw new Error('Teacher ID not found in session data');
         }
 
-        const response = await fetch(`${API_URL}/teachers/${teacherIdFromCookie}/quizzes`);
+        const [quizResponse, studentResponse] = await Promise.all([
+          fetch(`${API_URL}/teachers/${teacherIdFromCookie}/quizzes`),
+          fetch(`${API_URL}/teachers/${teacherIdFromCookie}/students`),
+        ]);
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        if (!quizResponse.ok) {
+          throw new Error(`HTTP error! status: ${quizResponse.status}`);
         }
 
-        const data = await response.json();
+        const data = await quizResponse.json();
         console.log('API Response:', data); // Debug log to see the structure
         setTeacherQuizzes(Array.isArray(data) ? data : []);
-      } catch (err) {
-        setError(`Failed to fetch quizzes: ${err.message}`);
+
+        if (studentResponse.ok) {
+          const studentData = await studentResponse.json();
+          setEnrolledStudents(Array.isArray(studentData.students) ? studentData.students : []);
+          setStudentsByClass(studentData.groupedByClass || {});
+        }
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        setError(`Failed to fetch quizzes: ${message}`);
         console.error('Error fetching teacher quizzes:', err);
       } finally {
         setLoading(false);
+        setStudentLoading(false);
       }
     };
 
+    setStudentLoading(true);
     fetchTeacherQuizzes();
   }, []);
 
-  // Mock data for the dashboard
+  const totalAttempts = teacherQuizzes.reduce((sum, quiz) => {
+    return sum + (Array.isArray(quiz.attemptedBy) ? quiz.attemptedBy.length : 0);
+  }, 0);
+
   const statsData = [
     {
       title: "Total Students",
-      value: "42",
+      value: studentLoading ? "..." : enrolledStudents.length.toString(),
       icon: <Users className="h-8 w-8 text-edu-blue" />,
-      description: "From your institute",
+      description: "Enrolled in your classes",
+      onClick: () => setShowStudentList((value) => !value),
     },
     {
       title: "Total Quizzes",
@@ -123,15 +169,15 @@ const TeacherDashboard: React.FC = () => {
     },
     {
       title: "Quiz Attempts",
-      value: "15",
+      value: loading ? "..." : totalAttempts.toString(),
       icon: <BookOpen className="h-8 w-8 text-edu-yellow" />,
       description: "By your students",
     },
     {
       title: "Avg. Score",
-      value: "76%",
+      value: "N/A",
       icon: <BarChart className="h-8 w-8 text-edu-purple" />,
-      description: "Overall performance",
+      description: "Open analytics for scores",
     },
   ];
 
@@ -159,7 +205,11 @@ const TeacherDashboard: React.FC = () => {
           {/* Stats Overview Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             {statsData.map((stat, i) => (
-              <Card key={i} className="hover:shadow-md transition-shadow">
+              <Card
+                key={i}
+                className={`hover:shadow-md transition-shadow ${stat.onClick ? 'cursor-pointer' : ''}`}
+                onClick={stat.onClick}
+              >
                 <CardHeader className="pb-2">
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-lg">{stat.title}</CardTitle>
@@ -175,6 +225,56 @@ const TeacherDashboard: React.FC = () => {
               </Card>
             ))}
           </div>
+
+          {showStudentList && (
+            <Card className="mb-12">
+              <CardHeader>
+                <CardTitle>Enrolled Students</CardTitle>
+                <CardDescription>Students grouped by class for your assigned classes</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {studentLoading ? (
+                  <p className="text-muted-foreground">Loading students...</p>
+                ) : Object.keys(studentsByClass).length === 0 ? (
+                  <p className="text-muted-foreground">No enrolled students found for your classes.</p>
+                ) : (
+                  <div className="space-y-5">
+                    {Object.keys(studentsByClass).sort().map((className) => (
+                      <div key={className}>
+                        <div className="flex items-center gap-2 border-b pb-2 mb-3">
+                          <Layers className="h-4 w-4 text-edu-blue" />
+                          <h3 className="font-semibold">Class {className}</h3>
+                          <span className="text-sm text-muted-foreground">
+                            ({studentsByClass[className].length} students)
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {studentsByClass[className].map((student) => (
+                            <div
+                              key={student.studentId || student._id}
+                              className="rounded-md border bg-white p-3"
+                            >
+                              <p className="font-medium text-gray-900">{student.name || 'Unnamed student'}</p>
+                              <div className="mt-2 grid gap-1 text-sm text-gray-600">
+                                <span className="flex items-center gap-2">
+                                  <IdCard className="h-4 w-4" />
+                                  {student.studentId || 'No ID'}
+                                </span>
+                                <span className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4" />
+                                  {student.phone || 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Main Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Question = require("../models/Question");
 const { appConfig } = require("../config/appConfig");
+const { requireAuth } = require("../middleware/auth");
 require("dotenv").config();
 
 const OFFLINE_HINT_MESSAGE = "AI hints are unavailable in offline mode.";
@@ -39,21 +40,108 @@ async function generateAiHint({ question, options }) {
   }
 }
 
+function normalizeQuestionPayload(payload) {
+  const question = String(payload.question || "").trim();
+  const subject = String(payload.subject || "").trim();
+  const className = String(payload.class || "").trim();
+  const topic = String(payload.topic || "").trim();
+  const options = Array.isArray(payload.options)
+    ? payload.options.map((option) => String(option).trim()).filter(Boolean)
+    : [];
+  const correctAnswer = String(payload.correctAnswer || "").trim();
+
+  if (!subject || !className || !topic || !question) {
+    throw new Error("subject, class, topic, and question are required");
+  }
+
+  if (options.length < 2) {
+    throw new Error("options must contain at least two answers");
+  }
+
+  if (!correctAnswer || !options.includes(correctAnswer)) {
+    throw new Error("correctAnswer must exactly match one of the options");
+  }
+
+  return {
+    subject,
+    class: className,
+    topic,
+    question,
+    questionImage: payload.questionImage || "",
+    options,
+    correctAnswer,
+    hint: {
+      text: typeof payload.hint === "string" ? payload.hint : payload.hint?.text || "",
+      image: payload.hint?.image || "",
+      video: payload.hint?.video || "",
+    },
+  };
+}
+
 // Create question with optional Gemini-generated hint.
 router.post("/", async (req, res) => {
   try {
-    let { question, options, hint } = req.body;
+    const normalized = normalizeQuestionPayload(req.body);
+    let { question, options, hint } = normalized;
 
     if (!hint?.text || hint.text.trim() === "") {
       hint = { ...hint, text: await generateAiHint({ question, options }) };
     }
 
-    const questionToSave = new Question({ ...req.body, hint });
+    const questionToSave = new Question({ ...normalized, hint });
     await questionToSave.save();
 
     res.status(201).json(questionToSave);
   } catch (err) {
     console.error("Error saving question:", err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Bulk create questions from JSON upload.
+router.post("/bulk", async (req, res) => {
+  try {
+    const incoming = Array.isArray(req.body)
+      ? req.body
+      : Array.isArray(req.body.questions)
+        ? req.body.questions
+        : null;
+
+    if (!incoming || incoming.length === 0) {
+      return res.status(400).json({ error: "Upload a non-empty question array." });
+    }
+
+    const saved = [];
+    const failed = [];
+
+    for (const [index, rawQuestion] of incoming.entries()) {
+      try {
+        const normalized = normalizeQuestionPayload(rawQuestion);
+        let hint = normalized.hint;
+
+        if (!hint?.text || hint.text.trim() === "") {
+          hint = { ...hint, text: await generateAiHint(normalized) };
+        }
+
+        const questionToSave = new Question({ ...normalized, hint });
+        await questionToSave.save();
+        saved.push(questionToSave);
+      } catch (error) {
+        failed.push({ index, error: error.message });
+      }
+    }
+
+    if (saved.length === 0) {
+      return res.status(400).json({ error: "No questions were saved.", failed });
+    }
+
+    res.status(201).json({
+      message: `${saved.length} question${saved.length === 1 ? "" : "s"} uploaded`,
+      saved,
+      failed,
+    });
+  } catch (err) {
+    console.error("Error bulk uploading questions:", err);
     res.status(400).json({ error: err.message });
   }
 });
@@ -112,7 +200,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // Delete question
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAuth("superadmin"), async (req, res) => {
   try {
     const deleted = await Question.findByIdAndUpdate(
       req.params.id,

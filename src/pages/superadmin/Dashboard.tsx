@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from '@/components/ui/use-toast';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { School, Users, GraduationCap, UserCog, PlusCircle, User, Phone, IdCard, Building, BookOpen, Key, Copy, Check, ArrowLeft, Mail, Shield, UserCheck } from 'lucide-react';
+import { School, Users, GraduationCap, UserCog, PlusCircle, User, Phone, IdCard, Building, BookOpen, Key, Copy, Check, ArrowLeft, Mail, Shield, UserCheck, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import CloudUpdateControl from './CloudUpdateControl';
 
@@ -141,6 +141,48 @@ const SuperAdminDashboard: React.FC = () => {
     setResetDialogOpen(true);
   };
 
+  const refreshSelectedSchool = async () => {
+    if (selectedSchool) {
+      await handleSchoolClick(selectedSchool);
+    }
+    fetchStats();
+    fetchSchools();
+  };
+
+  const handleDeleteTarget = async (type: 'school' | 'admin' | 'teacher' | 'student', data: any) => {
+    const label = data.schoolName || data.name || data.username || data.teacherId || data.studentId;
+    if (!window.confirm(`Delete ${label}?`)) return;
+
+    try {
+      let endpoint = '';
+      if (type === 'school') endpoint = `${API_URL}/superadmin/schools/${data.schoolId}`;
+      if (type === 'admin') endpoint = `${API_URL}/superadmin/schooladmins/${data.username}`;
+      if (type === 'teacher') endpoint = `${API_URL}/superadmin/teachers/${data.teacherId}`;
+      if (type === 'student') endpoint = `${API_URL}/superadmin/students/${data.studentId}`;
+
+      await axios.delete(endpoint);
+
+      toast({
+        title: "Deleted",
+        description: `${label} has been removed.`,
+      });
+
+      if (type === 'school') {
+        handleBack();
+        fetchStats();
+        fetchSchools();
+      } else {
+        refreshSelectedSchool();
+      }
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
+        description: error?.response?.data?.error || error?.response?.data?.message || "Could not delete profile",
+        variant: "destructive",
+      });
+    }
+  };
+
   const copyToClipboard = () => {
     navigator.clipboard.writeText(tempPassword);
     setIsCopied(true);
@@ -250,6 +292,14 @@ const SuperAdminDashboard: React.FC = () => {
                 </div>
               </div>
               <div className="flex gap-3 text-center">
+                <Button
+                  variant="outline"
+                  className="border-red-300 text-red-700 hover:bg-red-50"
+                  onClick={() => handleDeleteTarget('school', selectedSchool)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete School
+                </Button>
                 <div className="bg-white/80 px-4 py-2 rounded-lg">
                   <p className="text-lg font-bold text-purple-600">{schoolAdmin ? 1 : 0}</p>
                   <p className="text-xs text-gray-500">Admin</p>
@@ -348,6 +398,14 @@ const SuperAdminDashboard: React.FC = () => {
                         >
                           Reset
                         </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-red-300 text-red-700 hover:bg-red-50 text-xs h-7"
+                          onClick={() => handleDeleteTarget('admin', schoolAdmin)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -390,7 +448,7 @@ const SuperAdminDashboard: React.FC = () => {
                         <th className="text-left py-3 px-3 font-medium text-gray-600">Email</th>
                         <th className="text-left py-3 px-3 font-medium text-gray-600">Phone</th>
                         <th className="text-left py-3 px-3 font-medium text-gray-600">Classes</th>
-                        <th className="text-center py-3 px-3 font-medium text-gray-600">Password</th>
+                        <th className="text-center py-3 px-3 font-medium text-gray-600">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -412,14 +470,24 @@ const SuperAdminDashboard: React.FC = () => {
                               : <span className="text-gray-300 italic">None</span>}
                           </td>
                           <td className="py-3 px-3 text-center">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-amber-600 hover:text-amber-800 hover:bg-amber-50"
-                              onClick={() => openResetDialog('teacher', teacher)}
-                            >
-                              <Key className="h-3.5 w-3.5 mr-1" /> Reset
-                            </Button>
+                            <div className="flex justify-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-amber-600 hover:text-amber-800 hover:bg-amber-50"
+                                onClick={() => openResetDialog('teacher', teacher)}
+                              >
+                                <Key className="h-3.5 w-3.5 mr-1" /> Reset
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                onClick={() => handleDeleteTarget('teacher', teacher)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -464,7 +532,7 @@ const SuperAdminDashboard: React.FC = () => {
                         <th className="text-left py-3 px-3 font-medium text-gray-600">Email</th>
                         <th className="text-left py-3 px-3 font-medium text-gray-600">Phone</th>
                         <th className="text-left py-3 px-3 font-medium text-gray-600">Class</th>
-                        <th className="text-center py-3 px-3 font-medium text-gray-600">Password</th>
+                        <th className="text-center py-3 px-3 font-medium text-gray-600">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -486,14 +554,24 @@ const SuperAdminDashboard: React.FC = () => {
                             </span>
                           </td>
                           <td className="py-3 px-3 text-center">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-amber-600 hover:text-amber-800 hover:bg-amber-50"
-                              onClick={() => openResetDialog('student', student)}
-                            >
-                              <Key className="h-3.5 w-3.5 mr-1" /> Reset
-                            </Button>
+                            <div className="flex justify-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-amber-600 hover:text-amber-800 hover:bg-amber-50"
+                                onClick={() => openResetDialog('student', student)}
+                              >
+                                <Key className="h-3.5 w-3.5 mr-1" /> Reset
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                onClick={() => handleDeleteTarget('student', student)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))}

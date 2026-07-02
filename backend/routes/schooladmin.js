@@ -6,7 +6,7 @@ const Teacher = require("../models/Teacher");
 const Student = require("../models/Student");
 const Class = require("../models/Class");
 const { ensureRecordWithBootstrap } = require("../sync/bootstrapGuard");
-const { signAuthToken } = require("../middleware/auth");
+const { requireAuth, signAuthToken } = require("../middleware/auth");
 const { checkLoginRateLimit } = require("../middleware/loginRateLimiter");
 const { saveBase64Media } = require("../utils/localMediaStore");
 
@@ -198,14 +198,93 @@ router.get("/:username/class/:className/students", async (req, res) => {
   }
 });
 
-// Update school admin profile (name, schoolId, profilePhoto)
+// Delete teacher in this school
+router.delete("/:username/teachers/:teacherId", requireAuth("schooladmin", "superadmin"), async (req, res) => {
+  try {
+    const schoolAdmin = await findSchoolAdminByIdentifier(req.params.username);
+    if (!schoolAdmin) {
+      return res.status(404).json({ error: "SchoolAdmin not found" });
+    }
+
+    if (
+      req.auth?.role === "schooladmin" &&
+      req.auth.schoolId &&
+      schoolAdmin.schoolId !== req.auth.schoolId
+    ) {
+      return res.status(403).json({ error: "You can manage only your own school." });
+    }
+
+    const teacher = await Teacher.findOne({
+      teacherId: req.params.teacherId,
+      schoolId: schoolAdmin.schoolId,
+    });
+
+    if (!teacher) {
+      return res.status(404).json({ error: "Teacher not found in this school" });
+    }
+
+    teacher.isDeleted = true;
+    await teacher.save();
+    await SchoolAdmin.updateOne(
+      { _id: schoolAdmin._id },
+      { $pull: { teachers: teacher.teacherId } }
+    );
+
+    res.status(200).json({ message: "Teacher deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete student in this school
+router.delete("/:username/students/:studentId", requireAuth("schooladmin", "superadmin"), async (req, res) => {
+  try {
+    const schoolAdmin = await findSchoolAdminByIdentifier(req.params.username);
+    if (!schoolAdmin) {
+      return res.status(404).json({ error: "SchoolAdmin not found" });
+    }
+
+    if (
+      req.auth?.role === "schooladmin" &&
+      req.auth.schoolId &&
+      schoolAdmin.schoolId !== req.auth.schoolId
+    ) {
+      return res.status(403).json({ error: "You can manage only your own school." });
+    }
+
+    const student = await Student.findOne({
+      studentId: req.params.studentId,
+      schoolId: schoolAdmin.schoolId,
+    });
+
+    if (!student) {
+      return res.status(404).json({ error: "Student not found in this school" });
+    }
+
+    student.isDeleted = true;
+    await student.save();
+    await SchoolAdmin.updateOne(
+      { _id: schoolAdmin._id },
+      { $pull: { students: student.studentId } }
+    );
+    await Class.updateMany(
+      { schoolId: schoolAdmin.schoolId },
+      { $pull: { students: student.studentId } }
+    );
+
+    res.status(200).json({ message: "Student deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update school admin profile (name, profilePhoto)
 router.patch("/:username/profile", async (req, res) => {
   try {
-    const { name, schoolId, profilePhoto } = req.body;
+    const { name, profilePhoto } = req.body;
     const updateFields = {};
 
     if (name !== undefined && name.trim()) updateFields.name = name.trim();
-    if (schoolId !== undefined && schoolId.trim()) updateFields.schoolId = schoolId.trim();
     if (profilePhoto !== undefined) {
       if (profilePhoto.startsWith("data:")) {
         const mimeMatch = profilePhoto.match(/^data:(image\/\w+);base64,/);

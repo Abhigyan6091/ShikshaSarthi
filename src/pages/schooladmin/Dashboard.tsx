@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useToast } from "@/components/ui/use-toast";
-import { Users, GraduationCap, PlusCircle, School, Eye, MessageSquare, Key, Copy, Check, Activity, Cloud, Server, Wifi, RefreshCw } from 'lucide-react';
+import { Users, GraduationCap, PlusCircle, School, Eye, MessageSquare, Key, Copy, Check, Activity, Cloud, Server, Wifi, RefreshCw, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import {
   Dialog,
@@ -150,6 +150,49 @@ const SchoolAdminDashboard: React.FC = () => {
       setStudents(response.data);
     } catch (error) {
       console.error('Error fetching students:', error);
+    }
+  };
+
+  const refreshSchoolData = (uname = username) => {
+    if (!uname) return;
+    fetchStats(uname);
+    fetchTeachers(uname);
+    fetchStudents(uname);
+  };
+
+  const handleDeleteTeacher = async (teacher: any) => {
+    if (!username) return;
+    const label = teacher.name || teacher.teacherId;
+    if (!window.confirm(`Delete teacher ${label}?`)) return;
+
+    try {
+      await axios.delete(`${API_URL}/schooladmin/${username}/teachers/${teacher.teacherId}`);
+      toast({ title: "Teacher deleted", description: `${label} has been removed.` });
+      refreshSchoolData();
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
+        description: error?.response?.data?.error || error?.response?.data?.message || "Could not delete teacher",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteStudent = async (student: any) => {
+    if (!username) return;
+    const label = student.name || student.studentId;
+    if (!window.confirm(`Delete student ${label}?`)) return;
+
+    try {
+      await axios.delete(`${API_URL}/schooladmin/${username}/students/${student.studentId}`);
+      toast({ title: "Student deleted", description: `${label} has been removed.` });
+      refreshSchoolData();
+    } catch (error: any) {
+      toast({
+        title: "Delete failed",
+        description: error?.response?.data?.error || error?.response?.data?.message || "Could not delete student",
+        variant: "destructive",
+      });
     }
   };
 
@@ -365,7 +408,21 @@ const SchoolAdminDashboard: React.FC = () => {
                             <span className="block sm:inline">Phone: {teacher.phone || 'N/A'}</span>
                           </p>
                         </div>
-                        <Eye className="h-5 w-5 text-gray-400 group-hover:text-edu-blue transition-colors" />
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteTeacher(teacher);
+                            }}
+                            title="Delete Teacher"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Eye className="h-5 w-5 text-gray-400 group-hover:text-edu-blue transition-colors" />
+                        </div>
                       </div>
                     </div>
                   ))
@@ -447,6 +504,18 @@ const SchoolAdminDashboard: React.FC = () => {
                                   title="Reset Password"
                                 >
                                   <Key className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteStudent(student);
+                                  }}
+                                  title="Delete Student"
+                                >
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                                 <Eye
                                   className="h-5 w-5 text-gray-400 cursor-pointer hover:text-edu-blue transition-colors"

@@ -24,7 +24,7 @@ services:
       PORT: ${PORT:-5000}
       FRONTEND_PORT: ${FRONTEND_PORT:-6050}
       APP_MODE: ${APP_MODE:-local-school}
-      APP_VERSION: ${APP_VERSION:-1.0.0}
+      APP_VERSION: ${APP_VERSION:-1.0.20}
       APP_RELEASE_DATE: ${APP_RELEASE_DATE:-2026-06-29}
       USE_LOCAL_DB: ${USE_LOCAL_DB:-true}
       MONGO_URI_LOCAL: ${MONGO_URI_LOCAL:-mongodb://mongo:27017/app}

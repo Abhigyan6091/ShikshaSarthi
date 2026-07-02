@@ -4,7 +4,7 @@ const Student = require("../models/Student");
 const Question = require("../models/Question");
 const Quiz = require("../models/Quiz");
 const { ensureRecordWithBootstrap } = require("../sync/bootstrapGuard");
-const { signAuthToken } = require("../middleware/auth");
+const { requireAuth, signAuthToken } = require("../middleware/auth");
 const { checkLoginRateLimit } = require("../middleware/loginRateLimiter");
 const { saveBase64Media } = require("../utils/localMediaStore");
 
@@ -103,8 +103,19 @@ router.put("/:id", async (req, res) => {
 });
 
 // Delete student by ID
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAuth("superadmin", "schooladmin"), async (req, res) => {
   try {
+    const student = await Student.findOne({ studentId: req.params.id });
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    if (
+      req.auth?.role === "schooladmin" &&
+      req.auth.schoolId &&
+      student.schoolId !== req.auth.schoolId
+    ) {
+      return res.status(403).json({ error: "You can delete only students from your school." });
+    }
+
     const deleted = await Student.findOneAndUpdate(
       { studentId: req.params.id },
       { isDeleted: true },
@@ -185,14 +196,13 @@ router.patch("/:id/attempt-quiz", async (req, res) => {
 });
 
 
-// Update student profile (name, schoolId, profilePhoto)
+// Update student profile (name, profilePhoto)
 router.patch("/:id/profile", async (req, res) => {
   try {
-    const { name, schoolId, profilePhoto } = req.body;
+    const { name, profilePhoto } = req.body;
     const updateFields = {};
 
     if (name !== undefined && name.trim()) updateFields.name = name.trim();
-    if (schoolId !== undefined && schoolId.trim()) updateFields.schoolId = schoolId.trim();
     if (profilePhoto !== undefined) {
       if (profilePhoto.startsWith("data:")) {
         const mimeMatch = profilePhoto.match(/^data:(image\/\w+);base64,/);

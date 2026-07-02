@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const School = require("../models/School");
+const { requireAuth } = require("../middleware/auth");
 
 // Create a new school
 router.post("/", async (req, res) => {
@@ -23,10 +24,10 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Get school by ID
-router.get("/:id", async (req, res) => {
+// Get school by schoolId (custom ID)
+router.get("/by-school-id/:schoolId", async (req, res) => {
   try {
-    const school = await School.findById(req.params.id);
+    const school = await School.findOne({ schoolId: req.params.schoolId });
     if (!school) return res.status(404).json({ message: "School not found" });
     res.status(200).json(school);
   } catch (err) {
@@ -34,10 +35,10 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// Get school by schoolId (custom ID)
-router.get("/by-school-id/:schoolId", async (req, res) => {
+// Get school by ID
+router.get("/:id", async (req, res) => {
   try {
-    const school = await School.findOne({ schoolId: req.params.schoolId });
+    const school = await School.findById(req.params.id);
     if (!school) return res.status(404).json({ message: "School not found" });
     res.status(200).json(school);
   } catch (err) {
@@ -60,7 +61,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // Delete school by ID
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAuth("superadmin"), async (req, res) => {
   try {
     const deleted = await School.findByIdAndUpdate(
       req.params.id,

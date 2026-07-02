@@ -64,7 +64,7 @@ import LoginStudent from "./pages/LoginStudent";
 // Teacher Pages
 import TeacherDashboard from "./pages/teacher/Dashboard";
 import CreateQuiz from "./pages/teacher/CreateQuiz";
-import CreateQuizNew from "./pages/teacher/CreateQuizNew";
+import CreateQuizNew from "./pages/teacher/CreateQuizNewFixed";
 import QuizAnalytics from "./pages/teacher/QuizAnalyticsFinal"; // Updated to final version
 import Analytics from "./pages/teacher/Analytics";
 import AddMyQuestion from "./pages/teacher/AddMyquestion";
@@ -72,7 +72,7 @@ import QuizDetails from "./pages/teacher/QuizDetails";
 import QuizAnalyticsPage from "./pages/teacher/QuizAnalyticsPage";
 import ManageClasses from "./pages/teacher/ManageClasses";
 import ClassStudents from "./pages/teacher/ClassStudents";
-import TeacherProfile from "./pages/TeacherProfile";
+import TeacherProfile from "./pages/TeacherProfileFixed";
 
 // Admin Pages
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
@@ -83,11 +83,11 @@ import FeedbackManagement from "./pages/schooladmin/FeedbackManagement";
 import CreateFeedbackForm from "./pages/schooladmin/CreateFeedbackForm";
 import EditFeedbackForm from "./pages/schooladmin/EditFeedbackForm";
 import AnalyzeFeedback from "./pages/schooladmin/AnalyzeFeedback";
-import GiveFeedback from "./pages/teacher/GiveFeedback";
-import AllQuestions from "./pages/teacher/AllQuestions";
+import GiveFeedback from "./pages/teacher/GiveFeedbackFixed";
+import AllQuestions from "./pages/teacher/AllQuestionsFixed";
 
 // Settings
-import Settings from "./pages/Settings";
+import Settings from "./pages/SettingsFixed";
 
 //Quiz
 

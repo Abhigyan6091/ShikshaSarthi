@@ -14,6 +14,7 @@ const quizSchema = new mongoose.Schema({
   totalQuestions: { type: Number, required: true },
   questionTypes: {
     mcq: { type: Number, default: 0 },
+    custom: { type: Number, default: 0 },
     audio: { type: Number, default: 0 },
     video: { type: Number, default: 0 },
     puzzle: { type: Number, default: 0 }
