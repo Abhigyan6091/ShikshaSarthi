@@ -6,7 +6,8 @@ const Teacher = require("../models/Teacher");
 const Student = require("../models/Student");
 const Class = require("../models/Class");
 const { ensureRecordWithBootstrap } = require("../sync/bootstrapGuard");
-const { repairLocalPasswordFromAtlas } = require("../sync/authPasswordRepair");
+const { signAuthToken } = require("../middleware/auth");
+const { checkLoginRateLimit } = require("../middleware/loginRateLimiter");
 const { saveBase64Media } = require("../utils/localMediaStore");
 
 async function findSchoolAdminByIdentifier(identifier) {
@@ -31,6 +32,11 @@ router.post("/login", async (req, res) => {
     return res.status(400).json({ error: "Username and password are required." });
   }
 
+  const rateLimited = await checkLoginRateLimit(req, username);
+  if (rateLimited) {
+    return res.status(429).json(rateLimited);
+  }
+
   try {
     const schoolAdmin = await ensureRecordWithBootstrap(
       () => SchoolAdmin.findOne({ username }),
@@ -42,19 +48,7 @@ router.post("/login", async (req, res) => {
     }
 
     // Use bcrypt to compare password
-    let isPasswordValid = await schoolAdmin.comparePassword(password);
-
-    if (!isPasswordValid) {
-      const repaired = await repairLocalPasswordFromAtlas({
-        model: SchoolAdmin,
-        lookupQuery: { username },
-        candidatePassword: password,
-      });
-
-      if (repaired) {
-        isPasswordValid = true;
-      }
-    }
+    const isPasswordValid = await schoolAdmin.comparePassword(password);
 
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid credentials." });
@@ -62,6 +56,7 @@ router.post("/login", async (req, res) => {
 
     res.status(200).json({
       message: "Login successful",
+      token: signAuthToken({ id: schoolAdmin._id, role: "schooladmin", schoolId: schoolAdmin.schoolId, identifier: schoolAdmin.username }),
       user: {
         _id: schoolAdmin._id,
         username: schoolAdmin.username,

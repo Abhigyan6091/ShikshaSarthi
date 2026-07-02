@@ -50,6 +50,10 @@ export default function LoginStudent() {
       // ✅ Save to localStorage instead of cookie
       localStorage.setItem("Login_student", json_data);
 
+      if (response.data.token) {
+        localStorage.setItem("authToken", response.data.token);
+      }
+
       // ✅ Retrieve and print
       const storedData = localStorage.getItem("Login_student");
       console.log("Retrieved from localStorage:", storedData);

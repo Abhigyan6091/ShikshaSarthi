@@ -340,6 +340,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
 
       - name: Upload package and manifest to S3
+        id: upload
         shell: bash
         run: |
           VERSION="${{ needs.build-web-and-update.outputs.version }}"
@@ -347,6 +348,10 @@ jobs:
           BUCKET="${{ vars.AWS_UPDATES_BUCKET }}"
           WINDOWS_INSTALLER="$(find desktop-artifacts/windows -name '*.exe' -type f | head -n 1)"
           LINUX_INSTALLER="$(find desktop-artifacts/linux -name '*.deb' -type f | head -n 1)"
+          WINDOWS_INSTALLER_SHA256="$(sha256sum "$WINDOWS_INSTALLER" | cut -d ' ' -f1)"
+          LINUX_INSTALLER_SHA256="$(sha256sum "$LINUX_INSTALLER" | cut -d ' ' -f1)"
+          echo "windows_installer_sha256=$WINDOWS_INSTALLER_SHA256" >> "$GITHUB_OUTPUT"
+          echo "linux_installer_sha256=$LINUX_INSTALLER_SHA256" >> "$GITHUB_OUTPUT"
 
           aws s3 cp "dist-release/shiksha-sarthi-update-$VERSION.zip" "s3://$BUCKET/updates/$CHANNEL/shiksha-sarthi-update-$VERSION.zip"
           aws s3 cp "dist-release/shiksha-sarthi-update-$VERSION.zip.sha256" "s3://$BUCKET/updates/$CHANNEL/shiksha-sarthi-update-$VERSION.zip.sha256"
@@ -372,7 +377,9 @@ jobs:
             "packageSha256": "$SHA256",
             "manifestKey": "updates/$CHANNEL/manifest.json",
             "windowsInstallerKey": "installers/$CHANNEL/windows/ShikshaSarthi-$VERSION.exe",
-            "linuxInstallerKey": "installers/$CHANNEL/linux/ShikshaSarthi-$VERSION.deb"
+            "linuxInstallerKey": "installers/$CHANNEL/linux/ShikshaSarthi-$VERSION.deb",
+            "windowsInstallerSha256": "${{ steps.upload.outputs.windows_installer_sha256 }}",
+            "linuxInstallerSha256": "${{ steps.upload.outputs.linux_installer_sha256 }}"
           }
           JSON
           )

@@ -7,7 +7,8 @@ const Question = require("../models/Question");
 const School = require("../models/School");
 const Student = require("../models/Student");
 const { ensureRecordWithBootstrap } = require("../sync/bootstrapGuard");
-const { repairLocalPasswordFromAtlas } = require("../sync/authPasswordRepair");
+const { signAuthToken } = require("../middleware/auth");
+const { checkLoginRateLimit } = require("../middleware/loginRateLimiter");
 const { saveBase64Media } = require("../utils/localMediaStore");
 
 // Create a new teacher
@@ -65,6 +66,11 @@ router.post("/login", async (req, res) => {
       .json({ error: "Teacher ID and password are required." });
   }
 
+  const rateLimited = await checkLoginRateLimit(req, teacherId);
+  if (rateLimited) {
+    return res.status(429).json(rateLimited);
+  }
+
   try {
     // support logging in by either teacherId or _id
     const teacher = await ensureRecordWithBootstrap(
@@ -77,19 +83,7 @@ router.post("/login", async (req, res) => {
     }
 
     // Use bcrypt to compare password
-    let isPasswordValid = await teacher.comparePassword(password);
-
-    if (!isPasswordValid) {
-      const repaired = await repairLocalPasswordFromAtlas({
-        model: Teacher,
-        lookupQuery: { teacherId: teacher.teacherId },
-        candidatePassword: password,
-      });
-
-      if (repaired) {
-        isPasswordValid = true;
-      }
-    }
+    const isPasswordValid = await teacher.comparePassword(password);
 
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid Teacher ID or password." });
@@ -97,6 +91,7 @@ router.post("/login", async (req, res) => {
 
     res.status(200).json({
       message: "Login successful",
+      token: signAuthToken({ id: teacher._id, role: "teacher", schoolId: teacher.schoolId, identifier: teacher.teacherId }),
       teacher: {
         _id: teacher._id,
         teacherId: teacher.teacherId,
@@ -131,7 +126,8 @@ router.get("/:id", async (req, res) => {
     const teacher = await findTeacherByIdentifier(req.params.id);
     if (teacher) await teacher.populate("quizzesCreated");
     if (!teacher) return res.status(404).json({ message: "Teacher not found" });
-    res.status(200).json(teacher);
+    const { password: _password, ...teacherWithoutPassword } = teacher.toObject();
+    res.status(200).json(teacherWithoutPassword);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

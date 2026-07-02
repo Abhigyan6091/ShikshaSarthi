@@ -63,9 +63,22 @@ Resources:
       AttributeDefinitions:
         - AttributeName: version
           AttributeType: S
+        - AttributeName: channel
+          AttributeType: S
+        - AttributeName: releaseDate
+          AttributeType: S
       KeySchema:
         - AttributeName: version
           KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: channel-releaseDate-index
+          KeySchema:
+            - AttributeName: channel
+              KeyType: HASH
+            - AttributeName: releaseDate
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
 
   SyncLogsTable:
     Type: AWS::DynamoDB::Table
@@ -107,10 +120,12 @@ Resources:
               - dynamodb:GetItem
               - dynamodb:PutItem
               - dynamodb:Scan
+              - dynamodb:Query
               - dynamodb:UpdateItem
             Resource:
               - !GetAtt SchoolsTable.Arn
               - !GetAtt VersionsTable.Arn
+              - !Sub "${VersionsTable.Arn}/index/*"
               - !GetAtt SyncLogsTable.Arn
           - Effect: Allow
             Action:

@@ -6,7 +6,8 @@ const Teacher = require("../models/Teacher");
 const Student = require("../models/Student");
 const School = require("../models/School");
 const { ensureRecordWithBootstrap } = require("../sync/bootstrapGuard");
-const { repairLocalPasswordFromAtlas } = require("../sync/authPasswordRepair");
+const { signAuthToken } = require("../middleware/auth");
+const { checkLoginRateLimit } = require("../middleware/loginRateLimiter");
 
 // SuperAdmin Login
 router.post("/login", async (req, res) => {
@@ -14,6 +15,11 @@ router.post("/login", async (req, res) => {
 
   if (!username || !password) {
     return res.status(400).json({ error: "Username and password are required." });
+  }
+
+  const rateLimited = await checkLoginRateLimit(req, username);
+  if (rateLimited) {
+    return res.status(429).json(rateLimited);
   }
 
   try {
@@ -27,19 +33,7 @@ router.post("/login", async (req, res) => {
     }
 
     // Use bcrypt to compare password
-    let isPasswordValid = await superAdmin.comparePassword(password);
-
-    if (!isPasswordValid) {
-      const repaired = await repairLocalPasswordFromAtlas({
-        model: SuperAdmin,
-        lookupQuery: { username },
-        candidatePassword: password,
-      });
-
-      if (repaired) {
-        isPasswordValid = true;
-      }
-    }
+    const isPasswordValid = await superAdmin.comparePassword(password);
 
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid credentials." });
@@ -47,6 +41,7 @@ router.post("/login", async (req, res) => {
 
     res.status(200).json({
       message: "Login successful",
+      token: signAuthToken({ id: superAdmin._id, role: "superadmin", identifier: superAdmin.username }),
       user: {
         _id: superAdmin._id,
         username: superAdmin.username,

@@ -3,7 +3,13 @@ const fs = require("fs");
 const { spawn } = require("child_process");
 const express = require("express");
 const { appConfig } = require("../config/appConfig");
-const { checkForUpdate, downloadInstaller, downloadUpdatePackage } = require("../aws/awsUpdateClient");
+const {
+  checkForUpdate,
+  downloadInstaller,
+  downloadUpdatePackage,
+  installerStatePath,
+} = require("../aws/awsUpdateClient");
+const { calculateSha256 } = require("../utils/backupService");
 const { applyDownloadedUpdate, getUpdateState, rollbackUpdate } = require("../utils/updateInstallService");
 
 const router = express.Router();
@@ -64,16 +70,38 @@ router.post("/download-installer", async (_req, res) => {
   }
 });
 
+function isPathContainedIn(parentDir, candidatePath) {
+  const relative = path.relative(parentDir, candidatePath);
+  return Boolean(relative) && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
 // Launch a previously downloaded installer. The installer stops the running app,
 // replaces only the program files, and preserves all ProgramData (DB/media/backups).
+// Re-verifies the checksum against the state recorded by downloadInstaller() at
+// execution time (not just at download time) so a tampered or swapped file on
+// disk between download and launch can never be run.
 router.post("/install-now", async (req, res) => {
   try {
     const requested = req.body?.filePath;
     const updatesDir = path.resolve(appConfig.updatesDir);
     const filePath = requested ? path.resolve(requested) : null;
 
-    if (!filePath || !filePath.startsWith(updatesDir) || !fs.existsSync(filePath)) {
+    if (!filePath || !isPathContainedIn(updatesDir, filePath) || !fs.existsSync(filePath)) {
       return res.status(400).json({ ok: false, error: "Installer file was not found. Download the update again." });
+    }
+
+    if (!fs.existsSync(installerStatePath)) {
+      return res.status(400).json({ ok: false, error: "No verified installer download found. Download the update again." });
+    }
+
+    const installerState = JSON.parse(fs.readFileSync(installerStatePath, "utf8"));
+    if (!installerState.verified || path.resolve(installerState.filePath) !== filePath) {
+      return res.status(400).json({ ok: false, error: "Installer was not verified for this file. Download the update again." });
+    }
+
+    const actualSha256 = calculateSha256(filePath);
+    if (actualSha256.toLowerCase() !== String(installerState.expectedSha256).toLowerCase()) {
+      return res.status(400).json({ ok: false, error: "Installer checksum no longer matches. Refusing to run it. Download the update again." });
     }
 
     if (process.platform === "win32") {

@@ -21,6 +21,8 @@ exports.handler = async (event) => {
     manifestKey: body.manifestKey || null,
     windowsInstallerKey: body.windowsInstallerKey || null,
     linuxInstallerKey: body.linuxInstallerKey || null,
+    windowsInstallerSha256: body.windowsInstallerSha256 || null,
+    linuxInstallerSha256: body.linuxInstallerSha256 || null,
     releaseNotes: Array.isArray(body.releaseNotes) ? body.releaseNotes : [],
     createdAt: nowIso(),
   };

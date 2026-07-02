@@ -4,7 +4,8 @@ const Student = require("../models/Student");
 const Question = require("../models/Question");
 const Quiz = require("../models/Quiz");
 const { ensureRecordWithBootstrap } = require("../sync/bootstrapGuard");
-const { repairLocalPasswordFromAtlas } = require("../sync/authPasswordRepair");
+const { signAuthToken } = require("../middleware/auth");
+const { checkLoginRateLimit } = require("../middleware/loginRateLimiter");
 const { saveBase64Media } = require("../utils/localMediaStore");
 
 // Create a new student
@@ -28,6 +29,11 @@ router.post("/login", async (req, res) => {
         .json({ error: "Student ID and password are required" });
     }
 
+    const rateLimited = await checkLoginRateLimit(req, studentId);
+    if (rateLimited) {
+      return res.status(429).json(rateLimited);
+    }
+
     // Auto-bootstrap local data if first sync has not populated the record yet.
     const student = await ensureRecordWithBootstrap(
       () => Student.findOne({ studentId }),
@@ -40,29 +46,19 @@ router.post("/login", async (req, res) => {
     }
 
     // Use bcrypt to compare password
-    let isPasswordValid = await student.comparePassword(password);
-
-    if (!isPasswordValid) {
-      const repaired = await repairLocalPasswordFromAtlas({
-        model: Student,
-        lookupQuery: { studentId },
-        candidatePassword: password,
-      });
-
-      if (repaired) {
-        isPasswordValid = true;
-      }
-    }
+    const isPasswordValid = await student.comparePassword(password);
 
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid student ID or password" });
     }
 
     // Login successful
+    const { password: _password, ...studentWithoutPassword } = student.toObject();
     res.status(200).json({
       message: "Login successful",
+      token: signAuthToken({ id: student._id, role: "student", schoolId: student.schoolId, identifier: studentId }),
       student: {
-        ...student.toObject(),
+        ...studentWithoutPassword,
         must_change_password: student.must_change_password || false
       }
     });
@@ -84,7 +80,7 @@ router.get("/", async (req, res) => {
 // Get student by ID
 router.get("/:id", async (req, res) => {
   try {
-    const student = await Student.findOne({ studentId: req.params.id });
+    const student = await Student.findOne({ studentId: req.params.id }).select("-password");
     if (!student) return res.status(404).json({ message: "Student not found" });
     res.status(200).json(student);
   } catch (err) {

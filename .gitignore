@@ -20,6 +20,7 @@ backend/backups/*
 backend/updates/downloaded/*
 !backend/updates/downloaded/.gitkeep
 backend/updates/update-state.json
+backend/updates/installer-state.json
 dist-release/
 releases/
 infra/aws/samconfig.toml
@@ -52,6 +53,9 @@ backend/data/sync-state.json
 backend/data/media-map.json
 backend/data/school-seed.ejson
 backend/data/aws-cloud-sync-state.json
+
+# Auto-generated per-install JWT signing secret. Must never be committed.
+backend/data/jwt-secret.txt
 
 # Secret scripts with hardcoded API keys
 translatetohindi.js

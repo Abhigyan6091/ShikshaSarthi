@@ -95,6 +95,8 @@ async function downloadUpdatePackage() {
   return state;
 }
 
+const installerStatePath = path.join(path.dirname(appConfig.updatesDir), "installer-state.json");
+
 async function downloadInstaller() {
   const latest = await getLatestVersion({ withUrl: true });
   if (!latest.ok) {
@@ -106,12 +108,21 @@ async function downloadInstaller() {
   const isWindows = process.platform === "win32";
   const installerUrl = isWindows ? info.windowsInstallerUrl : info.linuxInstallerUrl;
   const installerKey = isWindows ? info.windowsInstallerKey : info.linuxInstallerKey;
+  const expectedSha256 = isWindows ? info.windowsInstallerSha256 : info.linuxInstallerSha256;
 
   if (!installerUrl) {
     return {
       ok: false,
       downloaded: false,
       error: `Latest version does not include a ${isWindows ? "Windows" : "Linux"} installer URL`,
+    };
+  }
+
+  if (!expectedSha256) {
+    return {
+      ok: false,
+      downloaded: false,
+      error: `Latest version does not include a checksum for the ${isWindows ? "Windows" : "Linux"} installer. Refusing to download an unverifiable installer.`,
     };
   }
 
@@ -134,7 +145,38 @@ async function downloadInstaller() {
     output.on("finish", resolve);
   });
 
-  return { ok: true, downloaded: true, filePath, version, platform: process.platform };
+  const actualSha256 = calculateSha256(filePath);
+  const verified = actualSha256.toLowerCase() === String(expectedSha256).toLowerCase();
+
+  const state = {
+    downloaded: true,
+    verified,
+    filePath,
+    version,
+    platform: process.platform,
+    expectedSha256,
+    actualSha256,
+    checkedAt: new Date().toISOString(),
+  };
+  fs.writeFileSync(installerStatePath, JSON.stringify(state, null, 2));
+
+  if (!verified) {
+    return {
+      ok: false,
+      downloaded: true,
+      verified: false,
+      error: "Downloaded installer checksum does not match the published checksum. Refusing to run it.",
+    };
+  }
+
+  return { ok: true, downloaded: true, verified: true, filePath, version, platform: process.platform };
 }
 
-module.exports = { checkForUpdate, compareSemver, downloadInstaller, downloadUpdatePackage, getLatestVersion };
+module.exports = {
+  checkForUpdate,
+  compareSemver,
+  downloadInstaller,
+  downloadUpdatePackage,
+  getLatestVersion,
+  installerStatePath,
+};

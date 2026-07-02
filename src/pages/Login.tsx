@@ -144,6 +144,10 @@ const Login: React.FC = () => {
         localStorage.setItem('userRole', role);
         localStorage.setItem('currentUser', JSON.stringify(userData));
 
+        if (response.data.token) {
+          localStorage.setItem('authToken', response.data.token);
+        }
+
         window.dispatchEvent(new CustomEvent('userLoggedIn'));
 
         toast({

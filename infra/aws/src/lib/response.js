@@ -1,3 +1,17 @@
+const crypto = require("crypto");
+
+function timingSafeEqualStrings(a, b) {
+  const bufferA = Buffer.from(String(a || ""));
+  const bufferB = Buffer.from(String(b || ""));
+  if (bufferA.length !== bufferB.length) {
+    // Still run a comparison of equal length so a length mismatch doesn't
+    // return faster than a same-length mismatch (timing side-channel).
+    crypto.timingSafeEqual(bufferA, Buffer.alloc(bufferA.length));
+    return false;
+  }
+  return crypto.timingSafeEqual(bufferA, bufferB);
+}
+
 function json(statusCode, body) {
   return {
     statusCode,
@@ -25,7 +39,7 @@ function requireApiKey(event) {
 
   const headers = event.headers || {};
   const provided = headers["x-api-key"] || headers["X-Api-Key"] || headers["X-API-Key"];
-  if (provided !== configured) {
+  if (!timingSafeEqualStrings(provided, configured)) {
     return { ok: false, response: json(401, { ok: false, error: "Unauthorized" }) };
   }
 

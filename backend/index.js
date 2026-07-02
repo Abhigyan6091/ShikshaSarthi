@@ -16,6 +16,7 @@ process.env.BACKUP_ENABLED = process.env.BACKUP_ENABLED || "true";
 
 const audioCache = require("./utils/audioCache");
 const syncMetadataPlugin = require("./utils/syncMetadataPlugin");
+const { requireAuth } = require("./middleware/auth");
 const { ensureUploadDirectories, UPLOAD_ROOT } = require("./utils/localMediaStore");
 const { startAutoSync, getAutoSyncState } = require("./sync/autoSyncService");
 const { getAwsAutoSyncState, startAwsAutoSync } = require("./aws/awsAutoSyncService");
@@ -121,9 +122,13 @@ app.use("/sync", syncRoutes);
 app.use("/media", mediaRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/updates", updateRoutes);
-app.use("/api/update", phaseTwoUpdateRoutes);
-app.use("/api/backup", backupRoutes);
-app.use("/api/aws", awsRoutes);
+// These control-plane routes can install software, trigger cloud sync, and
+// manage backups, so they require an authenticated superadmin session unless
+// the request comes from the local machine (the Electron launcher hub, which
+// has no login flow and is already trusted at the OS/physical-access level).
+app.use("/api/update", requireAuth("superadmin"), phaseTwoUpdateRoutes);
+app.use("/api/backup", requireAuth("superadmin"), backupRoutes);
+app.use("/api/aws", requireAuth("superadmin"), awsRoutes);
 
 const frontendDistDir = process.env.FRONTEND_DIST_DIR
   ? path.resolve(process.env.FRONTEND_DIST_DIR)

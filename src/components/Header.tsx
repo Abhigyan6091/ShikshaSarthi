@@ -120,6 +120,7 @@ const Header: React.FC = () => {
     localStorage.removeItem('schooladmin');
     localStorage.removeItem('superadmin');
     localStorage.removeItem('teacher');
+    localStorage.removeItem('authToken');
 
     document.cookie.split(";").forEach((c) => {
       document.cookie = c

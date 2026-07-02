@@ -1,6 +1,18 @@
+const crypto = require("crypto");
 const express = require("express");
 const router = express.Router();
 const Version = require("../models/Version");
+
+function timingSafeEqualStrings(a, b) {
+  const bufferA = Buffer.from(String(a || ""));
+  const bufferB = Buffer.from(String(b || ""));
+  if (bufferA.length !== bufferB.length) {
+    // Still run a comparison of equal length to avoid leaking length via timing.
+    crypto.timingSafeEqual(bufferA, Buffer.alloc(bufferA.length));
+    return false;
+  }
+  return crypto.timingSafeEqual(bufferA, bufferB);
+}
 
 // GET Manifest (public - used by school servers in later phases).
 router.get("/manifest", async (_req, res) => {
@@ -35,7 +47,7 @@ router.post("/publish", async (req, res) => {
     });
   }
 
-  if (apiKey !== masterApiKey) {
+  if (!timingSafeEqualStrings(apiKey, masterApiKey)) {
     return res.status(401).json({ error: "Unauthorized: Invalid API Key" });
   }
 
