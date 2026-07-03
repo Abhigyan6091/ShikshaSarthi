@@ -37,7 +37,10 @@ import {
   Puzzle,
   Sparkles,
   FlaskConical,
-  BrainCircuit
+  BrainCircuit,
+  ArrowRight,
+  TrendingDown,
+  Minus
 } from "lucide-react";
 import SubjectIcon from "@/components/SubjectIcon";
 
@@ -65,6 +68,18 @@ const StudentDashboard: React.FC = () => {
         unattempted: number;
       };
       attemptedAt: string;
+    }[];
+    adaptiveTestAttempts?: {
+      className: string;
+      ratingBefore: number;
+      ratingAfter: number;
+      ratingChange: number;
+      correct: number;
+      incorrect: number;
+      total: number;
+      weakTopics: string[];
+      startedAt: string;
+      completedAt: string;
     }[];
   }>(null);
 
@@ -595,6 +610,134 @@ const StudentDashboard: React.FC = () => {
                     <Button className="bg-gradient-to-r from-edu-blue to-edu-purple">
                       <BookOpen className="h-4 w-4 mr-2" />
                       Start Practice Now
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ── Adaptive Test History ─────────────────────────────── */}
+          <Card className="mb-8">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <BrainCircuit className="h-6 w-6 text-blue-600" />
+                  <CardTitle>Adaptive Test History</CardTitle>
+                </div>
+                <Link to="/student/adaptive-test">
+                  <Button variant="outline" size="sm" className="flex items-center gap-1">
+                    Take New Test <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+              <CardDescription>
+                {student?.adaptiveTestAttempts && student.adaptiveTestAttempts.length > 0
+                  ? `You have completed ${student.adaptiveTestAttempts.length} adaptive test${student.adaptiveTestAttempts.length > 1 ? "s" : ""}`
+                  : "No adaptive tests attempted yet"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {student?.adaptiveTestAttempts && student.adaptiveTestAttempts.length > 0 ? (
+                <div className="space-y-3 max-h-[550px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                  {[...student.adaptiveTestAttempts].reverse().map((attempt, index) => {
+                    const ratingUp = attempt.ratingChange > 0;
+                    const ratingDown = attempt.ratingChange < 0;
+                    const accuracy = attempt.total > 0 ? Math.round((attempt.correct / attempt.total) * 100) : 0;
+                    return (
+                      <div key={index} className="p-4 border rounded-lg hover:shadow-md transition-all hover:border-blue-300 bg-gradient-to-r from-white to-blue-50/30">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-full ${
+                              accuracy >= 75 ? "bg-green-100" :
+                              accuracy >= 50 ? "bg-yellow-100" : "bg-red-100"
+                            }`}>
+                              <BrainCircuit className={`h-5 w-5 ${
+                                accuracy >= 75 ? "text-green-600" :
+                                accuracy >= 50 ? "text-yellow-600" : "text-red-600"
+                              }`} />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-900">
+                                Class {attempt.className} Adaptive Test
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {attempt.completedAt
+                                  ? new Date(attempt.completedAt).toLocaleDateString("en-IN", {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : "N/A"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className={`${
+                              accuracy >= 75 ? "bg-green-500" :
+                              accuracy >= 50 ? "bg-yellow-500" : "bg-red-500"
+                            }`}>
+                              {accuracy}% Accuracy
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm mb-3">
+                          <span className="flex items-center gap-1 text-green-600">
+                            <span className="font-semibold">{attempt.correct}</span> Correct
+                          </span>
+                          <span className="flex items-center gap-1 text-red-600">
+                            <span className="font-semibold">{attempt.incorrect}</span> Incorrect
+                          </span>
+                          <span className="flex items-center gap-1 text-gray-600">
+                            Total: <span className="font-semibold">{attempt.total}</span>
+                          </span>
+                        </div>
+
+                        {/* Rating change */}
+                        <div className="flex items-center gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                          <span className="text-xs text-slate-500">Rating</span>
+                          <span className="font-bold text-slate-700">{attempt.ratingBefore}</span>
+                          <ArrowRight className="h-4 w-4 text-slate-400" />
+                          <span className="font-bold text-slate-900">{attempt.ratingAfter}</span>
+                          <span className={`ml-auto flex items-center gap-1 text-sm font-semibold ${
+                            ratingUp ? "text-green-600" : ratingDown ? "text-red-600" : "text-slate-500"
+                          }`}>
+                            {ratingUp ? <TrendingUp className="h-4 w-4" /> : ratingDown ? <TrendingDown className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+                            {ratingUp ? "+" : ""}{attempt.ratingChange}
+                          </span>
+                        </div>
+
+                        {/* Weak topics */}
+                        {attempt.weakTopics && attempt.weakTopics.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            <span className="text-xs text-orange-600 font-medium">Weak:</span>
+                            {attempt.weakTopics.slice(0, 3).map((topic) => (
+                              <Badge key={topic} variant="outline" className="text-xs border-orange-300 text-orange-600 px-1.5 py-0">{topic}</Badge>
+                            ))}
+                          </div>
+                        )}
+
+                        <Progress value={accuracy} className="mt-3 h-2" />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-12 flex flex-col items-center justify-center text-center">
+                  <div className="p-4 bg-blue-50 rounded-full mb-4">
+                    <BrainCircuit className="h-12 w-12 text-blue-400" />
+                  </div>
+                  <p className="text-xl font-semibold text-gray-700 mb-2">No Adaptive Tests Yet</p>
+                  <p className="text-gray-500 mb-6 max-w-md">
+                    Take an adaptive test to see your rating progress and performance history here.
+                  </p>
+                  <Link to="/student/adaptive-test">
+                    <Button className="bg-gradient-to-r from-blue-600 to-cyan-600">
+                      <BrainCircuit className="h-4 w-4 mr-2" />
+                      Start Adaptive Test
                     </Button>
                   </Link>
                 </div>

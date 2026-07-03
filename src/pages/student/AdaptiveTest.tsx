@@ -2,13 +2,19 @@ import axios from "axios";
 import {
   AlertCircle,
   ArrowLeft,
+  ArrowRight,
+  BookmarkCheck,
   BrainCircuit,
   CheckCircle,
+  ChevronLeft,
+  ChevronRight,
   Clock,
+  Flag,
   Globe2,
   Lightbulb,
   RotateCcw,
   Send,
+  SkipForward,
   Target,
   Trophy,
   XCircle,
@@ -23,12 +29,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 
 const API_URL = import.meta.env.VITE_API_URL;
-const QUESTION_COUNT_OPTIONS = [10, 20, 30, 40];
+const QUESTION_COUNT_OPTIONS = [10, 20, 30, 40, "unlimited"] as const;
+const TIME_LIMIT_OPTIONS = [20, 40, 60];
 const SUBJECT_OPTIONS = [
   { id: "maths", label: "Mathematics", labelHindi: "गणित" },
   { id: "science", label: "Science", labelHindi: "विज्ञान" },
   { id: "social", label: "Social Science", labelHindi: "सामाजिक विज्ञान" },
 ];
+
+type QuestionStatus = "unanswered" | "answered" | "skipped" | "review";
+
+type QuestionHistoryEntry = {
+  question: AdaptiveQuestion;
+  selectedOptionIndex: number | null;
+  status: QuestionStatus;
+  timeSpentMs: number;
+  hintUsed: boolean;
+  startedAt: number;
+};
 
 type AdaptiveQuestion = {
   id: string;
@@ -195,6 +213,14 @@ const chooseNextQuestion = (
     .sort((a, b) => b.score - a.score)[0].question;
 };
 
+// ── Status colour helpers ──────────────────────────────────────────────────
+const statusColors: Record<QuestionStatus, string> = {
+  answered: "bg-green-500 text-white border-green-600",
+  skipped: "bg-orange-400 text-white border-orange-500",
+  review: "bg-purple-500 text-white border-purple-600",
+  unanswered: "bg-white text-slate-700 border-slate-300",
+};
+
 const AdaptiveTest: React.FC = () => {
   const [language, setLanguage] = useState(() => localStorage.getItem("appLanguage") || "hi");
   const storedStudent = useMemo(() => {
@@ -209,18 +235,21 @@ const AdaptiveTest: React.FC = () => {
   const [questions, setQuestions] = useState<AdaptiveQuestion[]>([]);
   const [testMode, setTestMode] = useState<"mixed" | "subject">("mixed");
   const [selectedSubject, setSelectedSubject] = useState("maths");
-  const [selectedQuestionCount, setSelectedQuestionCount] = useState(20);
+  const [selectedQuestionCount, setSelectedQuestionCount] = useState<number | "unlimited">(20);
+  const [selectedTimeLimit, setSelectedTimeLimit] = useState(20);
   const [testStarted, setTestStarted] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(20 * 60);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [currentQuestion, setCurrentQuestion] = useState<AdaptiveQuestion | null>(null);
+  const [softError, setSoftError] = useState(""); // non-blocking error (rating save fail)
+  const [questionHistory, setQuestionHistory] = useState<QuestionHistoryEntry[]>([]);
+  const [currentHistoryIndex, setCurrentHistoryIndex] = useState(0);
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [hintUsed, setHintUsed] = useState(false);
   const [questionStartedAt, setQuestionStartedAt] = useState(Date.now());
   const [startedAt] = useState(new Date().toISOString());
-  const [answers, setAnswers] = useState<AttemptAnswer[]>([]);
+  const [initialRating, setInitialRating] = useState(getInitialRating(classNumber));
   const [adaptiveState, setAdaptiveState] = useState({
     rating: getInitialRating(classNumber),
     velocity: 0,
@@ -231,6 +260,7 @@ const AdaptiveTest: React.FC = () => {
   });
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
+  const [showPalette, setShowPalette] = useState(true);
 
   useEffect(() => {
     const handleLanguageChange = (event: Event) => {
@@ -250,11 +280,13 @@ const AdaptiveTest: React.FC = () => {
           params: { studentId: storedStudent?.studentId },
         });
         setQuestions(res.data.questions || []);
+        setInitialRating(res.data.currentRating || getInitialRating(classNumber));
         setAdaptiveState((prev) => ({
           ...prev,
           rating: res.data.currentRating || getInitialRating(classNumber),
         }));
-        setCurrentQuestion(null);
+        setQuestionHistory([]);
+        setCurrentHistoryIndex(0);
       } catch (loadError) {
         console.error(loadError);
         setError("Adaptive questions could not be loaded right now.");
@@ -270,22 +302,50 @@ const AdaptiveTest: React.FC = () => {
     () => (testMode === "subject" ? questions.filter((question) => question.subject === selectedSubject) : questions),
     [questions, selectedSubject, testMode]
   );
-  const plannedQuestionCount = Math.min(selectedQuestionCount, activeQuestions.length);
-  const progress = plannedQuestionCount > 0 ? Math.round((answers.length / plannedQuestionCount) * 100) : 0;
+  const isUnlimitedMode = selectedQuestionCount === "unlimited";
+  const plannedQuestionCount = isUnlimitedMode
+    ? activeQuestions.length
+    : Math.min(selectedQuestionCount as number, activeQuestions.length);
+
+  // Derived answered count
+  const answeredCount = questionHistory.filter((e) => e.status === "answered").length;
+  const skippedCount = questionHistory.filter((e) => e.status === "skipped").length;
+  const reviewCount = questionHistory.filter((e) => e.status === "review").length;
+
+  const progress = isUnlimitedMode
+    ? selectedTimeLimit > 0
+      ? Math.round(((selectedTimeLimit * 60 - timeRemaining) / (selectedTimeLimit * 60)) * 100)
+      : 0
+    : plannedQuestionCount > 0
+    ? Math.round((answeredCount / plannedQuestionCount) * 100)
+    : 0;
+
+  const currentHistoryEntry = questionHistory[currentHistoryIndex];
+  const currentQuestion = currentHistoryEntry?.question || null;
   const visibleHint =
     language === "hi"
       ? currentQuestion?.hintsHindi?.[0] || currentQuestion?.hints?.[0] || ""
       : currentQuestion?.hints?.[0] || currentQuestion?.hintsHindi?.[0] || "";
+
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
   };
 
+  // ── Timer ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!testStarted || result || submitting) return;
     if (timeRemaining <= 0) {
-      finishTest(answers);
+      const finalAnswers = questionHistory
+        .filter((entry) => entry.status === "answered" && entry.selectedOptionIndex !== null)
+        .map((entry) => ({
+          question: entry.question,
+          selectedOptionIndex: entry.selectedOptionIndex!,
+          hintUsed: entry.hintUsed,
+          timeSpentMs: entry.timeSpentMs,
+        }));
+      finishTest(finalAnswers);
       return;
     }
 
@@ -294,8 +354,9 @@ const AdaptiveTest: React.FC = () => {
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [answers, result, submitting, testStarted, timeRemaining]);
+  }, [result, submitting, testStarted, timeRemaining]);
 
+  // ── Finish Test ────────────────────────────────────────────────────────
   const finishTest = async (finalAnswers: AttemptAnswer[]) => {
     try {
       setSubmitting(true);
@@ -308,28 +369,144 @@ const AdaptiveTest: React.FC = () => {
       setResult(res.data);
     } catch (submitError) {
       console.error(submitError);
-      setError("The test finished, but the rating could not be saved.");
+      const correct = finalAnswers.filter((answer) => answer.selectedOptionIndex === answer.question.correctAnswerIndex).length;
+      const incorrect = finalAnswers.length - correct;
+      const localResult: SubmitResult = {
+        ratingBand: band,
+        ratingBefore: initialRating,
+        ratingAfter: adaptiveState.rating,
+        ratingChange: adaptiveState.rating - initialRating,
+        momentum: "unknown",
+        weakTopics: [],
+        score: {
+          correct,
+          incorrect,
+          total: finalAnswers.length,
+          accuracy: finalAnswers.length ? Math.round((correct / finalAnswers.length) * 100) : 0,
+        },
+        review: finalAnswers.map((answer) => ({
+          questionId: answer.question.id,
+          question: answer.question.question,
+          questionHindi: answer.question.questionHindi,
+          options: answer.question.options,
+          optionsHindi: answer.question.optionsHindi || [],
+          selectedOptionIndex: answer.selectedOptionIndex,
+          correctAnswerIndex: answer.question.correctAnswerIndex,
+          isCorrect: answer.selectedOptionIndex === answer.question.correctAnswerIndex,
+          hintUsed: answer.hintUsed,
+          explanation: answer.question.explanation,
+          explanationHindi: answer.question.explanationHindi,
+          ratingBefore: adaptiveState.rating,
+          ratingAfter: adaptiveState.rating,
+          ratingChange: 0,
+        })),
+      };
+      setResult(localResult);
+      // Soft error — result still shown, only the save failed
+      setSoftError("Your score is shown below, but the rating could not be saved to the server due to a connection issue.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const startTest = () => {
-    const firstQuestion = chooseNextQuestion(
-      activeQuestions,
-      new Set(),
-      adaptiveState,
-      []
-    );
+  const createHistoryEntry = (question: AdaptiveQuestion): QuestionHistoryEntry => ({
+    question,
+    selectedOptionIndex: null,
+    status: "unanswered",
+    timeSpentMs: 0,
+    hintUsed: false,
+    startedAt: Date.now(),
+  });
 
-    setAnswers([]);
+  const startTest = () => {
+    const firstQuestion = chooseNextQuestion(activeQuestions, new Set(), adaptiveState, []);
+    if (!firstQuestion) {
+      setError("No adaptive questions are available for the selected mode.");
+      return;
+    }
+
+    setQuestionHistory([createHistoryEntry(firstQuestion)]);
+    setCurrentHistoryIndex(0);
     setResult(null);
-    setCurrentQuestion(firstQuestion);
+    setSoftError("");
     setSelectedOptionIndex(null);
     setShowHint(false);
     setHintUsed(false);
-    setTimeRemaining(selectedQuestionCount * 60);
+    setTimeRemaining(isUnlimitedMode ? selectedTimeLimit * 60 : (selectedQuestionCount as number) * 60);
     setTestStarted(true);
+    setQuestionStartedAt(Date.now());
+  };
+
+  const updateCurrentHistory = (update: Partial<QuestionHistoryEntry>) => {
+    setQuestionHistory((history) =>
+      history.map((entry, index) =>
+        index === currentHistoryIndex ? { ...entry, ...update } : entry
+      )
+    );
+  };
+
+  const addNewQuestionHistory = (question: AdaptiveQuestion) => {
+    setQuestionHistory((history) => [...history, createHistoryEntry(question)]);
+    setCurrentHistoryIndex((index) => index + 1);
+  };
+
+  const saveAnswerAndProceed = async (answer: AttemptAnswer) => {
+    const nextState = updateLocalState(adaptiveState, answer, classNumber);
+    setAdaptiveState(nextState);
+
+    const updatedHistory = questionHistory.map((entry, index) =>
+      index === currentHistoryIndex
+        ? { ...entry, selectedOptionIndex: answer.selectedOptionIndex, status: "answered" as QuestionStatus, timeSpentMs: answer.timeSpentMs, hintUsed: answer.hintUsed }
+        : entry
+    );
+
+    setQuestionHistory(updatedHistory);
+
+    if (updatedHistory.filter((e) => e.status === "answered").length >= plannedQuestionCount && !isUnlimitedMode) {
+      await finishTest(
+        updatedHistory
+          .filter((entry) => entry.status === "answered" && entry.selectedOptionIndex !== null)
+          .map((entry) => ({
+            question: entry.question,
+            selectedOptionIndex: entry.selectedOptionIndex!,
+            hintUsed: entry.hintUsed,
+            timeSpentMs: entry.timeSpentMs,
+          }))
+      );
+      return;
+    }
+
+    const servedIds = new Set(updatedHistory.filter((e) => e.status !== "unanswered").map((e) => e.question.id));
+    const nextQuestion = chooseNextQuestion(
+      activeQuestions,
+      servedIds,
+      nextState,
+      updatedHistory.map((item) => item.question.topicId)
+    );
+
+    if (!nextQuestion) {
+      await finishTest(
+        updatedHistory
+          .filter((entry) => entry.status === "answered" && entry.selectedOptionIndex !== null)
+          .map((entry) => ({
+            question: entry.question,
+            selectedOptionIndex: entry.selectedOptionIndex!,
+            hintUsed: entry.hintUsed,
+            timeSpentMs: entry.timeSpentMs,
+          }))
+      );
+      return;
+    }
+
+    if (currentHistoryIndex < updatedHistory.length - 1) {
+      setCurrentHistoryIndex(currentHistoryIndex + 1);
+    } else {
+      setQuestionHistory((h) => [...h, createHistoryEntry(nextQuestion)]);
+      setCurrentHistoryIndex(updatedHistory.length);
+    }
+    setSelectedOptionIndex(null);
+    setShowHint(false);
+    setHintUsed(false);
     setQuestionStartedAt(Date.now());
   };
 
@@ -342,51 +519,103 @@ const AdaptiveTest: React.FC = () => {
       hintUsed,
       timeSpentMs: Date.now() - questionStartedAt,
     };
-    const nextAnswers = [...answers, answer];
-    const nextState = updateLocalState(adaptiveState, answer, classNumber);
-    setAnswers(nextAnswers);
-    setAdaptiveState(nextState);
 
-    if (nextAnswers.length >= plannedQuestionCount || nextAnswers.length >= activeQuestions.length) {
-      await finishTest(nextAnswers);
-      return;
-    }
+    await saveAnswerAndProceed(answer);
+  };
 
-    const servedIds = new Set(nextAnswers.map((item) => item.question.id));
+  const markForReview = () => {
+    if (!currentQuestion) return;
+    const newStatus: QuestionStatus = currentHistoryEntry?.status === "review" ? "unanswered" : "review";
+    updateCurrentHistory({ status: newStatus });
+  };
+
+  const skipQuestion = () => {
+    if (!currentQuestion) return;
+    const timeSpent = Date.now() - questionStartedAt;
+    const updatedHistory = questionHistory.map((entry, index) =>
+      index === currentHistoryIndex
+        ? { ...entry, status: "skipped" as QuestionStatus, timeSpentMs: timeSpent }
+        : entry
+    );
+    setQuestionHistory(updatedHistory);
+
+    const servedIds = new Set(updatedHistory.filter((e) => e.status !== "unanswered").map((e) => e.question.id));
     const nextQuestion = chooseNextQuestion(
       activeQuestions,
       servedIds,
-      nextState,
-      nextAnswers.map((item) => item.question.topicId)
+      adaptiveState,
+      updatedHistory.map((item) => item.question.topicId)
     );
-    setCurrentQuestion(nextQuestion);
-    setSelectedOptionIndex(null);
+
+    if (nextQuestion) {
+      if (currentHistoryIndex < updatedHistory.length - 1) {
+        setCurrentHistoryIndex(currentHistoryIndex + 1);
+      } else {
+        setQuestionHistory((h) => [...h, createHistoryEntry(nextQuestion)]);
+        setCurrentHistoryIndex(updatedHistory.length);
+      }
+      setSelectedOptionIndex(null);
+      setShowHint(false);
+      setHintUsed(false);
+      setQuestionStartedAt(Date.now());
+    } else {
+      finishTest(
+        updatedHistory
+          .filter((entry) => entry.status === "answered" && entry.selectedOptionIndex !== null)
+          .map((entry) => ({
+            question: entry.question,
+            selectedOptionIndex: entry.selectedOptionIndex!,
+            hintUsed: entry.hintUsed,
+            timeSpentMs: entry.timeSpentMs,
+          }))
+      );
+    }
+  };
+
+  const goToPreviousQuestion = () => {
+    if (currentHistoryIndex > 0) {
+      const prevEntry = questionHistory[currentHistoryIndex - 1];
+      setCurrentHistoryIndex(currentHistoryIndex - 1);
+      setSelectedOptionIndex(prevEntry?.selectedOptionIndex ?? null);
+      setShowHint(false);
+      setHintUsed(prevEntry?.hintUsed || false);
+      setQuestionStartedAt(Date.now());
+    }
+  };
+
+  const goToQuestion = (index: number) => {
+    if (index < 0 || index >= questionHistory.length) return;
+    const entry = questionHistory[index];
+    setCurrentHistoryIndex(index);
+    setSelectedOptionIndex(entry?.selectedOptionIndex ?? null);
     setShowHint(false);
-    setHintUsed(false);
+    setHintUsed(entry?.hintUsed || false);
     setQuestionStartedAt(Date.now());
   };
 
   const resetTest = () => {
-    const initialRating = result?.ratingAfter || adaptiveState.rating || getInitialRating(classNumber);
-    setAnswers([]);
+    const initial = result?.ratingAfter || adaptiveState.rating || getInitialRating(classNumber);
+    setQuestionHistory([]);
+    setCurrentHistoryIndex(0);
     setResult(null);
+    setSoftError("");
     setTestStarted(false);
-    setTimeRemaining(selectedQuestionCount * 60);
+    setTimeRemaining(isUnlimitedMode ? selectedTimeLimit * 60 : (selectedQuestionCount as number) * 60);
     setSelectedOptionIndex(null);
     setShowHint(false);
     setHintUsed(false);
     setAdaptiveState({
-      rating: initialRating,
+      rating: initial,
       velocity: 0,
       attempts: 0,
       streak: 0,
       variance: 100,
       recentOutcomes: [],
     });
-    setCurrentQuestion(null);
     setQuestionStartedAt(Date.now());
   };
 
+  // ── Loading ────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col bg-slate-50">
@@ -402,6 +631,7 @@ const AdaptiveTest: React.FC = () => {
     );
   }
 
+  // Hard error — no result at all
   if (error && !result) {
     return (
       <div className="flex min-h-screen flex-col bg-slate-50">
@@ -450,11 +680,13 @@ const AdaptiveTest: React.FC = () => {
     );
   }
 
+  // ── Main Render ────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <Header />
       <main className="flex-1 py-6 md:py-8">
-        <div className="mx-auto max-w-5xl px-4">
+        <div className="mx-auto max-w-7xl px-4">
+          {/* Top bar */}
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <Link to="/student/dashboard" className="mb-2 inline-flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600">
@@ -465,7 +697,7 @@ const AdaptiveTest: React.FC = () => {
                 <BrainCircuit className="h-8 w-8 text-blue-600" />
                 Adaptive Test
               </h1>
-              <p className="mt-1 text-slate-600">MARS-based routing with class {classNumber} rating band {band.min}-{band.max}.</p>
+              <p className="mt-1 text-slate-600">MARS-based routing — Class {classNumber} · Rating band {band.min}–{band.max}.</p>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:min-w-72">
               <Card>
@@ -477,28 +709,30 @@ const AdaptiveTest: React.FC = () => {
               <Card>
                 <CardContent className="pt-4">
                   <p className="text-xs text-slate-500">Questions</p>
-                  <p className="text-2xl font-bold text-slate-900">{result?.score.total ?? answers.length}/{plannedQuestionCount}</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {result?.score.total ?? answeredCount}/{isUnlimitedMode ? "∞" : plannedQuestionCount}
+                  </p>
                 </CardContent>
               </Card>
             </div>
           </div>
 
+          {/* ── SETUP SCREEN ─────────────────────────────────────────────── */}
           {!result && !testStarted ? (
             <Card className="shadow-sm">
               <CardHeader>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge className="bg-blue-600">Class {classNumber}</Badge>
                   <Badge variant="outline">Rating {adaptiveState.rating}</Badge>
-                  <Badge variant="outline">{band.min}-{band.max}</Badge>
+                  <Badge variant="outline">{band.min}–{band.max}</Badge>
                 </div>
-                <CardTitle className="text-2xl">
-                  {language === "hi" ? "Adaptive Test Setup" : "Adaptive Test Setup"}
-                </CardTitle>
+                <CardTitle className="text-2xl">Adaptive Test Setup</CardTitle>
                 <CardDescription>
                   Choose the test type, number of questions, and time limit before starting.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Test type */}
                 <div>
                   <p className="mb-3 text-sm font-semibold text-slate-700">Test Type</p>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -560,16 +794,19 @@ const AdaptiveTest: React.FC = () => {
                   </div>
                 )}
 
+                {/* Question count */}
                 <div>
                   <p className="mb-3 text-sm font-semibold text-slate-700">Number of Questions</p>
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
                     {QUESTION_COUNT_OPTIONS.map((count) => (
                       <button
                         key={count}
                         type="button"
                         onClick={() => {
                           setSelectedQuestionCount(count);
-                          setTimeRemaining(count * 60);
+                          if (count !== "unlimited") {
+                            setTimeRemaining((count as number) * 60);
+                          }
                         }}
                         className={`rounded-lg border-2 p-4 text-center transition ${
                           selectedQuestionCount === count
@@ -577,13 +814,47 @@ const AdaptiveTest: React.FC = () => {
                             : "border-slate-200 bg-white hover:border-blue-300"
                         }`}
                       >
-                        <p className="text-2xl font-bold">{count}</p>
-                        <p className="text-sm text-slate-600">{count} mins</p>
+                        <p className="text-2xl font-bold">{count === "unlimited" ? "∞" : count}</p>
+                        <p className="text-sm text-slate-600">{count === "unlimited" ? "No Limit" : `${count} mins`}</p>
                       </button>
                     ))}
                   </div>
                 </div>
 
+                {/* Time limit selector (only for unlimited mode) */}
+                {isUnlimitedMode && (
+                  <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-4">
+                    <p className="mb-3 text-sm font-semibold text-blue-800 flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Select Time Limit for No-Limit Mode
+                    </p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {TIME_LIMIT_OPTIONS.map((mins) => (
+                        <button
+                          key={mins}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTimeLimit(mins);
+                            setTimeRemaining(mins * 60);
+                          }}
+                          className={`rounded-lg border-2 p-3 text-center transition ${
+                            selectedTimeLimit === mins
+                              ? "border-blue-600 bg-blue-600 text-white"
+                              : "border-blue-300 bg-white text-slate-700 hover:border-blue-500"
+                          }`}
+                        >
+                          <p className="text-xl font-bold">{mins}</p>
+                          <p className="text-xs">minutes</p>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs text-blue-700">
+                      Questions will keep coming until the timer runs out or question pool is exhausted.
+                    </p>
+                  </div>
+                )}
+
+                {/* Summary */}
                 <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <div className="grid gap-4 md:grid-cols-3">
                     <div>
@@ -592,11 +863,15 @@ const AdaptiveTest: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-xs text-slate-500">Test length</p>
-                      <p className="text-xl font-bold text-slate-900">{plannedQuestionCount} questions</p>
+                      <p className="text-xl font-bold text-slate-900">
+                        {isUnlimitedMode ? "Unlimited" : `${plannedQuestionCount} questions`}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-500">Time limit</p>
-                      <p className="text-xl font-bold text-slate-900">{selectedQuestionCount} minutes</p>
+                      <p className="text-xl font-bold text-slate-900">
+                        {isUnlimitedMode ? `${selectedTimeLimit} minutes` : `${selectedQuestionCount} minutes`}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -609,147 +884,328 @@ const AdaptiveTest: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+
+          /* ── IN-TEST SCREEN ─────────────────────────────────────────────── */
           ) : !result ? (
-            <div className="space-y-5">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="mb-3 flex items-center justify-between text-sm text-slate-600">
-                    <span>Progress</span>
-                    <span className="inline-flex items-center gap-3">
-                      <span>{progress}%</span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 font-semibold text-slate-700">
-                        <Clock className="h-4 w-4" />
-                        {formatTime(timeRemaining)}
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+
+              {/* ── Left: Question + Controls ──────────────────────────────── */}
+              <div className="flex-1 space-y-4 min-w-0">
+                {/* Progress bar */}
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="mb-3 flex items-center justify-between text-sm text-slate-600">
+                      <span className="font-medium">
+                        Question <span className="text-blue-700 font-bold">{currentHistoryIndex + 1}</span> of{" "}
+                        <span className="font-bold">{isUnlimitedMode ? questionHistory.length : plannedQuestionCount}</span>
                       </span>
-                    </span>
-                  </div>
-                  <Progress value={progress} className="h-3" />
-                </CardContent>
-              </Card>
+                      <span className="inline-flex items-center gap-3">
+                        <span>{progress}%</span>
+                        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-semibold ${
+                          timeRemaining < 60 ? "bg-red-100 text-red-700 animate-pulse" : "bg-slate-100 text-slate-700"
+                        }`}>
+                          <Clock className="h-4 w-4" />
+                          {formatTime(timeRemaining)}
+                        </span>
+                      </span>
+                    </div>
+                    <Progress value={progress} className="h-3" />
+                    {/* Status legend */}
+                    <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+                      <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-green-500 inline-block" />{answeredCount} Answered</span>
+                      <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-orange-400 inline-block" />{skippedCount} Skipped</span>
+                      <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full bg-purple-500 inline-block" />{reviewCount} For Review</span>
+                      <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-full border border-slate-300 inline-block" />{questionHistory.length - answeredCount - skippedCount - reviewCount} Not Visited</span>
+                    </div>
+                  </CardContent>
+                </Card>
 
-              <Card className="shadow-sm">
-                <CardHeader className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{currentQuestion?.subject}</Badge>
-                    <Badge variant="outline">{currentQuestion?.difficulty}</Badge>
-                    <Badge className="bg-blue-600">Elo {currentQuestion?.eloRating}</Badge>
-                    <span className="ml-auto inline-flex items-center gap-1 text-sm text-slate-500">
-                      <Clock className="h-4 w-4" />
-                      Ref {currentQuestion ? Math.round(estimateReferenceTime(currentQuestion)) : 0}s
-                    </span>
+                {/* Soft error (non-blocking) */}
+                {softError && (
+                  <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 flex items-start gap-2 text-sm text-amber-800">
+                    <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <span>{softError}</span>
                   </div>
-                  <CardTitle className="text-xl leading-relaxed">
-                    {language === "hi"
-                      ? currentQuestion?.questionHindi || currentQuestion?.question
-                      : currentQuestion?.question || currentQuestion?.questionHindi}
-                  </CardTitle>
-                  {language === "hi" && currentQuestion?.questionHindi && (
-                    <CardDescription className="text-base">{currentQuestion.question}</CardDescription>
-                  )}
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-3">
-                    {(currentQuestion?.options || []).map((option, index) => {
-                      const label =
-                        language === "hi"
-                          ? currentQuestion?.optionsHindi?.[index] || option
-                          : option || currentQuestion?.optionsHindi?.[index];
-                      const selected = selectedOptionIndex === index;
-                      return (
-                        <button
-                          key={`${currentQuestion?.id}-${index}`}
-                          type="button"
-                          onClick={() => setSelectedOptionIndex(index)}
-                          className={`rounded-lg border-2 p-4 text-left transition ${
-                            selected
-                              ? "border-blue-600 bg-blue-50 text-blue-900"
-                              : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
-                          }`}
-                        >
-                          <span className="mr-3 font-semibold">{String.fromCharCode(65 + index)}.</span>
-                          <span>{label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                )}
 
-                  {visibleHint && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                      {!showHint ? (
+                {/* Question card */}
+                <Card className="shadow-sm">
+                  <CardHeader className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge className="bg-blue-600 text-white">Q{currentHistoryIndex + 1}</Badge>
+                      <Badge variant="outline">{currentQuestion?.subject}</Badge>
+                      <Badge variant="outline">{currentQuestion?.difficulty}</Badge>
+                      <Badge className="bg-indigo-600 text-white">Elo {currentQuestion?.eloRating}</Badge>
+                      {currentHistoryEntry?.status === "review" && (
+                        <Badge className="bg-purple-500 text-white flex items-center gap-1">
+                          <Flag className="h-3 w-3" /> Marked for Review
+                        </Badge>
+                      )}
+                      <span className="ml-auto inline-flex items-center gap-1 text-sm text-slate-500">
+                        <Clock className="h-4 w-4" />
+                        Ref {currentQuestion ? Math.round(estimateReferenceTime(currentQuestion)) : 0}s
+                      </span>
+                    </div>
+                    <CardTitle className="text-xl leading-relaxed">
+                      {language === "hi"
+                        ? currentQuestion?.questionHindi || currentQuestion?.question
+                        : currentQuestion?.question || currentQuestion?.questionHindi}
+                    </CardTitle>
+                    {language === "hi" && currentQuestion?.questionHindi && (
+                      <CardDescription className="text-base">{currentQuestion.question}</CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-3">
+                      {(currentQuestion?.options || []).map((option, index) => {
+                        const label =
+                          language === "hi"
+                            ? currentQuestion?.optionsHindi?.[index] || option
+                            : option || currentQuestion?.optionsHindi?.[index];
+                        const selected = selectedOptionIndex === index;
+                        return (
+                          <button
+                            key={`${currentQuestion?.id}-${index}`}
+                            type="button"
+                            onClick={() => setSelectedOptionIndex(index)}
+                            className={`rounded-lg border-2 p-4 text-left transition ${
+                              selected
+                                ? "border-blue-600 bg-blue-50 text-blue-900"
+                                : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            <span className="mr-3 font-semibold">{String.fromCharCode(65 + index)}.</span>
+                            <span>{label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Hint */}
+                    {visibleHint && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                        {!showHint ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="border-amber-300 text-amber-800 hover:bg-amber-100"
+                            onClick={() => {
+                              setShowHint(true);
+                              setHintUsed(true);
+                            }}
+                          >
+                            <Lightbulb className="mr-2 h-4 w-4" />
+                            Show Hint
+                          </Button>
+                        ) : (
+                          <div className="flex gap-3 text-amber-900">
+                            <Lightbulb className="mt-0.5 h-5 w-5 flex-shrink-0" />
+                            <p>{visibleHint}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+                      {/* Left: Previous & Skip */}
+                      <div className="flex gap-2">
                         <Button
                           type="button"
                           variant="outline"
-                          className="border-amber-300 text-amber-800 hover:bg-amber-100"
-                          onClick={() => {
-                            setShowHint(true);
-                            setHintUsed(true);
-                          }}
+                          disabled={currentHistoryIndex === 0}
+                          onClick={goToPreviousQuestion}
+                          className="flex items-center gap-1"
                         >
-                          <Lightbulb className="mr-2 h-4 w-4" />
-                          Show Hint
+                          <ChevronLeft className="h-4 w-4" />
+                          Previous
                         </Button>
-                      ) : (
-                        <div className="flex gap-3 text-amber-900">
-                          <Lightbulb className="mt-0.5 h-5 w-5 flex-shrink-0" />
-                          <p>{visibleHint}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={skipQuestion}
+                          className="flex items-center gap-1 border-orange-300 text-orange-700 hover:bg-orange-50"
+                        >
+                          <SkipForward className="h-4 w-4" />
+                          Skip
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={markForReview}
+                          className={`flex items-center gap-1 ${
+                            currentHistoryEntry?.status === "review"
+                              ? "border-purple-500 bg-purple-50 text-purple-700"
+                              : "border-purple-300 text-purple-700 hover:bg-purple-50"
+                          }`}
+                        >
+                          <BookmarkCheck className="h-4 w-4" />
+                          {currentHistoryEntry?.status === "review" ? "Unmark" : "Mark Review"}
+                        </Button>
+                      </div>
 
-                  <div className="flex justify-end">
-                    <Button disabled={selectedOptionIndex === null || submitting} onClick={moveNext}>
-                      {answers.length + 1 >= plannedQuestionCount ? (
-                        <>
-                          <Send className="mr-2 h-4 w-4" />
-                          Finish Test
-                        </>
-                      ) : (
-                        <>
-                          <Target className="mr-2 h-4 w-4" />
-                          Next Adaptive Question
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                      {/* Right: Next/Submit */}
+                      <Button
+                        disabled={selectedOptionIndex === null || submitting}
+                        onClick={moveNext}
+                        className="flex items-center gap-1"
+                      >
+                        {answeredCount + 1 >= plannedQuestionCount && !isUnlimitedMode ? (
+                          <>
+                            <Send className="mr-1 h-4 w-4" />
+                            Finish Test
+                          </>
+                        ) : (
+                          <>
+                            <ChevronRight className="mr-1 h-4 w-4" />
+                            Next Question
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Submit all */}
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={submitting || answeredCount === 0}
+                        onClick={() =>
+                          finishTest(
+                            questionHistory
+                              .filter((e) => e.status === "answered" && e.selectedOptionIndex !== null)
+                              .map((e) => ({
+                                question: e.question,
+                                selectedOptionIndex: e.selectedOptionIndex!,
+                                hintUsed: e.hintUsed,
+                                timeSpentMs: e.timeSpentMs,
+                              }))
+                          )
+                        }
+                        className="text-sm text-red-600 border-red-300 hover:bg-red-50"
+                      >
+                        <Send className="mr-1 h-3 w-3" />
+                        Submit Test ({answeredCount} answered)
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* ── Right: GATE-style Question Palette ──────────────────────── */}
+              <div className="w-full lg:w-64 flex-shrink-0">
+                <Card className="sticky top-4 shadow-sm">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold">Question Palette</CardTitle>
+                      <button
+                        type="button"
+                        onClick={() => setShowPalette((v) => !v)}
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        {showPalette ? "Hide" : "Show"}
+                      </button>
+                    </div>
+                  </CardHeader>
+                  {showPalette && (
+                    <CardContent className="pt-0">
+                      {/* Legend */}
+                      <div className="mb-3 grid grid-cols-2 gap-1 text-xs">
+                        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-green-500 inline-block" /> Answered</span>
+                        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-orange-400 inline-block" /> Skipped</span>
+                        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-purple-500 inline-block" /> Review</span>
+                        <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm border border-slate-300 inline-block" /> Not Visited</span>
+                      </div>
+
+                      {/* Bubble grid */}
+                      <div className="flex flex-wrap gap-2">
+                        {questionHistory.map((entry, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => goToQuestion(idx)}
+                            className={`h-9 w-9 rounded-md border-2 text-xs font-bold transition hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                              idx === currentHistoryIndex
+                                ? "ring-2 ring-blue-500 ring-offset-1 " + statusColors[entry.status]
+                                : statusColors[entry.status]
+                            }`}
+                            title={`Question ${idx + 1} — ${entry.status}`}
+                          >
+                            {idx + 1}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Summary counts */}
+                      <div className="mt-4 space-y-1 rounded-lg bg-slate-50 p-3 text-xs">
+                        <div className="flex justify-between"><span className="text-green-700 font-semibold">Answered</span><span>{answeredCount}</span></div>
+                        <div className="flex justify-between"><span className="text-orange-600 font-semibold">Skipped</span><span>{skippedCount}</span></div>
+                        <div className="flex justify-between"><span className="text-purple-600 font-semibold">For Review</span><span>{reviewCount}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-600">Not Visited</span><span>{questionHistory.length - answeredCount - skippedCount - reviewCount}</span></div>
+                        <hr className="border-slate-200" />
+                        <div className="flex justify-between font-bold"><span>Total Seen</span><span>{questionHistory.length}</span></div>
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
+              </div>
             </div>
+
+          /* ── RESULT SCREEN ─────────────────────────────────────────────── */
           ) : (
             <div className="space-y-6">
+              {/* Soft error banner */}
+              {softError && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 flex items-start gap-2 text-sm text-amber-800">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>{softError}</span>
+                </div>
+              )}
+
               <Card>
                 <CardHeader className="text-center">
                   <Trophy className="mx-auto h-14 w-14 text-yellow-500" />
-                  <CardTitle className="text-3xl">Adaptive Test Complete</CardTitle>
+                  <CardTitle className="text-3xl">Adaptive Test Complete!</CardTitle>
                   <CardDescription>
-                    Rating {result.ratingBefore} to {result.ratingAfter} ({result.ratingChange >= 0 ? "+" : ""}
-                    {result.ratingChange}), momentum: {result.momentum}
+                    Rating {result.ratingBefore} → {result.ratingAfter} ({result.ratingChange >= 0 ? "+" : ""}
+                    {result.ratingChange}) · momentum: {result.momentum}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-4">
                     <div className="rounded-lg bg-green-50 p-4 text-center">
                       <p className="text-sm text-green-700">Correct</p>
-                      <p className="text-2xl font-bold text-green-700">{result.score.correct}</p>
+                      <p className="text-3xl font-bold text-green-700">{result.score.correct}</p>
                     </div>
                     <div className="rounded-lg bg-red-50 p-4 text-center">
                       <p className="text-sm text-red-700">Incorrect</p>
-                      <p className="text-2xl font-bold text-red-700">{result.score.incorrect}</p>
+                      <p className="text-3xl font-bold text-red-700">{result.score.incorrect}</p>
                     </div>
                     <div className="rounded-lg bg-blue-50 p-4 text-center">
                       <p className="text-sm text-blue-700">Accuracy</p>
-                      <p className="text-2xl font-bold text-blue-700">{result.score.accuracy}%</p>
+                      <p className="text-3xl font-bold text-blue-700">{result.score.accuracy}%</p>
                     </div>
                     <div className="rounded-lg bg-slate-100 p-4 text-center">
                       <p className="text-sm text-slate-700">Band</p>
-                      <p className="text-2xl font-bold text-slate-900">
-                        {result.ratingBand.min}-{result.ratingBand.max}
+                      <p className="text-3xl font-bold text-slate-900">
+                        {result.ratingBand.min}–{result.ratingBand.max}
                       </p>
                     </div>
                   </div>
+                  {result.weakTopics.length > 0 && (
+                    <div className="mt-4 rounded-lg border border-orange-200 bg-orange-50 p-3">
+                      <p className="text-sm font-semibold text-orange-800 mb-2">Weak Topics to Revise:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {result.weakTopics.map((topic) => (
+                          <Badge key={topic} variant="outline" className="border-orange-400 text-orange-700">{topic}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
+              {/* Review answers */}
               <Card>
                 <CardHeader>
                   <CardTitle>Review Answers</CardTitle>
@@ -760,13 +1216,14 @@ const AdaptiveTest: React.FC = () => {
                     <div key={`${item.questionId}-${index}`} className="rounded-lg border bg-white p-4">
                       <div className="mb-3 flex items-start gap-2">
                         {item.isCorrect ? (
-                          <CheckCircle className="mt-1 h-5 w-5 text-green-600" />
+                          <CheckCircle className="mt-1 h-5 w-5 text-green-600 flex-shrink-0" />
                         ) : (
-                          <XCircle className="mt-1 h-5 w-5 text-red-600" />
+                          <XCircle className="mt-1 h-5 w-5 text-red-600 flex-shrink-0" />
                         )}
                         <div>
                           <p className="font-semibold text-slate-900">
-                            {index + 1}. {item.questionHindi || item.question}
+                            <span className="mr-1 text-blue-600">Q{index + 1}.</span>
+                            {item.questionHindi || item.question}
                           </p>
                           {item.questionHindi && <p className="mt-1 text-sm text-slate-600">{item.question}</p>}
                         </div>
@@ -798,8 +1255,9 @@ const AdaptiveTest: React.FC = () => {
                         </p>
                       )}
                       <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
-                        <Badge variant="outline">Rating {item.ratingBefore} to {item.ratingAfter}</Badge>
+                        <Badge variant="outline">Rating {item.ratingBefore} → {item.ratingAfter}</Badge>
                         {item.hintUsed && <Badge variant="outline">Hint used</Badge>}
+                        {item.selectedOptionIndex === null && <Badge variant="outline" className="border-orange-300 text-orange-600">Skipped</Badge>}
                       </div>
                     </div>
                   ))}
@@ -812,7 +1270,10 @@ const AdaptiveTest: React.FC = () => {
                   Take Again
                 </Button>
                 <Link to="/student/dashboard">
-                  <Button>Back to Dashboard</Button>
+                  <Button>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Dashboard
+                  </Button>
                 </Link>
               </div>
             </div>
