@@ -1,4 +1,4 @@
-# ShikshaSarthi - NMMS Prep Platform
+# ShikshaSarthi Platform
 
 ## Overview
 

@@ -8,7 +8,7 @@ const Footer: React.FC = () => {
       <div className="edu-container py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <h3 className="font-bold text-lg mb-4">NMMS Prep</h3>
+            <h3 className="font-bold text-lg mb-4">ShikshaSarthi</h3>
             <p className="text-gray-600">
               A comprehensive platform for NMMS exam preparation designed for government school students.
             </p>
@@ -42,7 +42,7 @@ const Footer: React.FC = () => {
         </div>
         
         <div className="border-t border-gray-200 mt-8 pt-6 text-center text-gray-600 text-sm">
-          <p>&copy; {new Date().getFullYear()} NMMS Prep. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} ShikshaSarthi. All rights reserved.</p>
         </div>
       </div>
     </footer>

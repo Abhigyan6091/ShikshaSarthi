@@ -171,9 +171,9 @@ const Header: React.FC = () => {
     <header className="bg-white shadow">
       <div className="edu-container py-3 lg:py-4 flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <Link to="/" className="flex items-center space-x-2">
-            <BookOpen className="h-8 w-8 text-edu-blue" />
-            <span className="text-xl sm:text-2xl font-bold text-edu-blue">NMMS Prep</span>
+          <Link to="/" className="flex items-center space-x-3">
+            <img src="/logo.png" alt="ShikshaSarthi logo" className="h-9 w-12" />
+            <span className="text-xl sm:text-2xl font-bold text-edu-blue">ShikshaSarthi</span>
           </Link>
         </div>
         
