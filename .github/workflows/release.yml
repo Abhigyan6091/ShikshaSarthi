@@ -27,14 +27,24 @@ env:
   NODE_VERSION: "20"
   RELEASE_CHANNEL: ${{ github.event.inputs.channel || 'stable' }}
 
+# This workflow intentionally never uses actions/upload-artifact or
+# actions/download-artifact for the release binaries. Each build job uploads
+# its own output straight to S3 and appends it directly to the GitHub Release
+# (via softprops/action-gh-release). GitHub Actions' artifact storage has a
+# small quota that isn't meant for permanent hosting; routing multi-hundred-MB
+# installers through it (build job -> artifact -> publish job -> S3/Release)
+# previously exhausted that quota and broke releases. Publishing directly from
+# each build job removes that hop entirely, and your download location for
+# users is unchanged: the GitHub Releases page and the S3 install buckets.
+
 jobs:
   build-web-and-update:
     name: Build web update package
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
-      package_name: ${{ steps.package.outputs.package_name }}
-      manifest_name: aws-update-manifest.json
+      package_sha256: ${{ steps.package.outputs.package_sha256 }}
+      app_bundle_sha256: ${{ steps.package.outputs.app_bundle_sha256 }}
     steps:
       - uses: actions/checkout@v4
 
@@ -66,7 +76,7 @@ jobs:
           VITE_CLOUDINARY_ENABLED: "false"
 
       - uses: aws-actions/configure-aws-credentials@v4
-        if: ${{ vars.AWS_SCHOOL_DATA_BUCKET != '' }}
+        if: ${{ vars.AWS_SCHOOL_DATA_BUCKET != '' || vars.AWS_UPDATES_BUCKET != '' }}
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -90,16 +100,35 @@ jobs:
 
       - name: Build update bundle
         id: package
+        shell: bash
         run: |
           scripts/package-update-bundle.sh "${{ steps.version.outputs.version }}"
-          echo "package_name=shiksha-sarthi-update-${{ steps.version.outputs.version }}.zip" >> "$GITHUB_OUTPUT"
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "package_sha256=$(cut -d ' ' -f1 < "dist-release/shiksha-sarthi-update-$VERSION.zip.sha256")" >> "$GITHUB_OUTPUT"
+          echo "app_bundle_sha256=$(cut -d ' ' -f1 < "dist-release/shiksha-sarthi-app-$VERSION.zip.sha256")" >> "$GITHUB_OUTPUT"
 
-      - name: Upload update artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload update package to S3
+        if: ${{ vars.AWS_UPDATES_BUCKET != '' }}
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          CHANNEL="${{ env.RELEASE_CHANNEL }}"
+          BUCKET="${{ vars.AWS_UPDATES_BUCKET }}"
+          aws s3 cp "dist-release/shiksha-sarthi-update-$VERSION.zip" "s3://$BUCKET/updates/$CHANNEL/shiksha-sarthi-update-$VERSION.zip"
+          aws s3 cp "dist-release/shiksha-sarthi-update-$VERSION.zip.sha256" "s3://$BUCKET/updates/$CHANNEL/shiksha-sarthi-update-$VERSION.zip.sha256"
+          aws s3 cp "dist-release/aws-update-manifest.json" "s3://$BUCKET/updates/$CHANNEL/manifest.json"
+          aws s3 cp "dist-release/shiksha-sarthi-app-$VERSION.zip" "s3://$BUCKET/app-bundles/$CHANNEL/shiksha-sarthi-app-$VERSION.zip"
+          aws s3 cp "dist-release/shiksha-sarthi-app-$VERSION.zip.sha256" "s3://$BUCKET/app-bundles/$CHANNEL/shiksha-sarthi-app-$VERSION.zip.sha256"
+
+      # Creates the GitHub Release (first job to touch it) and attaches the web
+      # bundle. build-desktop-windows/linux append their own installer to this
+      # same release once it exists, so there is no artifact hand-off.
+      - name: Publish release with web bundle
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
-          retention-days: 7
-          name: shiksha-sarthi-update-${{ steps.version.outputs.version }}
-          path: |
+          generate_release_notes: true
+          files: |
             dist-release/shiksha-sarthi-update-${{ steps.version.outputs.version }}.zip
             dist-release/shiksha-sarthi-update-${{ steps.version.outputs.version }}.zip.sha256
             dist-release/aws-update-manifest.json
@@ -110,6 +139,8 @@ jobs:
     name: Build Windows exe
     runs-on: windows-latest
     needs: build-web-and-update
+    outputs:
+      installer_sha256: ${{ steps.build.outputs.installer_sha256 }}
     steps:
       - uses: actions/checkout@v4
 
@@ -193,22 +224,37 @@ jobs:
         run: node scripts/create-desktop-icons.cjs
 
       - name: Build exe
+        id: build
         working-directory: shikshasarthi-launcher/desktop-wrapper
-        run: npx electron-builder --win --publish never
+        shell: bash
+        run: |
+          npx electron-builder --win --publish never
+          VERSION="${{ needs.build-web-and-update.outputs.version }}"
+          INSTALLER="$(find dist -maxdepth 1 -name '*.exe' -type f | head -n 1)"
+          echo "installer_path=$INSTALLER" >> "$GITHUB_OUTPUT"
+          echo "installer_sha256=$(sha256sum "$INSTALLER" | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload exe
-        uses: actions/upload-artifact@v4
+      - name: Upload installer to S3
+        if: ${{ vars.AWS_UPDATES_BUCKET != '' }}
+        shell: bash
+        run: |
+          aws s3 cp "shikshasarthi-launcher/desktop-wrapper/${{ steps.build.outputs.installer_path }}" \
+            "s3://${{ vars.AWS_UPDATES_BUCKET }}/installers/${{ env.RELEASE_CHANNEL }}/windows/ShikshaSarthi-${{ needs.build-web-and-update.outputs.version }}.exe"
+
+      - name: Attach installer to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
         with:
-          retention-days: 7
-          name: ShikshaSarthi-Windows-${{ needs.build-web-and-update.outputs.version }}
-          path: shikshasarthi-launcher/desktop-wrapper/dist/*.exe
+          files: shikshasarthi-launcher/desktop-wrapper/${{ steps.build.outputs.installer_path }}
 
   build-desktop-linux:
     name: Build Linux deb
     runs-on: ubuntu-latest
     needs: build-web-and-update
+    outputs:
+      installer_sha256: ${{ steps.build.outputs.installer_sha256 }}
     steps:
       - uses: actions/checkout@v4
 
@@ -283,93 +329,40 @@ jobs:
         run: node scripts/create-desktop-icons.cjs
 
       - name: Build deb
+        id: build
         working-directory: shikshasarthi-launcher/desktop-wrapper
-        run: npx electron-builder --linux deb --publish never
+        shell: bash
+        run: |
+          npx electron-builder --linux deb --publish never
+          INSTALLER="$(find dist -maxdepth 1 -name '*.deb' -type f | head -n 1)"
+          echo "installer_path=$INSTALLER" >> "$GITHUB_OUTPUT"
+          echo "installer_sha256=$(sha256sum "$INSTALLER" | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload deb
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 7
-          name: ShikshaSarthi-Linux-${{ needs.build-web-and-update.outputs.version }}
-          path: shikshasarthi-launcher/desktop-wrapper/dist/*.deb
-
-  publish-release:
-    name: Publish GitHub Release
-    runs-on: ubuntu-latest
-    needs:
-      - build-web-and-update
-      - build-desktop-windows
-      - build-desktop-linux
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: release-artifacts
-
-      - name: Publish release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: release-artifacts/**/*
-          generate_release_notes: true
-
-  publish-aws:
-    name: Publish AWS update package
-    runs-on: ubuntu-latest
-    needs:
-      - build-web-and-update
-      - build-desktop-windows
-      - build-desktop-linux
-    if: ${{ vars.AWS_UPDATES_BUCKET != '' }}
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: shiksha-sarthi-update-${{ needs.build-web-and-update.outputs.version }}
-          path: dist-release
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: ShikshaSarthi-Windows-${{ needs.build-web-and-update.outputs.version }}
-          path: desktop-artifacts/windows
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: ShikshaSarthi-Linux-${{ needs.build-web-and-update.outputs.version }}
-          path: desktop-artifacts/linux
-
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
-
-      - name: Upload package and manifest to S3
-        id: upload
+      - name: Upload installer to S3
+        if: ${{ vars.AWS_UPDATES_BUCKET != '' }}
         shell: bash
         run: |
-          VERSION="${{ needs.build-web-and-update.outputs.version }}"
-          CHANNEL="${{ env.RELEASE_CHANNEL }}"
-          BUCKET="${{ vars.AWS_UPDATES_BUCKET }}"
-          WINDOWS_INSTALLER="$(find desktop-artifacts/windows -name '*.exe' -type f | head -n 1)"
-          LINUX_INSTALLER="$(find desktop-artifacts/linux -name '*.deb' -type f | head -n 1)"
-          WINDOWS_INSTALLER_SHA256="$(sha256sum "$WINDOWS_INSTALLER" | cut -d ' ' -f1)"
-          LINUX_INSTALLER_SHA256="$(sha256sum "$LINUX_INSTALLER" | cut -d ' ' -f1)"
-          echo "windows_installer_sha256=$WINDOWS_INSTALLER_SHA256" >> "$GITHUB_OUTPUT"
-          echo "linux_installer_sha256=$LINUX_INSTALLER_SHA256" >> "$GITHUB_OUTPUT"
-          APP_BUNDLE_SHA256="$(cut -d ' ' -f1 < "dist-release/shiksha-sarthi-app-$VERSION.zip.sha256")"
-          echo "app_bundle_sha256=$APP_BUNDLE_SHA256" >> "$GITHUB_OUTPUT"
+          aws s3 cp "shikshasarthi-launcher/desktop-wrapper/${{ steps.build.outputs.installer_path }}" \
+            "s3://${{ vars.AWS_UPDATES_BUCKET }}/installers/${{ env.RELEASE_CHANNEL }}/linux/ShikshaSarthi-${{ needs.build-web-and-update.outputs.version }}.deb"
 
-          aws s3 cp "dist-release/shiksha-sarthi-update-$VERSION.zip" "s3://$BUCKET/updates/$CHANNEL/shiksha-sarthi-update-$VERSION.zip"
-          aws s3 cp "dist-release/shiksha-sarthi-update-$VERSION.zip.sha256" "s3://$BUCKET/updates/$CHANNEL/shiksha-sarthi-update-$VERSION.zip.sha256"
-          aws s3 cp "dist-release/aws-update-manifest.json" "s3://$BUCKET/updates/$CHANNEL/manifest.json"
-          aws s3 cp "dist-release/shiksha-sarthi-app-$VERSION.zip" "s3://$BUCKET/app-bundles/$CHANNEL/shiksha-sarthi-app-$VERSION.zip"
-          aws s3 cp "dist-release/shiksha-sarthi-app-$VERSION.zip.sha256" "s3://$BUCKET/app-bundles/$CHANNEL/shiksha-sarthi-app-$VERSION.zip.sha256"
-          aws s3 cp "$WINDOWS_INSTALLER" "s3://$BUCKET/installers/$CHANNEL/windows/ShikshaSarthi-$VERSION.exe"
-          aws s3 cp "$LINUX_INSTALLER" "s3://$BUCKET/installers/$CHANNEL/linux/ShikshaSarthi-$VERSION.deb"
+      - name: Attach installer to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: shikshasarthi-launcher/desktop-wrapper/${{ steps.build.outputs.installer_path }}
 
-      - name: Publish version record to control plane
-        if: ${{ vars.AWS_CONTROL_API_URL != '' }}
+  publish-version-record:
+    name: Publish version record to control plane
+    runs-on: ubuntu-latest
+    needs:
+      - build-web-and-update
+      - build-desktop-windows
+      - build-desktop-linux
+    if: ${{ vars.AWS_CONTROL_API_URL != '' }}
+    steps:
+      - name: Publish version record
         shell: bash
         env:
           CONTROL_API_URL: ${{ vars.AWS_CONTROL_API_URL }}
@@ -377,20 +370,19 @@ jobs:
         run: |
           VERSION="${{ needs.build-web-and-update.outputs.version }}"
           CHANNEL="${{ env.RELEASE_CHANNEL }}"
-          SHA256="$(cut -d ' ' -f1 < "dist-release/shiksha-sarthi-update-$VERSION.zip.sha256")"
           PAYLOAD=$(cat <<JSON
           {
             "version": "$VERSION",
             "channel": "$CHANNEL",
             "packageKey": "updates/$CHANNEL/shiksha-sarthi-update-$VERSION.zip",
-            "packageSha256": "$SHA256",
+            "packageSha256": "${{ needs.build-web-and-update.outputs.package_sha256 }}",
             "manifestKey": "updates/$CHANNEL/manifest.json",
             "windowsInstallerKey": "installers/$CHANNEL/windows/ShikshaSarthi-$VERSION.exe",
             "linuxInstallerKey": "installers/$CHANNEL/linux/ShikshaSarthi-$VERSION.deb",
-            "windowsInstallerSha256": "${{ steps.upload.outputs.windows_installer_sha256 }}",
-            "linuxInstallerSha256": "${{ steps.upload.outputs.linux_installer_sha256 }}",
+            "windowsInstallerSha256": "${{ needs.build-desktop-windows.outputs.installer_sha256 }}",
+            "linuxInstallerSha256": "${{ needs.build-desktop-linux.outputs.installer_sha256 }}",
             "appBundleKey": "app-bundles/$CHANNEL/shiksha-sarthi-app-$VERSION.zip",
-            "appBundleSha256": "${{ steps.upload.outputs.app_bundle_sha256 }}"
+            "appBundleSha256": "${{ needs.build-web-and-update.outputs.app_bundle_sha256 }}"
           }
           JSON
           )
