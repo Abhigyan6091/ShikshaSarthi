@@ -97,6 +97,7 @@ jobs:
       - name: Upload update artifacts
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 7
           name: shiksha-sarthi-update-${{ steps.version.outputs.version }}
           path: |
             dist-release/shiksha-sarthi-update-${{ steps.version.outputs.version }}.zip
@@ -200,6 +201,7 @@ jobs:
       - name: Upload exe
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 7
           name: ShikshaSarthi-Windows-${{ needs.build-web-and-update.outputs.version }}
           path: shikshasarthi-launcher/desktop-wrapper/dist/*.exe
 
@@ -289,6 +291,7 @@ jobs:
       - name: Upload deb
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 7
           name: ShikshaSarthi-Linux-${{ needs.build-web-and-update.outputs.version }}
           path: shikshasarthi-launcher/desktop-wrapper/dist/*.deb
 
