@@ -84,7 +84,8 @@ router.post("/addquestion", async (req, res) => {
 });
 
 router.post("/login", async (req, res) => {
-  const { teacherId, password } = req.body;
+  const teacherId = typeof req.body.teacherId === "string" ? req.body.teacherId : "";
+  const password = typeof req.body.password === "string" ? req.body.password : "";
 
   if (!teacherId || !password) {
     return res

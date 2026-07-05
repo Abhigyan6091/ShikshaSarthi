@@ -3,12 +3,88 @@ const router = express.Router();
 const FeedbackResponse = require('../models/FeedbackResponse');
 const FeedbackForm = require('../models/FeedbackForm');
 const Teacher = require('../models/Teacher');
+const Student = require('../models/Student');
 
 // Generate unique response ID
 const generateResponseId = async () => {
   const count = await FeedbackResponse.countDocuments();
   return `RESP${String(count + 1).padStart(6, '0')}`;
 };
+
+// Submit a feedback response as a STUDENT. Mirrors the teacher /submit flow but
+// keyed on studentId. Responses go to the school administrator.
+router.post('/submit-student', async (req, res) => {
+  try {
+    const studentId = typeof req.body.studentId === 'string' ? req.body.studentId : '';
+    const formId = typeof req.body.formId === 'string' ? req.body.formId : '';
+    const { answers } = req.body;
+
+    if (!formId || !studentId || !answers) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const student = await Student.findOne({ studentId });
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+
+    const form = await FeedbackForm.findOne({ formId });
+    if (!form) {
+      return res.status(404).json({ message: 'Feedback form not found' });
+    }
+
+    if (String(student.schoolId) !== String(form.schoolId)) {
+      return res.status(403).json({ message: 'You cannot submit feedback for this form' });
+    }
+
+    const now = new Date();
+    if (now < new Date(form.startTime) || now > new Date(form.endTime)) {
+      return res.status(403).json({ message: 'This feedback form is not active right now' });
+    }
+
+    const existingResponse = await FeedbackResponse.findOne({ formId, studentId });
+    if (existingResponse) {
+      return res.status(400).json({ message: 'You have already submitted feedback for this form' });
+    }
+
+    if (!Array.isArray(answers) || answers.length !== form.questions.length) {
+      return res.status(400).json({ message: 'Invalid answers format' });
+    }
+
+    const responseId = await generateResponseId();
+    const feedbackResponse = new FeedbackResponse({
+      responseId,
+      formId,
+      studentId,
+      respondentRole: 'student',
+      schoolId: student.schoolId,
+      answers,
+    });
+
+    await feedbackResponse.save();
+
+    res.status(201).json({
+      message: 'Feedback submitted successfully. It has been sent to your school administrator.',
+      feedbackResponse,
+    });
+  } catch (error) {
+    console.error('Error submitting student feedback:', error);
+    res.status(500).json({ message: 'Failed to submit feedback', error: error.message });
+  }
+});
+
+// Check if a student has already submitted a form.
+router.get('/check-student/:formId/:studentId', async (req, res) => {
+  try {
+    const existing = await FeedbackResponse.findOne({
+      formId: req.params.formId,
+      studentId: req.params.studentId,
+    });
+    res.status(200).json({ submitted: Boolean(existing) });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to check', error: error.message });
+  }
+});
 
 // Submit a feedback response
 router.post('/submit', async (req, res) => {

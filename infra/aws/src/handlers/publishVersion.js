@@ -23,6 +23,8 @@ exports.handler = async (event) => {
     linuxInstallerKey: body.linuxInstallerKey || null,
     windowsInstallerSha256: body.windowsInstallerSha256 || null,
     linuxInstallerSha256: body.linuxInstallerSha256 || null,
+    appBundleKey: body.appBundleKey || null,
+    appBundleSha256: body.appBundleSha256 || null,
     releaseNotes: Array.isArray(body.releaseNotes) ? body.releaseNotes : [],
     createdAt: nowIso(),
   };

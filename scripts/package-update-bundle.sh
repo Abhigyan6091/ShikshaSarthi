@@ -61,3 +61,37 @@ echo "Update bundle created:"
 echo "  $OUT_DIR/$PACKAGE_NAME"
 echo "  $OUT_DIR/$PACKAGE_NAME.sha256"
 echo "  $OUT_DIR/aws-update-manifest.json"
+
+# ----- Delta "app bundle": the swappable app code (React dist + backend JS) -----
+# This is what delta updates download and apply in place, without reinstalling
+# the Electron/MongoDB runtime. node_modules is intentionally excluded: the
+# launcher points the bundle's backend at the baseline install's node_modules
+# via NODE_PATH, so app-only updates stay small.
+APP_BUNDLE_NAME="shiksha-sarthi-app-$VERSION.zip"
+APP_WORK="$OUT_DIR/app-bundle"
+rm -rf "$APP_WORK"
+mkdir -p "$APP_WORK"
+
+if [[ ! -f "$ROOT_DIR/dist/index.html" ]]; then
+  echo "ERROR: dist/index.html not found — run 'npm run build' before packaging the app bundle." >&2
+  exit 1
+fi
+cp -r "$ROOT_DIR/dist" "$APP_WORK/dist"
+cp -r "$ROOT_DIR/backend" "$APP_WORK/backend"
+# Strip everything the runtime provides from the baseline or creates at runtime.
+rm -rf \
+  "$APP_WORK/backend/node_modules" \
+  "$APP_WORK/backend/data" \
+  "$APP_WORK/backend/.env" \
+  "$APP_WORK/backend/backups" \
+  "$APP_WORK/backend/uploads" \
+  "$APP_WORK/backend/updates"
+
+(cd "$APP_WORK" && zip -qr "$OUT_DIR/$APP_BUNDLE_NAME" .)
+APP_SHA256="$(sha256sum "$OUT_DIR/$APP_BUNDLE_NAME" | awk '{print $1}')"
+printf "%s  %s\n" "$APP_SHA256" "$APP_BUNDLE_NAME" > "$OUT_DIR/$APP_BUNDLE_NAME.sha256"
+rm -rf "$APP_WORK"
+
+echo "App (delta) bundle created:"
+echo "  $OUT_DIR/$APP_BUNDLE_NAME"
+echo "  $OUT_DIR/$APP_BUNDLE_NAME.sha256"

@@ -16,6 +16,7 @@ import { BookOpen, Wifi, WifiOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import axios from "axios";
 import Cookies from "js-cookie";
+import { clearAllAuth } from "@/lib/session";
 
 const Login: React.FC = () => {
   const [role, setRole] = useState<string>("student");
@@ -30,6 +31,12 @@ const Login: React.FC = () => {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Wipe any leftover session the moment the login page loads, so a new login
+  // can never inherit a previous user's cached profile.
+  useEffect(() => {
+    clearAllAuth();
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);

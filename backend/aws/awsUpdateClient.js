@@ -172,9 +172,61 @@ async function downloadInstaller() {
   return { ok: true, downloaded: true, verified: true, filePath, version, platform: process.platform };
 }
 
+// Download the small delta "app bundle" (dist + backend) for the latest version
+// and verify its checksum. The launcher applies it in place without reinstalling
+// the runtime. Returns { ok, filePath, version } or an error.
+async function downloadAppBundle() {
+  const latest = await getLatestVersion({ withUrl: true });
+  if (!latest.ok) {
+    return { ok: false, downloaded: false, error: latest.lastError || "Could not fetch latest version" };
+  }
+
+  const info = latest.data;
+  const version = info.latestVersion || info.version;
+  const bundleUrl = info.appBundleUrl;
+  const bundleKey = info.appBundleKey;
+  const expectedSha256 = info.appBundleSha256;
+
+  if (!bundleUrl) {
+    return { ok: false, downloaded: false, error: "This version has no delta app bundle; use the full installer." };
+  }
+
+  fs.mkdirSync(appConfig.updatesDir, { recursive: true });
+  const fileName = path
+    .basename(bundleKey || `shiksha-sarthi-app-${version}.zip`)
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+  const filePath = path.join(appConfig.updatesDir, fileName);
+
+  const response = await fetch(bundleUrl);
+  if (!response.ok) {
+    return { ok: false, downloaded: false, error: `Download failed with HTTP ${response.status}` };
+  }
+
+  await new Promise((resolve, reject) => {
+    const output = fs.createWriteStream(filePath);
+    response.body.pipe(output);
+    response.body.on("error", reject);
+    output.on("finish", resolve);
+  });
+
+  // Fail closed: never apply app code we can't verify.
+  if (!expectedSha256) {
+    try { fs.rmSync(filePath, { force: true }); } catch (_e) { /* ignore */ }
+    return { ok: false, downloaded: false, error: "App bundle is missing a checksum; refusing to apply." };
+  }
+  const actualSha256 = calculateSha256(filePath);
+  if (actualSha256.toLowerCase() !== String(expectedSha256).toLowerCase()) {
+    try { fs.rmSync(filePath, { force: true }); } catch (_e) { /* ignore */ }
+    return { ok: false, downloaded: false, error: "App bundle checksum mismatch; download rejected." };
+  }
+
+  return { ok: true, downloaded: true, filePath, version };
+}
+
 module.exports = {
   checkForUpdate,
   compareSemver,
+  downloadAppBundle,
   downloadInstaller,
   downloadUpdatePackage,
   getLatestVersion,

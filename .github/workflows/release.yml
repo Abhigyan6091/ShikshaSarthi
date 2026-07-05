@@ -102,6 +102,8 @@ jobs:
             dist-release/shiksha-sarthi-update-${{ steps.version.outputs.version }}.zip
             dist-release/shiksha-sarthi-update-${{ steps.version.outputs.version }}.zip.sha256
             dist-release/aws-update-manifest.json
+            dist-release/shiksha-sarthi-app-${{ steps.version.outputs.version }}.zip
+            dist-release/shiksha-sarthi-app-${{ steps.version.outputs.version }}.zip.sha256
 
   build-desktop-windows:
     name: Build Windows exe
@@ -352,10 +354,14 @@ jobs:
           LINUX_INSTALLER_SHA256="$(sha256sum "$LINUX_INSTALLER" | cut -d ' ' -f1)"
           echo "windows_installer_sha256=$WINDOWS_INSTALLER_SHA256" >> "$GITHUB_OUTPUT"
           echo "linux_installer_sha256=$LINUX_INSTALLER_SHA256" >> "$GITHUB_OUTPUT"
+          APP_BUNDLE_SHA256="$(cut -d ' ' -f1 < "dist-release/shiksha-sarthi-app-$VERSION.zip.sha256")"
+          echo "app_bundle_sha256=$APP_BUNDLE_SHA256" >> "$GITHUB_OUTPUT"
 
           aws s3 cp "dist-release/shiksha-sarthi-update-$VERSION.zip" "s3://$BUCKET/updates/$CHANNEL/shiksha-sarthi-update-$VERSION.zip"
           aws s3 cp "dist-release/shiksha-sarthi-update-$VERSION.zip.sha256" "s3://$BUCKET/updates/$CHANNEL/shiksha-sarthi-update-$VERSION.zip.sha256"
           aws s3 cp "dist-release/aws-update-manifest.json" "s3://$BUCKET/updates/$CHANNEL/manifest.json"
+          aws s3 cp "dist-release/shiksha-sarthi-app-$VERSION.zip" "s3://$BUCKET/app-bundles/$CHANNEL/shiksha-sarthi-app-$VERSION.zip"
+          aws s3 cp "dist-release/shiksha-sarthi-app-$VERSION.zip.sha256" "s3://$BUCKET/app-bundles/$CHANNEL/shiksha-sarthi-app-$VERSION.zip.sha256"
           aws s3 cp "$WINDOWS_INSTALLER" "s3://$BUCKET/installers/$CHANNEL/windows/ShikshaSarthi-$VERSION.exe"
           aws s3 cp "$LINUX_INSTALLER" "s3://$BUCKET/installers/$CHANNEL/linux/ShikshaSarthi-$VERSION.deb"
 
@@ -379,7 +385,9 @@ jobs:
             "windowsInstallerKey": "installers/$CHANNEL/windows/ShikshaSarthi-$VERSION.exe",
             "linuxInstallerKey": "installers/$CHANNEL/linux/ShikshaSarthi-$VERSION.deb",
             "windowsInstallerSha256": "${{ steps.upload.outputs.windows_installer_sha256 }}",
-            "linuxInstallerSha256": "${{ steps.upload.outputs.linux_installer_sha256 }}"
+            "linuxInstallerSha256": "${{ steps.upload.outputs.linux_installer_sha256 }}",
+            "appBundleKey": "app-bundles/$CHANNEL/shiksha-sarthi-app-$VERSION.zip",
+            "appBundleSha256": "${{ steps.upload.outputs.app_bundle_sha256 }}"
           }
           JSON
           )

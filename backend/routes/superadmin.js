@@ -11,7 +11,8 @@ const { checkLoginRateLimit } = require("../middleware/loginRateLimiter");
 
 // SuperAdmin Login
 router.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+  const username = typeof req.body.username === "string" ? req.body.username : "";
+  const password = typeof req.body.password === "string" ? req.body.password : "";
 
   if (!username || !password) {
     return res.status(400).json({ error: "Username and password are required." });

@@ -11,6 +11,7 @@ import Footer from '@/components/Footer';
 import { School, Users, GraduationCap, UserCog, PlusCircle, User, Phone, IdCard, Building, BookOpen, Key, Copy, Check, ArrowLeft, Mail, Shield, UserCheck, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import CloudUpdateControl from './CloudUpdateControl';
+import { clearAllAuth } from '@/lib/session';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -175,6 +176,17 @@ const SuperAdminDashboard: React.FC = () => {
         refreshSelectedSchool();
       }
     } catch (error: any) {
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        toast({
+          title: "Session expired",
+          description: "Your admin session is no longer valid. Please log in again to delete profiles.",
+          variant: "destructive",
+        });
+        clearAllAuth();
+        navigate("/login");
+        return;
+      }
       toast({
         title: "Delete failed",
         description: error?.response?.data?.error || error?.response?.data?.message || "Could not delete profile",

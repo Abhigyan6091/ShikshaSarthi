@@ -22,10 +22,22 @@ const feedbackResponseSchema = new mongoose.Schema({
     ref: 'FeedbackForm',
     required: true
   },
+  // A response comes from either a teacher or a student. teacherId stays for
+  // backward compatibility; studentId is used for student respondents.
   teacherId: {
     type: String,
     ref: 'Teacher',
-    required: true
+    required: false
+  },
+  studentId: {
+    type: String,
+    ref: 'Student',
+    required: false
+  },
+  respondentRole: {
+    type: String,
+    enum: ['teacher', 'student'],
+    default: 'teacher'
   },
   schoolId: {
     type: String,

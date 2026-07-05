@@ -40,7 +40,8 @@ import {
   BrainCircuit,
   ArrowRight,
   TrendingDown,
-  Minus
+  Minus,
+  MessageSquare
 } from "lucide-react";
 import SubjectIcon from "@/components/SubjectIcon";
 
@@ -512,6 +513,28 @@ const StudentDashboard: React.FC = () => {
                     className="w-full bg-gradient-to-r from-edu-blue to-edu-purple"
                   >
                     Start Experiment Simulation
+                  </Button>
+                </Link>
+              </CardFooter>
+            </Card>
+
+            <Card className="border-2 border-teal-500/20 hover:border-teal-500/40 transition-colors">
+              <CardHeader>
+                <MessageSquare className="h-10 w-10 text-teal-600 mb-2" />
+                <CardTitle>Give Feedback</CardTitle>
+                <CardDescription>
+                  Share your feedback — it goes directly to your school administrator.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-500">
+                  Fill out active feedback forms from your school to help improve teaching and facilities.
+                </p>
+              </CardContent>
+              <CardFooter>
+                <Link to="/student/feedback" className="w-full">
+                  <Button variant="outline" className="w-full border-teal-500 text-teal-600 hover:bg-teal-500/10">
+                    Give Feedback
                   </Button>
                 </Link>
               </CardFooter>

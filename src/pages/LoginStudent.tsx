@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Wifi, WifiOff } from "lucide-react";
+import { clearAllAuth } from "@/lib/session";
 const API_URL = import.meta.env.VITE_API_URL;
 export default function LoginStudent() {
   const [id, setid] = useState("");
@@ -11,6 +12,11 @@ export default function LoginStudent() {
     }
     return window.navigator.onLine;
   });
+
+  // Wipe any leftover session on mount so a new login can't inherit it.
+  useEffect(() => {
+    clearAllAuth();
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -45,18 +51,19 @@ export default function LoginStudent() {
 
     try {
       const response = await axios.post(url, payload);
-      const json_data = JSON.stringify(response.data);
+      const student = { ...(response.data.student || response.data), role: "student" };
 
-      // ✅ Save to localStorage instead of cookie
-      localStorage.setItem("Login_student", json_data);
+      // Write the canonical session keys the rest of the app reads, so this
+      // alternate login path stays consistent with the main Login page.
+      localStorage.setItem("Login_student", JSON.stringify({ student }));
+      localStorage.setItem("student", JSON.stringify({ student }));
+      localStorage.setItem("currentUser", JSON.stringify(student));
+      localStorage.setItem("userRole", "student");
 
       if (response.data.token) {
         localStorage.setItem("authToken", response.data.token);
       }
-
-      // ✅ Retrieve and print
-      const storedData = localStorage.getItem("Login_student");
-      console.log("Retrieved from localStorage:", storedData);
+      window.dispatchEvent(new CustomEvent("userLoggedIn"));
     } catch (err) {
       console.error("Login failed", err);
     }

@@ -212,6 +212,119 @@ function migrateLegacyData(paths) {
     }
 }
 
+// ----- Delta ("app-bundle") updates -----
+// The app (React dist + backend JS) can be swapped without reinstalling the
+// heavy runtime (Electron/MongoDB/VC++). Bundles are extracted into a writable,
+// versioned folder under ProgramData; a pointer file selects the active one.
+// The baseline shipped inside the installer (resourcesPath) is always the
+// fallback, so a bad/missing bundle can never prevent the app from starting.
+
+function getAppBundleRoot() {
+    return path.join(getDataBaseDir(), 'app');
+}
+
+function getAppPointerFile() {
+    return path.join(getAppBundleRoot(), 'current.json');
+}
+
+function readAppPointer() {
+    try {
+        const file = getAppPointerFile();
+        if (!fs.existsSync(file)) return null;
+        return JSON.parse(fs.readFileSync(file, 'utf8'));
+    } catch (_error) {
+        return null;
+    }
+}
+
+function isValidAppDir(dir) {
+    return Boolean(
+        dir &&
+        fs.existsSync(path.join(dir, 'dist', 'index.html')) &&
+        fs.existsSync(path.join(dir, 'backend', 'index.js'))
+    );
+}
+
+// Directory the running app code should load from: the pointed-to bundle if it
+// is present and structurally valid, else the installer baseline.
+function resolveActiveAppRoot(resourcesPath) {
+    const pointer = readAppPointer();
+    if (pointer && pointer.path && isValidAppDir(pointer.path)) {
+        return { dir: pointer.path, version: pointer.version || null, isBaseline: false };
+    }
+    return { dir: resourcesPath, version: null, isBaseline: true };
+}
+
+// Drop the active bundle pointer so the next start falls back to the baseline.
+// Used to self-heal when a bundle fails to boot.
+function revertToBaselineAppRoot() {
+    try {
+        const file = getAppPointerFile();
+        if (fs.existsSync(file)) fs.rmSync(file, { force: true });
+    } catch (_error) {
+        // ignore
+    }
+}
+
+function extractZip(zipPath, destDir) {
+    fs.mkdirSync(destDir, { recursive: true });
+    if (process.platform === 'win32') {
+        execSync(
+            `powershell -NoProfile -Command "Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${destDir}' -Force"`,
+            { windowsHide: true }
+        );
+    } else {
+        execSync(`unzip -o '${zipPath}' -d '${destDir}'`);
+    }
+}
+
+// Extract a downloaded app bundle into app/<version>, validate it, flip the
+// pointer, and relaunch so the new code loads. Never touches the database.
+async function applyAppBundle(zipPath, version) {
+    if (!zipPath || !fs.existsSync(zipPath)) {
+        return { ok: false, error: 'Update bundle file was not found. Please download again.' };
+    }
+    const safeVersion = String(version || `bundle-${Date.now()}`).replace(/[^a-zA-Z0-9._-]/g, '_');
+    const root = getAppBundleRoot();
+    const stagingDir = path.join(root, `.staging-${safeVersion}-${Date.now()}`);
+    const targetDir = path.join(root, safeVersion);
+
+    try {
+        fs.mkdirSync(root, { recursive: true });
+        fs.rmSync(stagingDir, { recursive: true, force: true });
+        extractZip(zipPath, stagingDir);
+
+        // Bundles may wrap contents in a top-level folder; find the real app root.
+        let appSource = stagingDir;
+        if (!isValidAppDir(appSource)) {
+            const entries = fs.readdirSync(stagingDir).map((e) => path.join(stagingDir, e));
+            appSource = entries.find((e) => fs.statSync(e).isDirectory() && isValidAppDir(e)) || appSource;
+        }
+        if (!isValidAppDir(appSource)) {
+            throw new Error('Update bundle is missing dist/ or backend/ — refusing to apply.');
+        }
+
+        fs.rmSync(targetDir, { recursive: true, force: true });
+        fs.mkdirSync(path.dirname(targetDir), { recursive: true });
+        fs.cpSync(appSource, targetDir, { recursive: true });
+        fs.rmSync(stagingDir, { recursive: true, force: true });
+
+        fs.writeFileSync(
+            getAppPointerFile(),
+            JSON.stringify({ version: safeVersion, path: targetDir, appliedAt: new Date().toISOString() }, null, 2)
+        );
+
+        setTimeout(() => {
+            app.relaunch();
+            app.exit(0);
+        }, 800);
+        return { ok: true, applied: true, version: safeVersion };
+    } catch (error) {
+        try { fs.rmSync(stagingDir, { recursive: true, force: true }); } catch (_e) { /* ignore */ }
+        return { ok: false, error: error.message };
+    }
+}
+
 function findMongoBinary(resourcesPath) {
     const binaryName = process.platform === 'win32' ? 'mongod.exe' : 'mongod';
     const candidates = [
@@ -320,6 +433,13 @@ async function startLocalRuntime(resourcesPath) {
     const fileEnv = readEnvFile(resourcesPath);
     const mongoBinary = findMongoBinary(resourcesPath);
 
+    // App code (dist + backend) loads from the active bundle if one is installed,
+    // else the baseline. mongod, the seed, .env and node_modules always come from
+    // the baseline install.
+    const activeApp = resolveActiveAppRoot(resourcesPath);
+    const appRoot = activeApp.dir;
+    const baselineNodeModules = path.join(resourcesPath, 'backend', 'node_modules');
+
     if (!mongoBinary) {
         throw new Error('Bundled MongoDB runtime is missing. Reinstall ShikshaSarthi using the latest installer.');
     }
@@ -364,7 +484,10 @@ async function startLocalRuntime(resourcesPath) {
         USE_LOCAL_DB: 'true',
         PORT: fileEnv.FRONTEND_PORT || '6050',
         FRONTEND_PORT: fileEnv.FRONTEND_PORT || '6050',
-        FRONTEND_DIST_DIR: paths.frontendDistDir,
+        FRONTEND_DIST_DIR: path.join(appRoot, 'dist'),
+        // Let a bundle's backend resolve dependencies from the baseline install
+        // so app-only bundles don't need to ship node_modules.
+        NODE_PATH: baselineNodeModules,
         MONGO_URI: paths.mongoUri,
         MONGO_URI_LOCAL: paths.mongoUri,
         SYNC_AUTO_ENABLED: fileEnv.SYNC_AUTO_ENABLED || 'false',
@@ -386,14 +509,20 @@ async function startLocalRuntime(resourcesPath) {
         AWS_SYNC_SCOPE: fileEnv.AWS_SYNC_SCOPE || 'global',
     };
 
-    const importScript = path.join(resourcesPath, 'backend', 'scripts', 'importSchoolSeed.js');
+    // Seed import runs from whichever backend code is active, but the seed file
+    // itself lives in the baseline install.
+    let importScript = path.join(appRoot, 'backend', 'scripts', 'importSchoolSeed.js');
+    if (!fs.existsSync(importScript)) {
+        importScript = path.join(resourcesPath, 'backend', 'scripts', 'importSchoolSeed.js');
+    }
     if (fs.existsSync(paths.seedPath) && fs.existsSync(importScript)) {
         await runNodeScript(importScript, [paths.seedPath], runtimeEnv);
     }
 
-    const backendScript = path.join(resourcesPath, 'backend', 'index.js');
+    const backendDir = path.join(appRoot, 'backend');
+    const backendScript = path.join(backendDir, 'index.js');
     backendProcess = spawn(process.execPath, [backendScript], {
-        cwd: path.join(resourcesPath, 'backend'),
+        cwd: backendDir,
         env: {
             ...process.env,
             ...runtimeEnv,
@@ -417,6 +546,16 @@ async function startLocalRuntime(resourcesPath) {
     try {
         await waitForHttpHealth(runtimeEnv.PORT);
     } catch (error) {
+        // Self-heal: if a delta-update bundle fails to boot, drop it and relaunch
+        // on the baseline so the app is never bricked by a bad update.
+        if (!activeApp.isBaseline) {
+            revertToBaselineAppRoot();
+            if (backendProcess && !backendProcess.killed) backendProcess.kill();
+            if (mongoProcess && !mongoProcess.killed) mongoProcess.kill();
+            app.relaunch();
+            app.exit(0);
+            return;
+        }
         const detail = backendLog.text ? `\n\nBackend log:\n${backendLog.text.trim()}` : '';
         throw new Error(`${error.message}.${detail}`);
     }
@@ -533,6 +672,15 @@ ipcMain.handle('get-server-info', async () => {
         port: env.FRONTEND_PORT || '6050',
         role: env.SYNC_NODE_ROLE || env.NODE_ROLE || 'SCHOOL'
     };
+});
+
+// Apply a downloaded delta ("app bundle") update: swap the app code in place and
+// relaunch. No installer, no UAC, database untouched. Self-heals to baseline if
+// the new bundle fails to boot.
+ipcMain.handle('apply-app-bundle', async (_event, payload) => {
+    const bundlePath = payload && payload.filePath;
+    const version = payload && payload.version;
+    return applyAppBundle(bundlePath, version);
 });
 
 // Run a downloaded installer and quit so it can replace the app in place.

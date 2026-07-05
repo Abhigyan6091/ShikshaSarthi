@@ -21,6 +21,7 @@ import ForceChangePassword from "./pages/ForceChangePassword";
 
 // Student Pages
 import StudentDashboard from "./pages/student/Dashboard";
+import StudentGiveFeedback from "./pages/student/GiveFeedback";
 import StudentPractice from "./pages/student/Practice";
 import PracticeQuiz from "./pages/student/PracticeQuiz";
 import QuizById from "./pages/student/QuizById";
@@ -133,6 +134,7 @@ const AppRoutes = () => {
       {/* Student Routes */}
       <Route path="/student" element={<StudentDashboard />} />
       <Route path="/student/dashboard" element={<StudentDashboard />} />
+      <Route path="/student/feedback" element={<StudentGiveFeedback />} />
       <Route path="/student/profile/:id" element={<StudentProfile />} />
       <Route path="/student/assessment/:id" element={<StudentProfile />} />
       <Route path="/student/experiments" element={<ExperimentSimulation />} />

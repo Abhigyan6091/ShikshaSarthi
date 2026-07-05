@@ -56,11 +56,22 @@ const updateRoutes = require("./routes/updates");
 const phaseTwoUpdateRoutes = require("./routes/update");
 const backupRoutes = require("./routes/backup");
 const awsRoutes = require("./routes/aws");
+const helmet = require("helmet");
+const { mongoSanitize, globalRateLimiter } = require("./middleware/security");
 
 const app = express();
+// Only 127.0.0.1 is a trusted proxy (nginx in the docker deployment sits on
+// loopback); keeps req.ip meaningful without opening up spoofing.
+app.set("trust proxy", "loopback");
+// Security headers. crossOriginResourcePolicy is relaxed so the LAN app can
+// serve uploads/media to classroom devices; CSP is left to the app shell.
+app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: "cross-origin" } }));
 app.use(cors());
+app.use(globalRateLimiter);
 app.use(express.json({ limit: "100mb" }));
 app.use(express.urlencoded({ extended: true, limit: "100mb" }));
+// Strip MongoDB operator injection ($-keys / dotted keys) from body & params.
+app.use(mongoSanitize);
 
 // Ensure stale audio cache is cleaned at every backend startup.
 audioCache.initializeCacheCleanup();

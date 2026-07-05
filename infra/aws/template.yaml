@@ -135,6 +135,7 @@ Resources:
               - !Sub "${ShikshaUpdatesBucket.Arn}/releases/*"
               - !Sub "${ShikshaUpdatesBucket.Arn}/installers/*"
               - !Sub "${ShikshaUpdatesBucket.Arn}/updates/*"
+              - !Sub "${ShikshaUpdatesBucket.Arn}/app-bundles/*"
               - !Sub "${ShikshaSchoolDataBucket.Arn}/schools/*"
               - !Sub "${ShikshaSchoolDataBucket.Arn}/cloud-sync/*"
               - !Sub "${ShikshaSchoolDataBucket.Arn}/seeds/*"

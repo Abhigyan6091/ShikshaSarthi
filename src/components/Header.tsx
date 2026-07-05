@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { clearAllAuth } from '@/lib/session';
 import {
   Sheet,
   SheetClose,
@@ -116,13 +117,9 @@ const Header: React.FC = () => {
   const handleLogout = () => {
     window.dispatchEvent(new CustomEvent('userLoggedOut'));
 
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('student');
-    localStorage.removeItem('schooladmin');
-    localStorage.removeItem('superadmin');
-    localStorage.removeItem('teacher');
-    localStorage.removeItem('authToken');
+    // Clear every auth key/cookie (incl. nmmsUser + Login_student, which the old
+    // logout missed and which the mock AuthContext used to resurrect).
+    clearAllAuth();
 
     document.cookie.split(";").forEach((c) => {
       document.cookie = c
@@ -192,7 +189,7 @@ const Header: React.FC = () => {
             <Link to={getDashboardPath()}>
                 <Button variant="ghost" size="sm">
                   <Home className="h-4 w-4 mr-2" />
-                  Dashboard
+                  {language === 'hi' ? 'डैशबोर्ड' : 'Dashboard'}
                 </Button>
               </Link>
 
@@ -248,7 +245,7 @@ const Header: React.FC = () => {
               
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 <LogOut className="h-4 w-4 mr-2" />
-                Logout
+                {language === 'hi' ? 'लॉग आउट' : 'Logout'}
               </Button>
             </>
           ) : (
@@ -304,7 +301,7 @@ const Header: React.FC = () => {
                       <Link to={getDashboardPath()}>
                         <Button variant="ghost" className="w-full justify-start">
                           <Home className="h-4 w-4 mr-2" />
-                          Dashboard
+                          {language === 'hi' ? 'डैशबोर्ड' : 'Dashboard'}
                         </Button>
                       </Link>
                     </SheetClose>
@@ -319,7 +316,7 @@ const Header: React.FC = () => {
                         <Link to={`/student/profile/${studentId}`}>
                           <Button variant="ghost" className="w-full justify-start">
                             <User className="h-4 w-4 mr-2" />
-                            Profile
+                            {language === 'hi' ? 'प्रोफ़ाइल' : 'Profile'}
                           </Button>
                         </Link>
                       </SheetClose>
@@ -330,7 +327,7 @@ const Header: React.FC = () => {
                         <Link to={userRole === 'teacher' ? "/teacher/profile" : "/schooladmin/profile"}>
                           <Button variant="ghost" className="w-full justify-start">
                             <User className="h-4 w-4 mr-2" />
-                            Profile
+                            {language === 'hi' ? 'प्रोफ़ाइल' : 'Profile'}
                           </Button>
                         </Link>
                       </SheetClose>
@@ -341,7 +338,7 @@ const Header: React.FC = () => {
                         <Link to={`/${userRole}/settings`}>
                           <Button variant="ghost" className="w-full justify-start">
                             <Settings className="h-4 w-4 mr-2" />
-                            Settings
+                            {language === 'hi' ? 'सेटिंग्स' : 'Settings'}
                           </Button>
                         </Link>
                       </SheetClose>
@@ -360,7 +357,7 @@ const Header: React.FC = () => {
 
                     <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
                       <LogOut className="h-4 w-4 mr-2" />
-                      Logout
+                      {language === 'hi' ? 'लॉग आउट' : 'Logout'}
                     </Button>
                   </>
                 ) : (

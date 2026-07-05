@@ -5,6 +5,7 @@ const express = require("express");
 const { appConfig } = require("../config/appConfig");
 const {
   checkForUpdate,
+  downloadAppBundle,
   downloadInstaller,
   downloadUpdatePackage,
   installerStatePath,
@@ -64,6 +65,17 @@ router.post("/download", async (_req, res) => {
 router.post("/download-installer", async (_req, res) => {
   try {
     const result = await downloadInstaller();
+    res.status(result.ok ? 200 : 502).json(result);
+  } catch (error) {
+    res.status(500).json({ ok: false, downloaded: false, error: error.message });
+  }
+});
+
+// Download the small delta "app bundle" (verified by checksum). The launcher
+// applies it in place without reinstalling the runtime or touching the DB.
+router.post("/download-app-bundle", async (_req, res) => {
+  try {
+    const result = await downloadAppBundle();
     res.status(result.ok ? 200 : 502).json(result);
   } catch (error) {
     res.status(500).json({ ok: false, downloaded: false, error: error.message });

@@ -420,12 +420,30 @@
                     setLog(`> You are up to date (version ${info.currentVersion || 'current'}).`, 'var(--status-ok)');
                     return;
                 }
-                const proceed = confirm(`A new version is available.\n\nCurrent: ${info.currentVersion}\nLatest: ${info.latestVersion}\n\nDownload and install now? The app will close to finish updating. Your data is preserved.`);
+                const proceed = confirm(`A new version is available.\n\nCurrent: ${info.currentVersion}\nLatest: ${info.latestVersion}\n\nDownload and install now? The app will restart to finish updating. Your data is preserved.`);
                 if (!proceed) {
                     setLog(`> Update ${info.latestVersion} available. Install postponed.`, 'var(--status-warn)');
                     return;
                 }
-                setLog(`> Downloading installer for ${info.latestVersion}... this may take a few minutes.`, 'var(--status-warn)');
+
+                // Prefer the small delta "app bundle": no reinstall, no UAC, just a
+                // quick download + restart. Fall back to the full installer if the
+                // release has no bundle or applying it fails.
+                setLog(`> Downloading update ${info.latestVersion}...`, 'var(--status-warn)');
+                const bundleRes = await fetch(`${backendBase}/api/update/download-app-bundle`, { method: 'POST' });
+                const bundle = await bundleRes.json();
+                if (bundle.ok && bundle.filePath && window.electronAPI.applyAppBundle) {
+                    setLog('> Update downloaded. Applying and restarting…', 'var(--status-ok)');
+                    const applied = await window.electronAPI.applyAppBundle({ filePath: bundle.filePath, version: bundle.version });
+                    if (applied && applied.ok) {
+                        setLog('> Update applied. Restarting…', 'var(--status-ok)');
+                        return;
+                    }
+                    setLog(`> Quick update failed (${applied && applied.error ? applied.error : 'unknown'}). Falling back to full installer…`, 'var(--status-warn)');
+                } else {
+                    setLog('> No quick update available; downloading full installer (this may take a few minutes)…', 'var(--status-warn)');
+                }
+
                 const dl = await fetch(`${backendBase}/api/update/download-installer`, { method: 'POST' });
                 const dlData = await dl.json();
                 if (!dlData.ok || !dlData.filePath) {

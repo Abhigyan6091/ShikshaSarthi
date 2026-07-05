@@ -3,6 +3,7 @@ import { AlertCircle, BarChart3, CheckCircle, Clock, ExternalLink, Image, Lightb
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { getCurrentStudentClass } from '@/lib/session';
 const API_URL = import.meta.env.VITE_API_URL;
 interface Question {
   _id: string;
@@ -30,6 +31,7 @@ const [answers, setAnswers] = useState<{ [questionId: string]: string }>({});
   const [endTime, setEndTime] = useState<number | null>(null);
   const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [attemptedQuestions, setAttemptedQuestions] = useState<Set<number>>(new Set());
@@ -37,18 +39,25 @@ const [answers, setAnswers] = useState<{ [questionId: string]: string }>({});
 
   useEffect(() => {
     const fetchQuestions = async () => {
+      setLoadError(null);
       try {
-        const studentCookie = localStorage.getItem("student");
-        console.log("hello")
-        console.log(studentCookie)
-        const parsed = studentCookie ? JSON.parse(studentCookie) : null;
-        const className = parsed?.student?.class || parsed?.class || null;
-        const res = await axios.get(`${API_URL}/questions/${className}/${subject}/${topic}`);
-        setQuestions(res.data);
+        // Resolve the student's class from whichever login shape stored it.
+        const className = getCurrentStudentClass();
+        if (!className) {
+          setLoadError("We couldn't determine your class. Please log out and log in again.");
+          return;
+        }
+        const res = await axios.get(
+          `${API_URL}/questions/${encodeURIComponent(className)}/${encodeURIComponent(
+            String(subject || "")
+          )}/${encodeURIComponent(String(topic || ""))}`
+        );
+        setQuestions(Array.isArray(res.data) ? res.data : []);
         setStartTime(Date.now());
         setQuestionStartTime(Date.now());
       } catch (err) {
         console.error(err);
+        setLoadError("Could not load practice questions. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -243,7 +252,16 @@ const getResult = () => {
       </div>
     </div>
   );
-  
+
+  if (loadError) return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="text-center max-w-md px-6">
+        <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+        <p className="text-lg font-medium text-gray-700">{loadError}</p>
+      </div>
+    </div>
+  );
+
   if (questions.length === 0) return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
       <div className="text-center">

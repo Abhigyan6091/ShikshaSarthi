@@ -27,10 +27,11 @@ exports.handler = async (event) => {
       ? createDownloadUrl({ bucket: process.env.UPDATES_BUCKET, key })
       : Promise.resolve(null);
 
-  const [packageUrl, windowsInstallerUrl, linuxInstallerUrl] = await Promise.all([
+  const [packageUrl, windowsInstallerUrl, linuxInstallerUrl, appBundleUrl] = await Promise.all([
     presign(latest.packageKey),
     presign(latest.windowsInstallerKey),
     presign(latest.linuxInstallerKey),
+    presign(latest.appBundleKey),
   ]);
 
   return json(200, {
@@ -50,6 +51,9 @@ exports.handler = async (event) => {
     linuxInstallerSha256: latest.linuxInstallerSha256 || null,
     windowsInstallerUrl,
     linuxInstallerUrl,
+    appBundleKey: latest.appBundleKey || null,
+    appBundleSha256: latest.appBundleSha256 || null,
+    appBundleUrl,
     releaseNotes: Array.isArray(latest.releaseNotes) ? latest.releaseNotes : [],
     timestamp: nowIso(),
   });

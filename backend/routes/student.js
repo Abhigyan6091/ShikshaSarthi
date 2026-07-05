@@ -20,7 +20,8 @@ router.post("/", async (req, res) => {
 });
 router.post("/login", async (req, res) => {
   try {
-    const { studentId, password } = req.body;
+    const studentId = typeof req.body.studentId === "string" ? req.body.studentId : "";
+    const password = typeof req.body.password === "string" ? req.body.password : "";
 
     // Check for missing fields
     if (!studentId || !password) {

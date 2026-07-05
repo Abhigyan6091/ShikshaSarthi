@@ -49,19 +49,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ];
   
   useEffect(() => {
-    // Check for stored user in localStorage (simulating persistence)
-    // Priority: currentUser (real login) -> nmmsUser (mock login)
-    const storedUser = localStorage.getItem('currentUser') || localStorage.getItem('nmmsUser');
-    
-    // Also check for legacy/alternate login
-    const loginStudent = localStorage.getItem('Login_student');
+    // Restore the session only from the canonical `currentUser` key (written by
+    // the real login flow and cleared by clearAllAuth on logout). We must NOT
+    // fall back to nmmsUser/Login_student here: those are legacy keys that
+    // logout used to miss, so reading them resurrected a stale/previous user.
+    const storedUser = localStorage.getItem('currentUser');
 
     if (storedUser) {
       try {
         const parsed = JSON.parse(storedUser);
-         // Handle different structures (nested or flat)
+        // Handle different structures (nested or flat)
         const userObj = parsed.student || parsed.user || parsed;
-        
+
         // Map _id to id if necessary
         const normalizedUser: User = {
             id: userObj.id || userObj._id || userObj.studentId || "",
@@ -71,35 +70,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             instituteId: userObj.instituteId,
             class: userObj.class
         };
-        
+
         if (normalizedUser.id) {
             setUser(normalizedUser);
         }
       } catch (e) {
         console.error("Error parsing stored user:", e);
       }
-    } else if (loginStudent) {
-         try {
-            const parsed = JSON.parse(loginStudent);
-             // LoginStudent.tsx stores response which might have student object
-            const userObj = parsed.student || parsed;
-             const normalizedUser: User = {
-                id: userObj.id || userObj._id || userObj.studentId || "",
-                name: userObj.name || userObj.studentName || "User",
-                email: userObj.email || "",
-                role: "student",
-                instituteId: userObj.instituteId,
-                class: userObj.class
-            };
-            if (normalizedUser.id) {
-                setUser(normalizedUser);
-            }
-         } catch (e) {
-             console.error("Error parsing login student:", e);
-         }
     }
     setIsLoading(false);
-  }, []); 
+  }, []);
 
  
   const login = async (email: string, password: string, role: UserRole) => {
