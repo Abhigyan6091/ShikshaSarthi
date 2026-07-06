@@ -144,8 +144,9 @@ const AudioQuizPlayer: React.FC = () => {
 
         console.log("Fetching audio questions for:", { className, subject: decodedSubject, topic: decodedTopic });
 
+        // Class-agnostic: all students can access audio questions for a topic.
         const res = await axios.get(
-          `${API_URL}/audio-questions/${className}/${decodedSubject}/${decodedTopic}`
+          `${API_URL}/audio-questions/all/questions/${encodeURIComponent(decodedSubject)}/${encodeURIComponent(decodedTopic)}`
         );
 
         console.log("Audio questions response:", res.data);

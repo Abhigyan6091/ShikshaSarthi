@@ -3,7 +3,6 @@ import { AlertCircle, BarChart3, CheckCircle, Clock, ExternalLink, Image, Lightb
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import { getCurrentStudentClass } from '@/lib/session';
 const API_URL = import.meta.env.VITE_API_URL;
 interface Question {
   _id: string;
@@ -41,14 +40,10 @@ const [answers, setAnswers] = useState<{ [questionId: string]: string }>({});
     const fetchQuestions = async () => {
       setLoadError(null);
       try {
-        // Resolve the student's class from whichever login shape stored it.
-        const className = getCurrentStudentClass();
-        if (!className) {
-          setLoadError("We couldn't determine your class. Please log out and log in again.");
-          return;
-        }
+        // Class-agnostic: every student can practice any question for the
+        // chosen subject/topic (students are identified by batch, not grade).
         const res = await axios.get(
-          `${API_URL}/questions/${encodeURIComponent(className)}/${encodeURIComponent(
+          `${API_URL}/questions/all/questions/${encodeURIComponent(
             String(subject || "")
           )}/${encodeURIComponent(String(topic || ""))}`
         );

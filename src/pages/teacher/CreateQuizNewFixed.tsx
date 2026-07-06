@@ -10,13 +10,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { BookOpen, CheckCircle, Loader2, Plus, Search } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle, ChevronRight, FolderOpen, Loader2, Plus, Search } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-type SlotType = 'mcq' | 'custom' | 'audio' | 'video' | 'puzzle';
-type CountField = 'timeLimit' | 'mcqCount' | 'customCount' | 'audioCount' | 'videoCount' | 'puzzleCount';
+type SlotType = 'mcq' | 'audio' | 'video' | 'puzzle';
+type CountField = 'timeLimit' | 'mcqCount' | 'audioCount' | 'videoCount' | 'puzzleCount';
 type ApiRecord = Record<string, unknown>;
+type McqStep = 'subject' | 'topic' | 'questions';
 
 interface QuestionChoice {
   _id: string;
@@ -24,7 +25,7 @@ interface QuestionChoice {
   subject?: string;
   class?: string;
   topic?: string;
-  type: SlotType;
+  type: SlotType | 'custom';
   options?: string[];
   correctAnswer?: string;
   parentVideoId?: string;
@@ -85,7 +86,6 @@ const CreateQuizNewFixed: React.FC = () => {
     quizId: '',
     timeLimit: 60,
     mcqCount: 0,
-    customCount: 0,
     audioCount: 0,
     videoCount: 0,
     puzzleCount: 0,
@@ -100,8 +100,16 @@ const CreateQuizNewFixed: React.FC = () => {
   const [loadingChoices, setLoadingChoices] = useState(false);
   const [saving, setSaving] = useState(false);
   const [customDraft, setCustomDraft] = useState(emptyCustom);
+  const [showCustomForm, setShowCustomForm] = useState(false);
 
-  const totalQuestions = config.mcqCount + config.customCount + config.audioCount + config.videoCount + config.puzzleCount;
+  // MCQ tree-picker state (Subject -> Topic -> Questions).
+  const [mcqStep, setMcqStep] = useState<McqStep>('subject');
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [topics, setTopics] = useState<string[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedTopic, setSelectedTopic] = useState('');
+
+  const totalQuestions = config.mcqCount + config.audioCount + config.videoCount + config.puzzleCount;
 
   const updateCount = (field: CountField, value: number) => {
     setConfig((prev) => ({ ...prev, [field]: Math.max(0, value || 0) }));
@@ -121,41 +129,57 @@ const CreateQuizNewFixed: React.FC = () => {
     };
 
     pushSlots('mcq', config.mcqCount);
-    pushSlots('custom', config.customCount);
     pushSlots('audio', config.audioCount);
     pushSlots('video', config.videoCount);
     pushSlots('puzzle', config.puzzleCount);
     setSlots(next);
   };
 
+  const mapMcq = (question: ApiRecord): QuestionChoice => ({
+    _id: asString(question._id),
+    question: asString(question.question, 'MCQ question'),
+    subject: asString(question.subject),
+    class: asString(question.class),
+    topic: asString(question.topic),
+    type: 'mcq',
+    options: Array.isArray(question.options) ? question.options.map(String) : [],
+    correctAnswer: asString(question.correctAnswer),
+  });
+
   const openSlot = async (slotIndex: number) => {
     const slot = slots[slotIndex];
     setSelectedSlot(slotIndex);
     setQuery('');
     setChoices([]);
+    setShowCustomForm(false);
     setDialogOpen(true);
 
-    if (slot.type === 'custom') {
-      setCustomDraft(emptyCustom);
+    if (slot.type === 'mcq') {
+      // Enter the Subject -> Topic -> Question tree.
+      setMcqStep('subject');
+      setSelectedSubject('');
+      setSelectedTopic('');
+      setTopics([]);
+      setLoadingChoices(true);
+      try {
+        const response = await axios.get(`${API_URL}/questions`);
+        const uniqueSubjects = [
+          ...new Set(asRecordArray(response.data).map((q) => asString(q.subject)).filter(Boolean)),
+        ].sort();
+        setSubjects(uniqueSubjects);
+      } catch (error: unknown) {
+        toast({ title: 'Could not load subjects', description: getErrorMessage(error, 'Try again'), variant: 'destructive' });
+      } finally {
+        setLoadingChoices(false);
+      }
       return;
     }
 
+    // Audio / video / puzzle keep the flat searchable list.
     setLoadingChoices(true);
     try {
       let mapped: QuestionChoice[] = [];
-      if (slot.type === 'mcq') {
-        const response = await axios.get(`${API_URL}/questions`);
-        mapped = asRecordArray(response.data).map((question) => ({
-          _id: asString(question._id),
-          question: asString(question.question, 'MCQ question'),
-          subject: asString(question.subject),
-          class: asString(question.class),
-          topic: asString(question.topic),
-          type: 'mcq',
-          options: Array.isArray(question.options) ? question.options.map(String) : [],
-          correctAnswer: asString(question.correctAnswer),
-        }));
-      } else if (slot.type === 'audio') {
+      if (slot.type === 'audio') {
         const response = await axios.get(`${API_URL}/audio-questions/`);
         mapped = asRecordArray(response.data).map((question) => ({
           _id: asString(question._id),
@@ -208,14 +232,56 @@ const CreateQuizNewFixed: React.FC = () => {
       }
       setChoices(mapped);
     } catch (error: unknown) {
-      toast({
-        title: 'Could not load questions',
-        description: getErrorMessage(error, 'Try again'),
-        variant: 'destructive',
-      });
+      toast({ title: 'Could not load questions', description: getErrorMessage(error, 'Try again'), variant: 'destructive' });
     } finally {
       setLoadingChoices(false);
     }
+  };
+
+  const handleSubjectSelect = async (subject: string) => {
+    setSelectedSubject(subject);
+    setSelectedTopic('');
+    setTopics([]);
+    setMcqStep('topic');
+    setLoadingChoices(true);
+    try {
+      const response = await axios.get(`${API_URL}/questions/all/topics/${encodeURIComponent(subject)}`);
+      setTopics((response.data?.topics || []).filter(Boolean).sort());
+    } catch (error: unknown) {
+      toast({ title: 'Could not load topics', description: getErrorMessage(error, 'Try again'), variant: 'destructive' });
+    } finally {
+      setLoadingChoices(false);
+    }
+  };
+
+  const handleTopicSelect = async (topic: string) => {
+    setSelectedTopic(topic);
+    setMcqStep('questions');
+    setQuery('');
+    setLoadingChoices(true);
+    try {
+      const response = await axios.get(
+        `${API_URL}/questions/all/questions/${encodeURIComponent(selectedSubject)}/${encodeURIComponent(topic)}`
+      );
+      setChoices(asRecordArray(response.data).map(mapMcq));
+    } catch (error: unknown) {
+      toast({ title: 'Could not load questions', description: getErrorMessage(error, 'Try again'), variant: 'destructive' });
+    } finally {
+      setLoadingChoices(false);
+    }
+  };
+
+  const mcqBack = () => {
+    if (showCustomForm) { setShowCustomForm(false); return; }
+    if (mcqStep === 'questions') { setMcqStep('topic'); setChoices([]); return; }
+    if (mcqStep === 'topic') { setMcqStep('subject'); setSelectedSubject(''); setTopics([]); return; }
+  };
+
+  const openCustomForm = () => {
+    // Prefill from the current tree position so the new question lands in the
+    // subject/topic the teacher is browsing.
+    setCustomDraft({ ...emptyCustom, subject: selectedSubject, topic: selectedTopic });
+    setShowCustomForm(true);
   };
 
   const selectChoice = (choice: QuestionChoice) => {
@@ -241,11 +307,7 @@ const CreateQuizNewFixed: React.FC = () => {
       selectChoice({ ...response.data, type: 'custom' });
       toast({ title: 'Custom question saved', description: 'It was added to the question bank and selected for this quiz.' });
     } catch (error: unknown) {
-      toast({
-        title: 'Custom question failed',
-        description: getErrorMessage(error, 'Check the fields and correct answer syntax.'),
-        variant: 'destructive',
-      });
+      toast({ title: 'Custom question failed', description: getErrorMessage(error, 'Check the fields and correct answer syntax.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -295,8 +357,7 @@ const CreateQuizNewFixed: React.FC = () => {
         timeLimit: config.timeLimit,
         totalQuestions: questionIds.length,
         questionTypes: {
-          mcq: slots.filter((slot) => slot.type === 'mcq' || slot.type === 'custom').length,
-          custom: slots.filter((slot) => slot.type === 'custom').length,
+          mcq: slots.filter((slot) => slot.type === 'mcq').length,
           audio: slots.filter((slot) => slot.type === 'audio').length,
           video: slots.filter((slot) => slot.type === 'video').length,
           puzzle: slots.filter((slot) => slot.type === 'puzzle').length,
@@ -306,29 +367,16 @@ const CreateQuizNewFixed: React.FC = () => {
       });
       toast({ title: 'Quiz created', description: `${config.quizId} was created successfully.` });
       setSlots([]);
-      setConfig({
-        quizId: '',
-        timeLimit: 60,
-        mcqCount: 0,
-        customCount: 0,
-        audioCount: 0,
-        videoCount: 0,
-        puzzleCount: 0,
-        startTime: '',
-        endTime: '',
-      });
+      setConfig({ quizId: '', timeLimit: 60, mcqCount: 0, audioCount: 0, videoCount: 0, puzzleCount: 0, startTime: '', endTime: '' });
     } catch (error: unknown) {
-      toast({
-        title: 'Quiz creation failed',
-        description: getErrorMessage(error, 'Could not create quiz.'),
-        variant: 'destructive',
-      });
+      toast({ title: 'Quiz creation failed', description: getErrorMessage(error, 'Could not create quiz.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
   const selectedSlotType = selectedSlot !== null ? slots[selectedSlot]?.type : null;
+  const isMcq = selectedSlotType === 'mcq';
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -337,14 +385,14 @@ const CreateQuizNewFixed: React.FC = () => {
         <div className="edu-container">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Advanced Quiz Creator</h1>
-            <p className="mt-1 text-muted-foreground">Create quizzes from bank questions or add custom questions directly.</p>
+            <p className="mt-1 text-muted-foreground">Pick questions from the bank by subject &amp; topic, or add a custom one with the + button.</p>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
             <Card>
               <CardHeader>
                 <CardTitle>Quiz Configuration</CardTitle>
-                <CardDescription>Custom questions are saved to the question bank.</CardDescription>
+                <CardDescription>Custom questions you add are saved to the question bank.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -357,7 +405,6 @@ const CreateQuizNewFixed: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>MCQ</Label><Input type="number" value={config.mcqCount} onChange={(event) => updateCount('mcqCount', Number(event.target.value))} /></div>
-                  <div><Label>Custom</Label><Input type="number" value={config.customCount} onChange={(event) => updateCount('customCount', Number(event.target.value))} /></div>
                   <div><Label>Audio</Label><Input type="number" value={config.audioCount} onChange={(event) => updateCount('audioCount', Number(event.target.value))} /></div>
                   <div><Label>Video</Label><Input type="number" value={config.videoCount} onChange={(event) => updateCount('videoCount', Number(event.target.value))} /></div>
                   <div><Label>Puzzle</Label><Input type="number" value={config.puzzleCount} onChange={(event) => updateCount('puzzleCount', Number(event.target.value))} /></div>
@@ -422,14 +469,31 @@ const CreateQuizNewFixed: React.FC = () => {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{selectedSlotType === 'custom' ? 'Create Custom Question' : `Select ${selectedSlotType} Question`}</DialogTitle>
+            <div className="flex items-center justify-between gap-3 pr-6">
+              <DialogTitle>
+                {showCustomForm
+                  ? 'Add Custom Question'
+                  : isMcq
+                    ? 'Select MCQ Question'
+                    : `Select ${selectedSlotType} Question`}
+              </DialogTitle>
+              {isMcq && !showCustomForm && (
+                <Button size="sm" variant="outline" onClick={openCustomForm}>
+                  <Plus className="mr-1 h-4 w-4" /> Add custom question
+                </Button>
+              )}
+            </div>
           </DialogHeader>
 
-          {selectedSlotType === 'custom' ? (
+          {/* Inline custom-question form (reachable via the + button on MCQ). */}
+          {showCustomForm ? (
             <div className="space-y-3">
+              <Button size="sm" variant="ghost" onClick={mcqBack} className="mb-1 h-8 px-2">
+                <ArrowLeft className="mr-1 h-4 w-4" /> Back to questions
+              </Button>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div><Label>Subject</Label><Input value={customDraft.subject} onChange={(event) => setCustomDraft((prev) => ({ ...prev, subject: event.target.value }))} /></div>
-                <div><Label>Class</Label><Input value={customDraft.class} onChange={(event) => setCustomDraft((prev) => ({ ...prev, class: event.target.value }))} /></div>
+                <div><Label>Class (optional)</Label><Input value={customDraft.class} onChange={(event) => setCustomDraft((prev) => ({ ...prev, class: event.target.value }))} /></div>
                 <div><Label>Topic</Label><Input value={customDraft.topic} onChange={(event) => setCustomDraft((prev) => ({ ...prev, topic: event.target.value }))} /></div>
               </div>
               <div><Label>Question</Label><Textarea value={customDraft.question} onChange={(event) => setCustomDraft((prev) => ({ ...prev, question: event.target.value }))} /></div>
@@ -438,10 +502,74 @@ const CreateQuizNewFixed: React.FC = () => {
               <div><Label>Hint</Label><Input value={customDraft.hintText} onChange={(event) => setCustomDraft((prev) => ({ ...prev, hintText: event.target.value }))} /></div>
               <Button onClick={saveCustomQuestion} disabled={saving}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Save Custom Question
+                Save &amp; add to quiz
               </Button>
             </div>
+          ) : isMcq ? (
+            /* Subject -> Topic -> Question tree */
+            <div className="space-y-4">
+              {/* Breadcrumb */}
+              <div className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+                <button onClick={() => { setMcqStep('subject'); setSelectedSubject(''); setSelectedTopic(''); }} className="hover:text-blue-600">Subjects</button>
+                {selectedSubject && (<><ChevronRight className="h-4 w-4" /><button onClick={() => handleSubjectSelect(selectedSubject)} className="hover:text-blue-600">{selectedSubject}</button></>)}
+                {selectedTopic && (<><ChevronRight className="h-4 w-4" /><span className="text-gray-900">{selectedTopic}</span></>)}
+              </div>
+
+              {mcqStep !== 'subject' && (
+                <Button size="sm" variant="ghost" onClick={mcqBack} className="h-8 px-2">
+                  <ArrowLeft className="mr-1 h-4 w-4" /> Back
+                </Button>
+              )}
+
+              {loadingChoices ? (
+                <div className="py-12 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin" /></div>
+              ) : mcqStep === 'subject' ? (
+                subjects.length === 0 ? <p className="py-8 text-center text-muted-foreground">No subjects in the question bank yet.</p> : (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {subjects.map((subject) => (
+                      <button key={subject} onClick={() => handleSubjectSelect(subject)} className="flex items-center justify-between rounded-md border bg-white p-3 text-left hover:bg-blue-50">
+                        <span className="flex items-center gap-2 font-medium"><FolderOpen className="h-4 w-4 text-blue-600" />{subject}</span>
+                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                      </button>
+                    ))}
+                  </div>
+                )
+              ) : mcqStep === 'topic' ? (
+                topics.length === 0 ? <p className="py-8 text-center text-muted-foreground">No topics found for {selectedSubject}.</p> : (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {topics.map((topic) => (
+                      <button key={topic} onClick={() => handleTopicSelect(topic)} className="flex items-center justify-between rounded-md border bg-white p-3 text-left hover:bg-blue-50">
+                        <span className="font-medium">{topic}</span>
+                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                      </button>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search within this topic..." className="pl-10" />
+                  </div>
+                  {filteredChoices.length === 0 ? (
+                    <p className="py-8 text-center text-muted-foreground">No questions in this topic. Use “Add custom question”.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {filteredChoices.slice(0, 300).map((choice) => (
+                        <button key={choice._id} onClick={() => selectChoice(choice)} className="w-full rounded-md border bg-white p-3 text-left hover:bg-blue-50">
+                          <p className="font-medium">{choice.question}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {[choice.subject, choice.class ? `Class ${choice.class}` : '', choice.topic].filter(Boolean).join(' | ')}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           ) : (
+            /* Flat searchable list for audio / video / puzzle */
             <div className="space-y-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />

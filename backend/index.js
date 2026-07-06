@@ -147,7 +147,22 @@ const frontendDistDir = process.env.FRONTEND_DIST_DIR
 const frontendIndexPath = frontendDistDir ? path.join(frontendDistDir, "index.html") : null;
 
 if (frontendDistDir && fs.existsSync(frontendIndexPath)) {
-  app.use(express.static(frontendDistDir));
+  app.use(
+    express.static(frontendDistDir, {
+      setHeaders: (res, filePath) => {
+        // index.html must never be cached: it's the file that points at the
+        // current content-hashed asset bundle. If a browser caches it, the
+        // user keeps running an old JS build after a deploy (which looked like
+        // "we fixed the bug but it still happens"). Hashed /assets/* are safe
+        // to cache forever since their filename changes on every build.
+        if (filePath.endsWith("index.html")) {
+          res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        } else if (/[\\/]assets[\\/]/.test(filePath)) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      },
+    })
+  );
 }
 
 app.get("/health", (_req, res) => {
@@ -224,6 +239,8 @@ app.get("/hi", (_req, res) => {
 
 if (frontendDistDir && fs.existsSync(frontendIndexPath)) {
   app.use((_req, res) => {
+    // SPA fallback also serves index.html — keep it uncacheable for the same reason.
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     res.sendFile(frontendIndexPath);
   });
 } else {

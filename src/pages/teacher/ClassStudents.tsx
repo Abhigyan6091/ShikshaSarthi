@@ -132,17 +132,17 @@ const ClassStudents: React.FC = () => {
     // Not already in class
     if (classData?.students?.includes(student.studentId)) return false;
     
-    // Class filter
-    if (classFilter && classFilter !== 'all' && student.class !== classFilter) return false;
-    
+    // Batch filter (falls back to legacy class value for pre-migration records)
+    if (classFilter && classFilter !== 'all' && (student.batch || student.class) !== classFilter) return false;
+
     return true;
   });
 
   // Get enrolled students with details
   const enrolledStudents = classData?.studentDetails || [];
 
-  // Get unique class numbers from all students for filter
-  const availableClasses = Array.from(new Set(allStudents.map(s => s.class))).sort();
+  // Unique batches from all students for the filter dropdown
+  const availableClasses = Array.from(new Set(allStudents.map(s => s.batch || s.class).filter(Boolean))).sort();
 
   if (!classData) {
     return (
@@ -196,16 +196,16 @@ const ClassStudents: React.FC = () => {
               <CardContent className="space-y-4">
                 {/* Filters */}
                 <div className="space-y-2">
-                  <Label htmlFor="classFilter">Filter by Class</Label>
+                  <Label htmlFor="classFilter">Filter by Batch</Label>
                   <Select value={classFilter} onValueChange={setClassFilter}>
                     <SelectTrigger>
-                      <SelectValue placeholder="All classes" />
+                      <SelectValue placeholder="All batches" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All classes</SelectItem>
+                      <SelectItem value="all">All batches</SelectItem>
                       {availableClasses.map((cls) => (
                         <SelectItem key={cls} value={cls}>
-                          Class {cls}
+                          {cls} Batch
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -227,7 +227,7 @@ const ClassStudents: React.FC = () => {
                       ) : (
                         availableStudents.map((student) => (
                           <SelectItem key={student.studentId} value={student.studentId}>
-                            {student.name} ({student.studentId}) - Class {student.class}
+                            {student.name} ({student.studentId}) - {student.batch || student.class} Batch
                           </SelectItem>
                         ))
                       )}

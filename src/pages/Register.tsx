@@ -507,18 +507,18 @@ const Register: React.FC = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="class">Class</Label>
+              <Label htmlFor="batch">Batch (graduation year)</Label>
               <Select
-                value={formData.class || ''}
-                onValueChange={(value) => handleInputChange('class', value)}
+                value={formData.batch || ''}
+                onValueChange={(value) => handleInputChange('batch', value)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select class" />
+                  <SelectValue placeholder="Select batch" />
                 </SelectTrigger>
                 <SelectContent>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
-                    <SelectItem key={num} value={num.toString()}>
-                      Class {num}
+                  {Array.from({ length: 8 }, (_, i) => new Date().getFullYear() + i).map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year} Batch
                     </SelectItem>
                   ))}
                 </SelectContent>

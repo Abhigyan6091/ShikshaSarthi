@@ -9,7 +9,9 @@
 
 import Cookies from "js-cookie";
 
-// Every key any login path has ever used to persist auth/session state.
+// Every key any login path has ever used to persist auth/session state,
+// plus per-user client state that must not bleed across accounts in a shared
+// browser (e.g. a teacher's in-progress quiz draft).
 const AUTH_KEYS = [
   "currentUser",
   "userRole",
@@ -20,6 +22,7 @@ const AUTH_KEYS = [
   "superadmin",
   "nmmsUser",
   "Login_student",
+  "advancedQuizDraft.v1",
 ];
 
 // Cookies a login path may have set (teacher login mirrors into a cookie).
@@ -98,9 +101,10 @@ export function getCurrentUser(): Record<string, any> | null {
   return null;
 }
 
-/** Class of the logged-in student, from whichever shape was stored. */
-export function getCurrentStudentClass(): string | null {
+/** Graduation "batch" of the logged-in student (e.g. "2026"). */
+export function getCurrentStudentBatch(): string | null {
   const user = getCurrentUser();
-  const value = user?.class ?? user?.className ?? user?.studentClass ?? null;
+  // Prefer batch; fall back to the legacy class value for pre-migration records.
+  const value = user?.batch ?? user?.class ?? null;
   return value != null ? String(value) : null;
 }

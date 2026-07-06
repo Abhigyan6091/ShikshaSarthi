@@ -562,7 +562,7 @@ const SuperAdminDashboard: React.FC = () => {
                           </td>
                           <td className="py-3 px-3">
                             <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-0.5 rounded">
-                              Class {student.class}
+                              {(student as any).batch || student.class} Batch
                             </span>
                           </td>
                           <td className="py-3 px-3 text-center">

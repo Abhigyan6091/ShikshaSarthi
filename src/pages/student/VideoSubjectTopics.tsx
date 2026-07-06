@@ -52,20 +52,6 @@ const VideoSubjectTopics: React.FC = () => {
       setError(null);
 
       try {
-        const studentCookie = localStorage.getItem("student");
-        let className: string | null = null;
-
-        if (studentCookie) {
-          const parsed = JSON.parse(studentCookie);
-          className = parsed?.student?.class || parsed?.class || null;
-        }
-
-        if (!className) {
-          setError("Class information not found.");
-          setTopics([]);
-          return;
-        }
-
         if (!subject) {
           setError("Subject is not specified.");
           setTopics([]);
@@ -74,13 +60,10 @@ const VideoSubjectTopics: React.FC = () => {
 
         // Decode the subject URL parameter for Hindi characters
         const decodedSubject = decodeURIComponent(subject);
-        
-        console.log("Fetching video topics for:", { className, subject: decodedSubject });
-        console.log("API URL:", API_URL);
-        console.log("Full URL:", `${API_URL}/video-questions/topics/${className}/${decodedSubject}`);
 
+        // Class-agnostic: all students can access every video topic in a subject.
         const res = await axios.get(
-          `${API_URL}/video-questions/topics/${className}/${decodedSubject}`
+          `${API_URL}/video-questions/all/topics/${encodeURIComponent(decodedSubject)}`
         );
 
         console.log("Video topics response:", res.data);

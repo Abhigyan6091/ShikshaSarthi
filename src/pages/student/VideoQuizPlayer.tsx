@@ -130,18 +130,13 @@ const VideoQuizPlayer: React.FC = () => {
   useEffect(() => {
     const fetchVideoData = async () => {
       try {
-        const studentCookie = localStorage.getItem("student");
-        const parsed = studentCookie ? JSON.parse(studentCookie) : null;
-        const className = parsed?.student?.class || parsed?.class || null;
-
         // Decode URL parameters
         const decodedSubject = subject ? decodeURIComponent(subject) : '';
         const decodedTopic = topic ? decodeURIComponent(topic) : '';
 
-        console.log("Fetching video data for:", { className, subject: decodedSubject, topic: decodedTopic });
-
+        // Class-agnostic: all students can access video questions for a topic.
         const res = await axios.get(
-          `${API_URL}/video-questions/${className}/${decodedSubject}/${decodedTopic}`
+          `${API_URL}/video-questions/all/questions/${encodeURIComponent(decodedSubject)}/${encodeURIComponent(decodedTopic)}`
         );
 
         console.log("Video data response:", res.data);

@@ -23,20 +23,6 @@ const AudioSubjectTopics: React.FC = () => {
       setError(null);
 
       try {
-        const studentCookie = localStorage.getItem("student");
-        let className: string | null = null;
-
-        if (studentCookie) {
-          const parsed = JSON.parse(studentCookie);
-          className = parsed?.student?.class || parsed?.class || null;
-        }
-
-        if (!className) {
-          setError("कक्षा की जानकारी नहीं मिली।");
-          setTopics([]);
-          return;
-        }
-
         if (!subject) {
           setError("विषय निर्दिष्ट नहीं है।");
           setTopics([]);
@@ -44,11 +30,10 @@ const AudioSubjectTopics: React.FC = () => {
         }
 
         const decodedSubject = decodeURIComponent(subject);
-        
-        console.log("Fetching audio topics for:", { className, subject: decodedSubject });
 
+        // Class-agnostic: all students can access every audio topic in a subject.
         const res = await axios.get(
-          `${API_URL}/audio-questions/topics/${className}/${decodedSubject}`
+          `${API_URL}/audio-questions/all/topics/${encodeURIComponent(decodedSubject)}`
         );
 
         console.log("Audio topics response:", res.data);

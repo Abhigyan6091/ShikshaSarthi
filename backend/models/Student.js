@@ -10,7 +10,13 @@ const studentSchema = new mongoose.Schema({
   email: { type: String, unique: true, sparse: true },
   password: { type: String, required: true },
   must_change_password: { type: Boolean, default: false },
-  class: { type: String, required: true },
+  // Graduation-year cohort, e.g. "2026". Replaces the old grade "class" as the
+  // student's primary cohort identity. Students are no longer filtered to
+  // questions by grade — every student can access the whole question bank.
+  batch: { type: String },
+  // Legacy grade field, kept optional for backward compatibility with existing
+  // synced records; no longer used to match students to questions.
+  class: { type: String, required: false },
   profilePhoto: { type: String },
   classes: [{ type: String, ref: "Class" }], // Classes enrolled in
   quizAttempted: [

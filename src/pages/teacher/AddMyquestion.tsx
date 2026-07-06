@@ -18,16 +18,46 @@ export default function AddMyQuestion() {
   const[quizId,setquizId]=useState("");
   const { toast } = useToast();
 
+  // Subject/Topic can either be picked from the registered ones in the question
+  // bank, or typed fresh. These toggles + lists drive that choice.
+  const [subjectMode, setSubjectMode] = useState<"existing" | "new">("existing");
+  const [topicMode, setTopicMode] = useState<"existing" | "new">("existing");
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [topics, setTopics] = useState<string[]>([]);
+
   useEffect(() => {
-    console.log("hello")
     const teacherCookie = Cookies.get("teacher");
-    console.log(teacherCookie);
     if (teacherCookie) {
-      const parsed = JSON.parse(teacherCookie);
-      setTeacherId(parsed.teacher.teacherId);
-      console.log(teacherId);
+      try {
+        const parsed = JSON.parse(teacherCookie);
+        setTeacherId(parsed.teacher?.teacherId || parsed.teacherId || "");
+      } catch {
+        /* ignore malformed cookie */
+      }
     }
+
+    // Load the registered subjects from the question bank for the dropdown.
+    axios
+      .get(`${API_URL}/questions`)
+      .then((res) => {
+        const list = Array.isArray(res.data) ? res.data : [];
+        setSubjects([...new Set(list.map((q: any) => q?.subject).filter(Boolean))].sort() as string[]);
+      })
+      .catch(() => setSubjects([]));
   }, []);
+
+  // Whenever the chosen subject changes, refresh the topic dropdown for it.
+  useEffect(() => {
+    const subject = formData.subject?.trim();
+    if (!subject) {
+      setTopics([]);
+      return;
+    }
+    axios
+      .get(`${API_URL}/questions/all/topics/${encodeURIComponent(subject)}`)
+      .then((res) => setTopics((res.data?.topics || []).filter(Boolean).sort()))
+      .catch(() => setTopics([]));
+  }, [formData.subject]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -105,30 +135,64 @@ export default function AddMyQuestion() {
       className="max-w-xl mx-auto p-6 space-y-4 bg-white rounded shadow"
     >
       <h2 className="text-xl font-bold mb-4">Add a Question</h2>
-      <input
-        type="text"
-        name="subject"
-        value={formData.subject}
-        onChange={handleChange}
-        placeholder="Subject"
-        className="w-full p-2 border rounded"
-      />
+
+      {/* Subject: pick a registered one or add new */}
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="text-sm font-medium">Subject</label>
+          <div className="inline-flex overflow-hidden rounded border text-xs">
+            <button type="button" onClick={() => setSubjectMode("existing")} className={`px-2 py-1 ${subjectMode === "existing" ? "bg-blue-500 text-white" : "bg-white text-gray-600"}`}>Choose existing</button>
+            <button type="button" onClick={() => setSubjectMode("new")} className={`px-2 py-1 ${subjectMode === "new" ? "bg-blue-500 text-white" : "bg-white text-gray-600"}`}>Add new</button>
+          </div>
+        </div>
+        {subjectMode === "existing" ? (
+          <select
+            name="subject"
+            value={formData.subject}
+            onChange={(e) => { setFormData({ ...formData, subject: e.target.value, topic: "" }); }}
+            className="w-full p-2 border rounded bg-white"
+          >
+            <option value="">Select a subject…</option>
+            {subjects.map((s) => (<option key={s} value={s}>{s}</option>))}
+          </select>
+        ) : (
+          <input type="text" name="subject" value={formData.subject} onChange={handleChange} placeholder="New subject" className="w-full p-2 border rounded" />
+        )}
+      </div>
+
       <input
         type="text"
         name="class"
         value={formData.class}
         onChange={handleChange}
-        placeholder="Class"
+        placeholder="Class (optional)"
         className="w-full p-2 border rounded"
       />
-      <input
-        type="text"
-        name="topic"
-        value={formData.topic}
-        onChange={handleChange}
-        placeholder="Topic"
-        className="w-full p-2 border rounded"
-      />
+
+      {/* Topic: pick a registered one (for the chosen subject) or add new */}
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="text-sm font-medium">Topic</label>
+          <div className="inline-flex overflow-hidden rounded border text-xs">
+            <button type="button" onClick={() => setTopicMode("existing")} className={`px-2 py-1 ${topicMode === "existing" ? "bg-blue-500 text-white" : "bg-white text-gray-600"}`}>Choose existing</button>
+            <button type="button" onClick={() => setTopicMode("new")} className={`px-2 py-1 ${topicMode === "new" ? "bg-blue-500 text-white" : "bg-white text-gray-600"}`}>Add new</button>
+          </div>
+        </div>
+        {topicMode === "existing" ? (
+          <select
+            name="topic"
+            value={formData.topic}
+            onChange={handleChange}
+            disabled={!formData.subject}
+            className="w-full p-2 border rounded bg-white disabled:bg-gray-100"
+          >
+            <option value="">{formData.subject ? "Select a topic…" : "Pick a subject first"}</option>
+            {topics.map((t) => (<option key={t} value={t}>{t}</option>))}
+          </select>
+        ) : (
+          <input type="text" name="topic" value={formData.topic} onChange={handleChange} placeholder="New topic" className="w-full p-2 border rounded" />
+        )}
+      </div>
       <textarea
         name="question"
         value={formData.question}

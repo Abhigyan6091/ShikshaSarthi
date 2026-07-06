@@ -80,6 +80,30 @@ router.get("/topics/:class/:subject", async (req, res) => {
   }
 });
 
+// Class-agnostic: all unique topics for a subject across every class.
+// Defined BEFORE /:class/:subject/:topic so "all" isn't captured as a class.
+router.get("/all/topics/:subject", async (req, res) => {
+  try {
+    const subject = decodeURIComponent(req.params.subject);
+    const topics = await VideoQuestion.distinct("topic", { subject });
+    res.status(200).json({ subject, topics });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Class-agnostic: all video questions for a subject + topic across every class.
+router.get("/all/questions/:subject/:topic", async (req, res) => {
+  try {
+    const subject = decodeURIComponent(req.params.subject);
+    const topic = decodeURIComponent(req.params.topic);
+    const videoQuestions = await VideoQuestion.find({ subject, topic });
+    res.status(200).json(videoQuestions.map((v) => normalizeVideoQuestionForResponse(v, req)));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get video questions for a specific class, subject, and topic
 router.get("/:class/:subject/:topic", async (req, res) => {
   try {

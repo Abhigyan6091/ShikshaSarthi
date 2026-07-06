@@ -52,28 +52,16 @@ const physicsTopics = [
       setError(null);
 
       try {
-        const studentCookie = localStorage.getItem("student");
-
-        let className: string | null = null;
-        if (studentCookie) {
-          const parsed = JSON.parse(studentCookie);
-          className = parsed?.student?.class || parsed?.class || null;
-        }
-
-        if (!className) {
-          setError("Class information not found in cookie.");
-          setTopics([]);
-          return;
-        }
-
         if (!subject) {
           setError("Subject is not specified.");
           setTopics([]);
           return;
         }
 
+        // Class-agnostic: students can access every topic in a subject
+        // regardless of grade (students are identified by batch, not grade).
         const res = await axios.get(
-          `${API_URL}/questions/topics/${className}/${subject}`
+          `${API_URL}/questions/all/topics/${encodeURIComponent(subject)}`
         );
 
         const receivedTopics = Array.isArray(res.data)

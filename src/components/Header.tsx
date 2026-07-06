@@ -115,8 +115,6 @@ const Header: React.FC = () => {
   }, []);
 
   const handleLogout = () => {
-    window.dispatchEvent(new CustomEvent('userLoggedOut'));
-
     // Clear every auth key/cookie (incl. nmmsUser + Login_student, which the old
     // logout missed and which the mock AuthContext used to resurrect).
     clearAllAuth();
@@ -126,6 +124,10 @@ const Header: React.FC = () => {
         .replace(/^ +/, "")
         .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
     });
+
+    // Dispatch AFTER clearing so AuthContext's listener re-reads empty storage
+    // (event dispatch is synchronous — dispatching first would re-read stale data).
+    window.dispatchEvent(new CustomEvent('userLoggedOut'));
 
     setUserRole(null);
     setUserName('');

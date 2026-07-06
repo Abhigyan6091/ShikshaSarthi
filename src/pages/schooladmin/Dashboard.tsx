@@ -212,7 +212,7 @@ const SchoolAdminDashboard: React.FC = () => {
   ];
 
   // Filter students by class
-  const availableClasses = [...new Set(students.map(s => s.class))].filter(Boolean).sort((a: any, b: any) => {
+  const availableClasses = [...new Set(students.map((s: any) => s.batch || s.class))].filter(Boolean).sort((a: any, b: any) => {
     const numA = parseInt(a);
     const numB = parseInt(b);
     return numA - numB;
@@ -220,11 +220,11 @@ const SchoolAdminDashboard: React.FC = () => {
 
   const filteredStudents = selectedClass === 'all'
     ? students
-    : students.filter(s => s.class === selectedClass);
+    : students.filter((s: any) => (s.batch || s.class) === selectedClass);
 
   // Group students by class for display
   const studentsByClass = filteredStudents.reduce((acc: any, student) => {
-    const className = student.class || 'Unassigned';
+    const className = (student as any).batch || student.class || 'Unassigned';
     if (!acc[className]) {
       acc[className] = [];
     }
@@ -441,16 +441,16 @@ const SchoolAdminDashboard: React.FC = () => {
               <div className="space-y-4">
                 {/* Class Filter */}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Filter by Class</label>
+                  <label className="block text-sm font-medium mb-2">Filter by Batch</label>
                   <Select value={selectedClass} onValueChange={setSelectedClass}>
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Classes ({students.length} students)</SelectItem>
+                      <SelectItem value="all">All Batches ({students.length} students)</SelectItem>
                       {availableClasses.map((className) => (
                         <SelectItem key={className} value={className}>
-                          Class {className} ({students.filter(s => s.class === className).length} students)
+                          {className} Batch ({students.filter((s: any) => (s.batch || s.class) === className).length} students)
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -468,7 +468,7 @@ const SchoolAdminDashboard: React.FC = () => {
                         <div className="flex items-center gap-2 py-2 border-b border-gray-200">
                           <GraduationCap className="h-5 w-5 text-edu-blue" />
                           <h3 className="font-semibold text-gray-900">
-                            Class {className}
+                            {className} Batch
                           </h3>
                           <span className="text-sm text-gray-500">
                             ({studentsByClass[className].length} students)

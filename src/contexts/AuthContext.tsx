@@ -49,36 +49,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ];
   
   useEffect(() => {
-    // Restore the session only from the canonical `currentUser` key (written by
-    // the real login flow and cleared by clearAllAuth on logout). We must NOT
-    // fall back to nmmsUser/Login_student here: those are legacy keys that
+    // Read the current session from the canonical `currentUser` key only. We
+    // must NOT fall back to nmmsUser/Login_student — those are legacy keys that
     // logout used to miss, so reading them resurrected a stale/previous user.
-    const storedUser = localStorage.getItem('currentUser');
-
-    if (storedUser) {
+    const readSession = () => {
+      const storedUser = localStorage.getItem('currentUser');
+      if (!storedUser) {
+        setUser(null);
+        return;
+      }
       try {
         const parsed = JSON.parse(storedUser);
-        // Handle different structures (nested or flat)
-        const userObj = parsed.student || parsed.user || parsed;
-
-        // Map _id to id if necessary
+        const userObj = parsed.student || parsed.user || parsed; // nested or flat
         const normalizedUser: User = {
-            id: userObj.id || userObj._id || userObj.studentId || "",
-            name: userObj.name || userObj.studentName || "User",
-            email: userObj.email || "",
-            role: userObj.role || "student",
-            instituteId: userObj.instituteId,
-            class: userObj.class
+          id: userObj.id || userObj._id || userObj.studentId || "",
+          name: userObj.name || userObj.studentName || "User",
+          email: userObj.email || "",
+          role: userObj.role || "student",
+          instituteId: userObj.instituteId,
+          class: userObj.class,
         };
-
-        if (normalizedUser.id) {
-            setUser(normalizedUser);
-        }
+        setUser(normalizedUser.id ? normalizedUser : null);
       } catch (e) {
         console.error("Error parsing stored user:", e);
+        setUser(null);
       }
-    }
+    };
+
+    readSession();
     setIsLoading(false);
+
+    // CRITICAL: refresh the in-memory user whenever a login/logout happens in
+    // this tab (client-side navigation never remounts AuthProvider, so without
+    // this the previous user's object would leak into every useAuth() consumer
+    // — e.g. analytics and quiz submissions keyed on user.id). Also react to
+    // cross-tab changes via the storage event.
+    const onAuthChanged = () => readSession();
+    window.addEventListener('userLoggedIn', onAuthChanged);
+    window.addEventListener('userLoggedOut', onAuthChanged);
+    window.addEventListener('storage', onAuthChanged);
+    return () => {
+      window.removeEventListener('userLoggedIn', onAuthChanged);
+      window.removeEventListener('userLoggedOut', onAuthChanged);
+      window.removeEventListener('storage', onAuthChanged);
+    };
   }, []);
 
  
