@@ -287,7 +287,11 @@ async function applyAppBundle(zipPath, version) {
     const safeVersion = String(version || `bundle-${Date.now()}`).replace(/[^a-zA-Z0-9._-]/g, '_');
     const root = getAppBundleRoot();
     const stagingDir = path.join(root, `.staging-${safeVersion}-${Date.now()}`);
-    const targetDir = path.join(root, safeVersion);
+    // Extract into a UNIQUE directory. Never reuse/delete app/<version>: on
+    // Windows the currently-running backend locks its own app dir, so deleting
+    // it fails with EBUSY. A fresh dir sidesteps the lock entirely; the old dir
+    // is pruned on the next startup once nothing is running from it.
+    const targetDir = path.join(root, `${safeVersion}-${Date.now()}`);
 
     try {
         fs.mkdirSync(root, { recursive: true });
@@ -304,8 +308,6 @@ async function applyAppBundle(zipPath, version) {
             throw new Error('Update bundle is missing dist/ or backend/ — refusing to apply.');
         }
 
-        fs.rmSync(targetDir, { recursive: true, force: true });
-        fs.mkdirSync(path.dirname(targetDir), { recursive: true });
         fs.cpSync(appSource, targetDir, { recursive: true });
         fs.rmSync(stagingDir, { recursive: true, force: true });
 
@@ -321,7 +323,27 @@ async function applyAppBundle(zipPath, version) {
         return { ok: true, applied: true, version: safeVersion };
     } catch (error) {
         try { fs.rmSync(stagingDir, { recursive: true, force: true }); } catch (_e) { /* ignore */ }
+        try { fs.rmSync(targetDir, { recursive: true, force: true }); } catch (_e) { /* ignore */ }
         return { ok: false, error: error.message };
+    }
+}
+
+// Delete stale bundle directories that aren't the active one, best-effort. Runs
+// at startup when nothing is executing from the old dirs (so no EBUSY).
+function pruneOldAppDirs(activeDir) {
+    try {
+        const root = getAppBundleRoot();
+        if (!fs.existsSync(root)) return;
+        for (const entry of fs.readdirSync(root)) {
+            const full = path.join(root, entry);
+            if (entry === 'current.json') continue;
+            if (activeDir && path.resolve(full) === path.resolve(activeDir)) continue;
+            try {
+                if (fs.statSync(full).isDirectory()) fs.rmSync(full, { recursive: true, force: true });
+            } catch (_e) { /* a dir may still be locked briefly; skip it */ }
+        }
+    } catch (_error) {
+        // ignore
     }
 }
 
@@ -439,6 +461,9 @@ async function startLocalRuntime(resourcesPath) {
     const activeApp = resolveActiveAppRoot(resourcesPath);
     const appRoot = activeApp.dir;
     const baselineNodeModules = path.join(resourcesPath, 'backend', 'node_modules');
+
+    // Remove superseded delta-update bundle dirs now that nothing runs from them.
+    pruneOldAppDirs(activeApp.isBaseline ? null : appRoot);
 
     if (!mongoBinary) {
         throw new Error('Bundled MongoDB runtime is missing. Reinstall ShikshaSarthi using the latest installer.');

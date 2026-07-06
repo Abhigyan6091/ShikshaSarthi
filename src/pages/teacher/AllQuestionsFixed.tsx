@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
+import TagSelect from '@/components/TagSelect';
 import { BookOpen, ChevronDown, ChevronUp, Search, Upload } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -24,13 +25,15 @@ interface Question {
   hint?: { text?: string; image?: string; video?: string };
 }
 
+const LETTERS = ['A', 'B', 'C', 'D'];
+
 const emptyQuestion = {
   subject: '',
   class: '',
   topic: '',
   question: '',
-  optionsText: '',
-  correctAnswer: '',
+  options: ['', '', '', ''],
+  correctIndex: -1,
   hintText: '',
 };
 
@@ -65,6 +68,27 @@ const AllQuestionsFixed: React.FC = () => {
   const [manualQuestion, setManualQuestion] = useState(emptyQuestion);
   const [jsonText, setJsonText] = useState(sampleJson);
   const [saving, setSaving] = useState(false);
+  const [manualTopics, setManualTopics] = useState<string[]>([]);
+
+  // Existing subjects/classes are derived from the already-loaded question bank.
+  const bankSubjects = useMemo(
+    () => [...new Set(questions.map((q) => q.subject).filter(Boolean))].sort(),
+    [questions]
+  );
+  const bankClasses = useMemo(
+    () => [...new Set(questions.map((q) => q.class).filter(Boolean))].sort(),
+    [questions]
+  );
+
+  // Topics for the chosen subject, from the bank endpoint.
+  useEffect(() => {
+    const subject = manualQuestion.subject?.trim();
+    if (!subject) { setManualTopics([]); return; }
+    axios
+      .get(`${API_URL}/questions/all/topics/${encodeURIComponent(subject)}`)
+      .then((res) => setManualTopics((res.data?.topics || []).filter(Boolean).sort()))
+      .catch(() => setManualTopics([]));
+  }, [manualQuestion.subject]);
 
   const fetchQuestions = useCallback(async () => {
     try {
@@ -108,10 +132,19 @@ const AllQuestionsFixed: React.FC = () => {
   }, [filtered]);
 
   const handleManualSubmit = async () => {
-    const options = manualQuestion.optionsText
-      .split('\n')
-      .map((option) => option.trim())
-      .filter(Boolean);
+    const options = manualQuestion.options.map((o) => o.trim());
+    if (!manualQuestion.subject || !manualQuestion.topic || !manualQuestion.question) {
+      toast({ title: 'Missing details', description: 'Subject, topic and question are required.', variant: 'destructive' });
+      return;
+    }
+    if (options.some((o) => !o)) {
+      toast({ title: 'Fill all options', description: 'Please fill options A–D.', variant: 'destructive' });
+      return;
+    }
+    if (manualQuestion.correctIndex < 0) {
+      toast({ title: 'Select the correct answer', description: 'Choose which option (A–D) is correct.', variant: 'destructive' });
+      return;
+    }
 
     setSaving(true);
     try {
@@ -121,7 +154,7 @@ const AllQuestionsFixed: React.FC = () => {
         topic: manualQuestion.topic,
         question: manualQuestion.question,
         options,
-        correctAnswer: manualQuestion.correctAnswer,
+        correctAnswer: options[manualQuestion.correctIndex],
         hint: { text: manualQuestion.hintText },
       });
       toast({ title: 'Question added', description: 'The question was saved to the question bank.' });
@@ -180,33 +213,46 @@ const AllQuestionsFixed: React.FC = () => {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <div>
-                    <Label>Subject</Label>
-                    <Input value={manualQuestion.subject} onChange={(event) => setManualQuestion((prev) => ({ ...prev, subject: event.target.value }))} />
-                  </div>
-                  <div>
-                    <Label>Class</Label>
-                    <Input value={manualQuestion.class} onChange={(event) => setManualQuestion((prev) => ({ ...prev, class: event.target.value }))} />
-                  </div>
-                  <div>
-                    <Label>Topic</Label>
-                    <Input value={manualQuestion.topic} onChange={(event) => setManualQuestion((prev) => ({ ...prev, topic: event.target.value }))} />
-                  </div>
+                  <TagSelect label="Subject" options={bankSubjects} value={manualQuestion.subject} onChange={(v) => setManualQuestion((prev) => ({ ...prev, subject: v, topic: '' }))} />
+                  <TagSelect label="Class" options={bankClasses} value={manualQuestion.class} onChange={(v) => setManualQuestion((prev) => ({ ...prev, class: v }))} />
+                  <TagSelect label="Topic" options={manualTopics} value={manualQuestion.topic} onChange={(v) => setManualQuestion((prev) => ({ ...prev, topic: v }))} disabled={!manualQuestion.subject} emptyHint="Pick a subject first" />
                 </div>
                 <div>
                   <Label>Question</Label>
                   <Textarea value={manualQuestion.question} onChange={(event) => setManualQuestion((prev) => ({ ...prev, question: event.target.value }))} />
                 </div>
-                <div>
-                  <Label>Options, one per line</Label>
-                  <Textarea value={manualQuestion.optionsText} onChange={(event) => setManualQuestion((prev) => ({ ...prev, optionsText: event.target.value }))} />
+                <div className="space-y-2">
+                  <Label>Options</Label>
+                  {manualQuestion.options.map((opt, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="w-6 text-center font-semibold text-gray-600">{LETTERS[idx]}</span>
+                      <Input
+                        value={opt}
+                        placeholder={`Option ${LETTERS[idx]}`}
+                        onChange={(event) => setManualQuestion((prev) => {
+                          const options = [...prev.options];
+                          options[idx] = event.target.value;
+                          return { ...prev, options };
+                        })}
+                      />
+                    </div>
+                  ))}
                 </div>
                 <div>
                   <Label>Correct Answer</Label>
-                  <Input value={manualQuestion.correctAnswer} onChange={(event) => setManualQuestion((prev) => ({ ...prev, correctAnswer: event.target.value }))} />
+                  <select
+                    value={manualQuestion.correctIndex}
+                    onChange={(event) => setManualQuestion((prev) => ({ ...prev, correctIndex: Number(event.target.value) }))}
+                    className="w-full rounded-md border p-2 bg-white"
+                  >
+                    <option value={-1}>Choose correct option…</option>
+                    {manualQuestion.options.map((opt, idx) => (
+                      <option key={idx} value={idx}>{LETTERS[idx]}{opt ? ` — ${opt}` : ''}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <Label>Hint</Label>
+                  <Label>Hint (optional)</Label>
                   <Input value={manualQuestion.hintText} onChange={(event) => setManualQuestion((prev) => ({ ...prev, hintText: event.target.value }))} />
                 </div>
                 <Button onClick={handleManualSubmit} disabled={saving}>

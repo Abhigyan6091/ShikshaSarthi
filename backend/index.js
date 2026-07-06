@@ -5,6 +5,15 @@ const fs = require("fs");
 const path = require("path");
 require("dotenv").config();
 
+// Apply sync metadata (updatedAt / isDeleted / synced fields + soft-delete
+// filtering) to EVERY schema. This MUST run before any model is compiled: a
+// global mongoose plugin only affects schemas registered after it, and several
+// requires below (sync services) pull in models. Registering it here — before
+// those requires — is what makes soft-delete (and therefore the delete buttons
+// for schools/teachers/students/admins) actually take effect.
+const syncMetadataPlugin = require("./utils/syncMetadataPlugin");
+mongoose.plugin(syncMetadataPlugin);
+
 process.env.APP_MODE = process.env.APP_MODE || "local-school";
 process.env.USE_LOCAL_DB = process.env.USE_LOCAL_DB || "true";
 process.env.SYNC_AUTO_ENABLED = process.env.SYNC_AUTO_ENABLED || "false";
@@ -15,7 +24,6 @@ process.env.LOCAL_UPLOADS_ENABLED = process.env.LOCAL_UPLOADS_ENABLED || "true";
 process.env.BACKUP_ENABLED = process.env.BACKUP_ENABLED || "true";
 
 const audioCache = require("./utils/audioCache");
-const syncMetadataPlugin = require("./utils/syncMetadataPlugin");
 const { requireAuth } = require("./middleware/auth");
 const { ensureUploadDirectories, UPLOAD_ROOT } = require("./utils/localMediaStore");
 const { startAutoSync, getAutoSyncState } = require("./sync/autoSyncService");
@@ -27,9 +35,6 @@ const {
   getMongoUri,
   getPublicStatus,
 } = require("./config/appConfig");
-
-// Apply sync metadata behavior to every schema before models are imported.
-mongoose.plugin(syncMetadataPlugin);
 
 const questionRoutes = require("./routes/question");
 const quizRoutes = require("./routes/quiz");

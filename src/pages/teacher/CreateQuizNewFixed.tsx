@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import Header from '@/components/Header';
@@ -10,9 +10,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
+import TagSelect from '@/components/TagSelect';
 import { ArrowLeft, BookOpen, CheckCircle, ChevronRight, FolderOpen, Loader2, Plus, Search } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
+const LETTERS = ['A', 'B', 'C', 'D'];
 
 type SlotType = 'mcq' | 'audio' | 'video' | 'puzzle';
 type CountField = 'timeLimit' | 'mcqCount' | 'audioCount' | 'videoCount' | 'puzzleCount';
@@ -75,8 +77,8 @@ const emptyCustom = {
   class: '',
   topic: '',
   question: '',
-  optionsText: '',
-  correctAnswer: '',
+  options: ['', '', '', ''],
+  correctIndex: -1,
   hintText: '',
 };
 
@@ -105,9 +107,21 @@ const CreateQuizNewFixed: React.FC = () => {
   // MCQ tree-picker state (Subject -> Topic -> Questions).
   const [mcqStep, setMcqStep] = useState<McqStep>('subject');
   const [subjects, setSubjects] = useState<string[]>([]);
+  const [classes, setClasses] = useState<string[]>([]);
   const [topics, setTopics] = useState<string[]>([]);
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('');
+  const [customTopics, setCustomTopics] = useState<string[]>([]);
+
+  // Topics available for the custom-question form's chosen subject.
+  useEffect(() => {
+    const subject = customDraft.subject?.trim();
+    if (!subject) { setCustomTopics([]); return; }
+    axios
+      .get(`${API_URL}/questions/all/topics/${encodeURIComponent(subject)}`)
+      .then((res) => setCustomTopics((res.data?.topics || []).filter(Boolean).sort()))
+      .catch(() => setCustomTopics([]));
+  }, [customDraft.subject]);
 
   const totalQuestions = config.mcqCount + config.audioCount + config.videoCount + config.puzzleCount;
 
@@ -163,10 +177,9 @@ const CreateQuizNewFixed: React.FC = () => {
       setLoadingChoices(true);
       try {
         const response = await axios.get(`${API_URL}/questions`);
-        const uniqueSubjects = [
-          ...new Set(asRecordArray(response.data).map((q) => asString(q.subject)).filter(Boolean)),
-        ].sort();
-        setSubjects(uniqueSubjects);
+        const records = asRecordArray(response.data);
+        setSubjects([...new Set(records.map((q) => asString(q.subject)).filter(Boolean))].sort());
+        setClasses([...new Set(records.map((q) => asString(q.class)).filter(Boolean))].sort());
       } catch (error: unknown) {
         toast({ title: 'Could not load subjects', description: getErrorMessage(error, 'Try again'), variant: 'destructive' });
       } finally {
@@ -292,7 +305,19 @@ const CreateQuizNewFixed: React.FC = () => {
 
   const saveCustomQuestion = async () => {
     if (selectedSlot === null) return;
-    const options = customDraft.optionsText.split('\n').map((option) => option.trim()).filter(Boolean);
+    const options = customDraft.options.map((o) => o.trim());
+    if (!customDraft.subject || !customDraft.topic || !customDraft.question) {
+      toast({ title: 'Missing details', description: 'Subject, topic and question are required.', variant: 'destructive' });
+      return;
+    }
+    if (options.some((o) => !o)) {
+      toast({ title: 'Fill all options', description: 'Please fill options A–D.', variant: 'destructive' });
+      return;
+    }
+    if (customDraft.correctIndex < 0) {
+      toast({ title: 'Select the correct answer', description: 'Choose which option (A–D) is correct.', variant: 'destructive' });
+      return;
+    }
     setSaving(true);
     try {
       const response = await axios.post(`${API_URL}/questions`, {
@@ -301,13 +326,13 @@ const CreateQuizNewFixed: React.FC = () => {
         topic: customDraft.topic,
         question: customDraft.question,
         options,
-        correctAnswer: customDraft.correctAnswer,
+        correctAnswer: options[customDraft.correctIndex], // option text (matches grading)
         hint: { text: customDraft.hintText },
       });
       selectChoice({ ...response.data, type: 'custom' });
       toast({ title: 'Custom question saved', description: 'It was added to the question bank and selected for this quiz.' });
     } catch (error: unknown) {
-      toast({ title: 'Custom question failed', description: getErrorMessage(error, 'Check the fields and correct answer syntax.'), variant: 'destructive' });
+      toast({ title: 'Custom question failed', description: getErrorMessage(error, 'Check the fields and correct answer.'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -492,14 +517,42 @@ const CreateQuizNewFixed: React.FC = () => {
                 <ArrowLeft className="mr-1 h-4 w-4" /> Back to questions
               </Button>
               <div className="grid gap-3 sm:grid-cols-3">
-                <div><Label>Subject</Label><Input value={customDraft.subject} onChange={(event) => setCustomDraft((prev) => ({ ...prev, subject: event.target.value }))} /></div>
-                <div><Label>Class (optional)</Label><Input value={customDraft.class} onChange={(event) => setCustomDraft((prev) => ({ ...prev, class: event.target.value }))} /></div>
-                <div><Label>Topic</Label><Input value={customDraft.topic} onChange={(event) => setCustomDraft((prev) => ({ ...prev, topic: event.target.value }))} /></div>
+                <TagSelect label="Subject" options={subjects} value={customDraft.subject} onChange={(v) => setCustomDraft((prev) => ({ ...prev, subject: v, topic: '' }))} />
+                <TagSelect label="Class" options={classes} value={customDraft.class} onChange={(v) => setCustomDraft((prev) => ({ ...prev, class: v }))} />
+                <TagSelect label="Topic" options={customTopics} value={customDraft.topic} onChange={(v) => setCustomDraft((prev) => ({ ...prev, topic: v }))} disabled={!customDraft.subject} emptyHint="Pick a subject first" />
               </div>
               <div><Label>Question</Label><Textarea value={customDraft.question} onChange={(event) => setCustomDraft((prev) => ({ ...prev, question: event.target.value }))} /></div>
-              <div><Label>Options, one per line</Label><Textarea value={customDraft.optionsText} onChange={(event) => setCustomDraft((prev) => ({ ...prev, optionsText: event.target.value }))} /></div>
-              <div><Label>Correct Answer</Label><Input value={customDraft.correctAnswer} onChange={(event) => setCustomDraft((prev) => ({ ...prev, correctAnswer: event.target.value }))} /></div>
-              <div><Label>Hint</Label><Input value={customDraft.hintText} onChange={(event) => setCustomDraft((prev) => ({ ...prev, hintText: event.target.value }))} /></div>
+              <div className="space-y-2">
+                <Label>Options</Label>
+                {customDraft.options.map((opt, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="w-6 text-center font-semibold text-gray-600">{LETTERS[idx]}</span>
+                    <Input
+                      value={opt}
+                      placeholder={`Option ${LETTERS[idx]}`}
+                      onChange={(event) => setCustomDraft((prev) => {
+                        const options = [...prev.options];
+                        options[idx] = event.target.value;
+                        return { ...prev, options };
+                      })}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div>
+                <Label>Correct Answer</Label>
+                <select
+                  value={customDraft.correctIndex}
+                  onChange={(event) => setCustomDraft((prev) => ({ ...prev, correctIndex: Number(event.target.value) }))}
+                  className="w-full rounded-md border p-2 bg-white"
+                >
+                  <option value={-1}>Choose correct option…</option>
+                  {customDraft.options.map((opt, idx) => (
+                    <option key={idx} value={idx}>{LETTERS[idx]}{opt ? ` — ${opt}` : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div><Label>Hint (optional)</Label><Input value={customDraft.hintText} onChange={(event) => setCustomDraft((prev) => ({ ...prev, hintText: event.target.value }))} /></div>
               <Button onClick={saveCustomQuestion} disabled={saving}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save &amp; add to quiz

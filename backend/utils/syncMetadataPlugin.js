@@ -41,7 +41,10 @@ function enforceActiveRecordsFilter() {
     return;
   }
 
-  this.where({ isDeleted: false });
+  // $ne:true (not `=== false`) so records created before this field existed —
+  // which have isDeleted ABSENT, not false — remain visible. Only records that
+  // were explicitly soft-deleted (isDeleted:true) are hidden.
+  this.where({ isDeleted: { $ne: true } });
 }
 
 function injectWriteMetadata(next) {
@@ -112,7 +115,7 @@ function injectAggregateFilter(next) {
   });
 
   if (!hasDeletedFilter) {
-    pipeline.unshift({ $match: { isDeleted: false } });
+    pipeline.unshift({ $match: { isDeleted: { $ne: true } } });
   }
 
   next();
