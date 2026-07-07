@@ -37,4 +37,6 @@ const questionSchema = new mongoose.Schema({
   }
 });
 
+questionSchema.index({ class: 1, subject: 1, topic: 1, question: 1 });
+
 module.exports = mongoose.model("Question", questionSchema);

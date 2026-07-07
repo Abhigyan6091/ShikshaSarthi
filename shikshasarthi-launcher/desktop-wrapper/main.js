@@ -278,6 +278,17 @@ function extractZip(zipPath, destDir) {
     }
 }
 
+function safeRemoveDir(dir) {
+    try {
+        if (dir && fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 250 });
+        return null;
+    } catch (error) {
+        // Windows can hold recently-used backend files briefly. Cleanup should
+        // not make an otherwise valid quick update fall back to the full installer.
+        return error;
+    }
+}
+
 // Extract a downloaded app bundle into app/<version>, validate it, flip the
 // pointer, and relaunch so the new code loads. Never touches the database.
 async function applyAppBundle(zipPath, version) {
@@ -295,7 +306,7 @@ async function applyAppBundle(zipPath, version) {
 
     try {
         fs.mkdirSync(root, { recursive: true });
-        fs.rmSync(stagingDir, { recursive: true, force: true });
+        safeRemoveDir(stagingDir);
         extractZip(zipPath, stagingDir);
 
         // Bundles may wrap contents in a top-level folder; find the real app root.
@@ -309,11 +320,16 @@ async function applyAppBundle(zipPath, version) {
         }
 
         fs.cpSync(appSource, targetDir, { recursive: true });
-        fs.rmSync(stagingDir, { recursive: true, force: true });
+        const cleanupError = safeRemoveDir(stagingDir);
 
         fs.writeFileSync(
             getAppPointerFile(),
-            JSON.stringify({ version: safeVersion, path: targetDir, appliedAt: new Date().toISOString() }, null, 2)
+            JSON.stringify({
+                version: safeVersion,
+                path: targetDir,
+                appliedAt: new Date().toISOString(),
+                cleanupWarning: cleanupError ? cleanupError.message : null,
+            }, null, 2)
         );
 
         setTimeout(() => {
@@ -322,8 +338,8 @@ async function applyAppBundle(zipPath, version) {
         }, 800);
         return { ok: true, applied: true, version: safeVersion };
     } catch (error) {
-        try { fs.rmSync(stagingDir, { recursive: true, force: true }); } catch (_e) { /* ignore */ }
-        try { fs.rmSync(targetDir, { recursive: true, force: true }); } catch (_e) { /* ignore */ }
+        safeRemoveDir(stagingDir);
+        safeRemoveDir(targetDir);
         return { ok: false, error: error.message };
     }
 }
@@ -339,7 +355,7 @@ function pruneOldAppDirs(activeDir) {
             if (entry === 'current.json') continue;
             if (activeDir && path.resolve(full) === path.resolve(activeDir)) continue;
             try {
-                if (fs.statSync(full).isDirectory()) fs.rmSync(full, { recursive: true, force: true });
+                if (fs.statSync(full).isDirectory()) safeRemoveDir(full);
             } catch (_e) { /* a dir may still be locked briefly; skip it */ }
         }
     } catch (_error) {

@@ -19,7 +19,7 @@ const LETTERS = ['A', 'B', 'C', 'D'];
 type SlotType = 'mcq' | 'audio' | 'video' | 'puzzle';
 type CountField = 'timeLimit' | 'mcqCount' | 'audioCount' | 'videoCount' | 'puzzleCount';
 type ApiRecord = Record<string, unknown>;
-type McqStep = 'subject' | 'topic' | 'questions';
+type McqStep = 'class' | 'subject' | 'topic' | 'questions';
 
 interface QuestionChoice {
   _id: string;
@@ -64,6 +64,11 @@ const asRecordArray = (value: unknown): ApiRecord[] => Array.isArray(value)
   ? value.filter((item): item is ApiRecord => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
   : [];
 
+const sortLabels = (values: string[]) =>
+  values
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' }));
+
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
     const data = error.response?.data as { error?: string; message?: string } | undefined;
@@ -107,10 +112,12 @@ const CreateQuizNewFixed: React.FC = () => {
   const [showCustomForm, setShowCustomForm] = useState(false);
 
   // MCQ tree-picker state (Subject -> Topic -> Questions).
-  const [mcqStep, setMcqStep] = useState<McqStep>('subject');
+  const [mcqStep, setMcqStep] = useState<McqStep>('class');
+  const [mcqRecords, setMcqRecords] = useState<ApiRecord[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [classes, setClasses] = useState<string[]>([]);
   const [topics, setTopics] = useState<string[]>([]);
+  const [selectedClassName, setSelectedClassName] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('');
   const [customTopics, setCustomTopics] = useState<string[]>([]);
@@ -171,19 +178,21 @@ const CreateQuizNewFixed: React.FC = () => {
     setDialogOpen(true);
 
     if (slot.type === 'mcq') {
-      // Enter the Subject -> Topic -> Question tree.
-      setMcqStep('subject');
+      // Enter the Class -> Subject -> Topic -> Question tree.
+      setMcqStep('class');
+      setSelectedClassName('');
       setSelectedSubject('');
       setSelectedTopic('');
+      setSubjects([]);
       setTopics([]);
       setLoadingChoices(true);
       try {
         const response = await axios.get(`${API_URL}/questions`);
         const records = asRecordArray(response.data);
-        setSubjects([...new Set(records.map((q) => asString(q.subject)).filter(Boolean))].sort());
-        setClasses([...new Set(records.map((q) => asString(q.class)).filter(Boolean))].sort());
+        setMcqRecords(records);
+        setClasses(sortLabels([...new Set(records.map((q) => asString(q.class, 'Unassigned')))]));
       } catch (error: unknown) {
-        toast({ title: 'Could not load subjects', description: getErrorMessage(error, 'Try again'), variant: 'destructive' });
+        toast({ title: 'Could not load classes', description: getErrorMessage(error, 'Try again'), variant: 'destructive' });
       } finally {
         setLoadingChoices(false);
       }
@@ -253,49 +262,60 @@ const CreateQuizNewFixed: React.FC = () => {
     }
   };
 
-  const handleSubjectSelect = async (subject: string) => {
-    setSelectedSubject(subject);
+  const handleClassSelect = (className: string) => {
+    setSelectedClassName(className);
+    setSelectedSubject('');
     setSelectedTopic('');
     setTopics([]);
-    setMcqStep('topic');
-    setLoadingChoices(true);
-    try {
-      const response = await axios.get(`${API_URL}/questions/all/topics/${encodeURIComponent(subject)}`);
-      setTopics((response.data?.topics || []).filter(Boolean).sort());
-    } catch (error: unknown) {
-      toast({ title: 'Could not load topics', description: getErrorMessage(error, 'Try again'), variant: 'destructive' });
-    } finally {
-      setLoadingChoices(false);
-    }
+    setSubjects(sortLabels([
+      ...new Set(
+        mcqRecords
+          .filter((q) => asString(q.class, 'Unassigned') === className)
+          .map((q) => asString(q.subject))
+      ),
+    ]));
+    setMcqStep('subject');
   };
 
-  const handleTopicSelect = async (topic: string) => {
+  const handleSubjectSelect = (subject: string) => {
+    setSelectedSubject(subject);
+    setSelectedTopic('');
+    setMcqStep('topic');
+    setTopics(sortLabels([
+      ...new Set(
+        mcqRecords
+          .filter((q) => asString(q.class, 'Unassigned') === selectedClassName && asString(q.subject) === subject)
+          .map((q) => asString(q.topic))
+      ),
+    ]));
+  };
+
+  const handleTopicSelect = (topic: string) => {
     setSelectedTopic(topic);
     setMcqStep('questions');
     setQuery('');
-    setLoadingChoices(true);
-    try {
-      const response = await axios.get(
-        `${API_URL}/questions/all/questions/${encodeURIComponent(selectedSubject)}/${encodeURIComponent(topic)}`
-      );
-      setChoices(asRecordArray(response.data).map(mapMcq));
-    } catch (error: unknown) {
-      toast({ title: 'Could not load questions', description: getErrorMessage(error, 'Try again'), variant: 'destructive' });
-    } finally {
-      setLoadingChoices(false);
-    }
+    setChoices(
+      mcqRecords
+        .filter((q) =>
+          asString(q.class, 'Unassigned') === selectedClassName &&
+          asString(q.subject) === selectedSubject &&
+          asString(q.topic) === topic
+        )
+        .map(mapMcq)
+    );
   };
 
   const mcqBack = () => {
     if (showCustomForm) { setShowCustomForm(false); return; }
     if (mcqStep === 'questions') { setMcqStep('topic'); setChoices([]); return; }
     if (mcqStep === 'topic') { setMcqStep('subject'); setSelectedSubject(''); setTopics([]); return; }
+    if (mcqStep === 'subject') { setMcqStep('class'); setSelectedClassName(''); setSubjects([]); return; }
   };
 
   const openCustomForm = () => {
     // Prefill from the current tree position so the new question lands in the
     // subject/topic the teacher is browsing.
-    setCustomDraft({ ...emptyCustom, subject: selectedSubject, topic: selectedTopic });
+    setCustomDraft({ ...emptyCustom, class: selectedClassName, subject: selectedSubject, topic: selectedTopic });
     setShowCustomForm(true);
   };
 
@@ -573,16 +593,17 @@ const CreateQuizNewFixed: React.FC = () => {
               </Button>
             </div>
           ) : isMcq ? (
-            /* Subject -> Topic -> Question tree */
+            /* Class -> Subject -> Topic -> Question tree */
             <div className="space-y-4">
               {/* Breadcrumb */}
               <div className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
-                <button onClick={() => { setMcqStep('subject'); setSelectedSubject(''); setSelectedTopic(''); }} className="hover:text-blue-600">Subjects</button>
+                <button onClick={() => { setMcqStep('class'); setSelectedClassName(''); setSelectedSubject(''); setSelectedTopic(''); }} className="hover:text-blue-600">Classes</button>
+                {selectedClassName && (<><ChevronRight className="h-4 w-4" /><button onClick={() => handleClassSelect(selectedClassName)} className="hover:text-blue-600">Class {selectedClassName}</button></>)}
                 {selectedSubject && (<><ChevronRight className="h-4 w-4" /><button onClick={() => handleSubjectSelect(selectedSubject)} className="hover:text-blue-600">{selectedSubject}</button></>)}
                 {selectedTopic && (<><ChevronRight className="h-4 w-4" /><span className="text-gray-900">{selectedTopic}</span></>)}
               </div>
 
-              {mcqStep !== 'subject' && (
+              {mcqStep !== 'class' && (
                 <Button size="sm" variant="ghost" onClick={mcqBack} className="h-8 px-2">
                   <ArrowLeft className="mr-1 h-4 w-4" /> Back
                 </Button>
@@ -590,8 +611,19 @@ const CreateQuizNewFixed: React.FC = () => {
 
               {loadingChoices ? (
                 <div className="py-12 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin" /></div>
+              ) : mcqStep === 'class' ? (
+                classes.length === 0 ? <p className="py-8 text-center text-muted-foreground">No classes in the question bank yet.</p> : (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {classes.map((className) => (
+                      <button key={className} onClick={() => handleClassSelect(className)} className="flex items-center justify-between rounded-md border bg-white p-3 text-left hover:bg-blue-50">
+                        <span className="flex items-center gap-2 font-medium"><FolderOpen className="h-4 w-4 text-blue-600" />Class {className}</span>
+                        <ChevronRight className="h-4 w-4 text-gray-400" />
+                      </button>
+                    ))}
+                  </div>
+                )
               ) : mcqStep === 'subject' ? (
-                subjects.length === 0 ? <p className="py-8 text-center text-muted-foreground">No subjects in the question bank yet.</p> : (
+                subjects.length === 0 ? <p className="py-8 text-center text-muted-foreground">No subjects found for Class {selectedClassName}.</p> : (
                   <div className="grid gap-2 sm:grid-cols-2">
                     {subjects.map((subject) => (
                       <button key={subject} onClick={() => handleSubjectSelect(subject)} className="flex items-center justify-between rounded-md border bg-white p-3 text-left hover:bg-blue-50">

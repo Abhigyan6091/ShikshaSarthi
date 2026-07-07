@@ -44,6 +44,7 @@ import {
   MessageSquare
 } from "lucide-react";
 import SubjectIcon from "@/components/SubjectIcon";
+import { getCurrentUser } from "@/lib/session";
 
 const StudentDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -99,12 +100,13 @@ const StudentDashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const currentUser = getCurrentUser();
     const localData = localStorage.getItem("student");
 
-    if (localData) {
+    if (currentUser?.studentId || localData) {
       try {
-        const parsedData = JSON.parse(localData);
-        const studentId = parsedData.student?.studentId;
+        const parsedData = localData ? JSON.parse(localData) : {};
+        const studentId = currentUser?.studentId || parsedData.student?.studentId || parsedData.studentId;
 
         if (studentId) {
           setLoading(true);

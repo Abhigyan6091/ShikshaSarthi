@@ -20,6 +20,15 @@ const SUBJECT_ALIASES = {
   "social science": "social",
 };
 
+const QUESTION_SORT = { class: 1, subject: 1, topic: 1, question: 1 };
+const NUMERIC_COLLATION = { locale: "en", numericOrdering: true, strength: 2 };
+
+function naturalSort(values) {
+  return values
+    .filter(Boolean)
+    .sort((left, right) => String(left).localeCompare(String(right), "en", { numeric: true, sensitivity: "base" }));
+}
+
 async function loadLocalQuestionBank() {
   const bankPath = path.resolve(__dirname, "../../question_bank/index.js");
   return import(`file://${bankPath}`);
@@ -220,7 +229,7 @@ router.post("/teacher", async (req, res) => {
 // Get all questions
 router.get("/", async (_req, res) => {
   try {
-    const questions = await Question.find();
+    const questions = await Question.find().sort(QUESTION_SORT).collation(NUMERIC_COLLATION);
     res.status(200).json(questions);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -273,7 +282,7 @@ router.get("/all/topics/:subject", async (req, res) => {
     const topics = await Question.distinct("topic", {
       subject: decodeURIComponent(subject),
     });
-    res.status(200).json({ subject, topics });
+    res.status(200).json({ subject, topics: naturalSort(topics) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -285,7 +294,7 @@ router.get("/all/questions/:subject/:topic", async (req, res) => {
     const questions = await Question.find({
       subject: decodeURIComponent(subject),
       topic: decodeURIComponent(topic),
-    });
+    }).sort(QUESTION_SORT).collation(NUMERIC_COLLATION);
     res.status(200).json(questions);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -300,7 +309,7 @@ router.get("/topics/:class/:subject", async (req, res) => {
       subject,
     });
     if (topics.length > 0) {
-      return res.status(200).json({ class: className, subject, topics });
+      return res.status(200).json({ class: className, subject, topics: naturalSort(topics) });
     }
 
     const localQuestions = await getLocalQuestions(className, subject);
@@ -313,7 +322,7 @@ router.get("/topics/:class/:subject", async (req, res) => {
       ).values()
     );
 
-    res.status(200).json({ class: className, subject, topics: localTopics });
+    res.status(200).json({ class: className, subject, topics: naturalSort(localTopics) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -326,7 +335,7 @@ router.get("/:class/:subject/:topic", async (req, res) => {
       class: className,
       subject,
       topic,
-    });
+    }).sort(QUESTION_SORT).collation(NUMERIC_COLLATION);
     if (questions.length > 0) {
       return res.status(200).json(questions);
     }

@@ -83,11 +83,12 @@ router.get("/leaderboard", async (req, res) => {
 
     const batchToClass = (batch) => {
       const n = Number.parseInt(String(batch || "").replace(/\D/g, ""), 10);
-      return Number.isFinite(n) && n >= 2026 && n <= 2037 ? 2038 - n : null;
+      const derived = Number.isFinite(n) && n >= 2026 && n <= 2037 ? 2038 - n : null;
+      return derived >= 6 && derived <= 10 ? derived : null;
     };
     const derivedClass = (s) => {
       const c = Number.parseInt(String(s.class || "").replace(/\D/g, ""), 10);
-      return Number.isFinite(c) && c > 0 ? c : batchToClass(s.batch);
+      return Number.isFinite(c) && c >= 6 && c <= 10 ? c : batchToClass(s.batch);
     };
 
     const leaderboard = students

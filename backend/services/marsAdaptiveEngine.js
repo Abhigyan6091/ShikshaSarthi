@@ -25,7 +25,10 @@ const MARS_CONFIG = {
 
 function getClassNumber(className) {
   const parsed = Number.parseInt(String(className || "").replace(/\D/g, ""), 10);
-  return Number.isFinite(parsed) ? parsed : 6;
+  if (!Number.isFinite(parsed)) return 6;
+  if (parsed < 6) return 6;
+  if (parsed > 10) return 10;
+  return parsed;
 }
 
 function getRatingBand(className) {

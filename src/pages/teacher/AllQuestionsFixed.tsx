@@ -64,6 +64,7 @@ const AllQuestionsFixed: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [expandedClass, setExpandedClass] = useState<string | null>(null);
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
   const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null);
@@ -122,13 +123,18 @@ const AllQuestionsFixed: React.FC = () => {
     );
   }, [questions, search]);
 
+  const sortLabels = (values: string[]) =>
+    values.sort((a, b) => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' }));
+
   const grouped = useMemo(() => {
-    return filtered.reduce<Record<string, Record<string, Question[]>>>((acc, question) => {
+    return filtered.reduce<Record<string, Record<string, Record<string, Question[]>>>>((acc, question) => {
+      const className = question.class || 'Unassigned';
       const subject = question.subject || 'Unassigned';
       const topic = question.topic || 'General';
-      if (!acc[subject]) acc[subject] = {};
-      if (!acc[subject][topic]) acc[subject][topic] = [];
-      acc[subject][topic].push(question);
+      if (!acc[className]) acc[className] = {};
+      if (!acc[className][subject]) acc[className][subject] = {};
+      if (!acc[className][subject][topic]) acc[className][subject][topic] = [];
+      acc[className][subject][topic].push(question);
       return acc;
     }, {});
   }, [filtered]);
@@ -198,7 +204,7 @@ const AllQuestionsFixed: React.FC = () => {
     }
   };
 
-  const subjects = Object.keys(grouped).sort();
+  const classes = sortLabels(Object.keys(grouped));
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -305,63 +311,80 @@ const AllQuestionsFixed: React.FC = () => {
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">Loading questions...</CardContent>
             </Card>
-          ) : subjects.length === 0 ? (
+          ) : classes.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">No questions found</CardContent>
             </Card>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">{filtered.length} questions in {subjects.length} subjects</p>
-              {subjects.map((subject) => {
-                const topics = Object.keys(grouped[subject]).sort();
-                const isSubjectOpen = expandedSubject === subject;
+              <p className="text-sm text-muted-foreground">{filtered.length} questions in {classes.length} classes</p>
+              {classes.map((className) => {
+                const subjects = sortLabels(Object.keys(grouped[className]));
+                const isClassOpen = expandedClass === className;
                 return (
-                  <Card key={subject}>
-                    <button onClick={() => setExpandedSubject(isSubjectOpen ? null : subject)} className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-gray-50">
+                  <Card key={className}>
+                    <button onClick={() => setExpandedClass(isClassOpen ? null : className)} className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-gray-50">
                       <span className="flex items-center gap-3">
                         <BookOpen className="h-5 w-5 text-blue-600" />
-                        <span className="font-semibold">{subject}</span>
-                        <span className="text-sm text-muted-foreground">{topics.length} topics</span>
+                        <span className="font-semibold">Class {className}</span>
+                        <span className="text-sm text-muted-foreground">{subjects.length} subjects</span>
                       </span>
-                      {isSubjectOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                      {isClassOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                     </button>
-                    {isSubjectOpen && (
+                    {isClassOpen && (
                       <div className="space-y-3 border-t bg-gray-50/50 px-6 py-4">
-                        {topics.map((topic) => {
-                          const topicKey = `${subject}:${topic}`;
-                          const isTopicOpen = expandedTopic === topicKey;
+                        {subjects.map((subject) => {
+                          const subjectKey = `${className}:${subject}`;
+                          const topics = sortLabels(Object.keys(grouped[className][subject]));
+                          const isSubjectOpen = expandedSubject === subjectKey;
                           return (
-                            <div key={topicKey}>
-                              <button onClick={() => setExpandedTopic(isTopicOpen ? null : topicKey)} className="flex w-full items-center justify-between rounded-md border bg-white px-4 py-2 text-left">
-                                <span>{topic} <span className="text-sm text-muted-foreground">({grouped[subject][topic].length})</span></span>
-                                {isTopicOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                            <div key={subjectKey}>
+                              <button onClick={() => setExpandedSubject(isSubjectOpen ? null : subjectKey)} className="flex w-full items-center justify-between rounded-md border bg-white px-4 py-2 text-left">
+                                <span>{subject} <span className="text-sm text-muted-foreground">({topics.length} topics)</span></span>
+                                {isSubjectOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                               </button>
-                              {isTopicOpen && (
-                                <div className="mt-2 space-y-2">
-                                  {grouped[subject][topic].map((question) => {
-                                    const isOpen = expandedQuestion === question._id;
+                              {isSubjectOpen && (
+                                <div className="mt-2 space-y-2 pl-0 sm:pl-4">
+                                  {topics.map((topic) => {
+                                    const topicKey = `${className}:${subject}:${topic}`;
+                                    const isTopicOpen = expandedTopic === topicKey;
                                     return (
-                                      <Card key={question._id} className="border-l-4 border-l-blue-300">
-                                        <button onClick={() => setExpandedQuestion(isOpen ? null : question._id)} className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left">
-                                          <span>
-                                            <span className="mb-1 inline-block rounded bg-green-100 px-1.5 py-0.5 text-xs text-green-700">Class {question.class}</span>
-                                            <span className="block font-medium">{question.question}</span>
-                                          </span>
-                                          {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                      <div key={topicKey}>
+                                        <button onClick={() => setExpandedTopic(isTopicOpen ? null : topicKey)} className="flex w-full items-center justify-between rounded-md border bg-white px-4 py-2 text-left">
+                                          <span>{topic} <span className="text-sm text-muted-foreground">({grouped[className][subject][topic].length})</span></span>
+                                          {isTopicOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                                         </button>
-                                        {isOpen && (
-                                          <CardContent className="border-t pt-3">
-                                            <div className="grid gap-2 sm:grid-cols-2">
-                                              {question.options.map((option, index) => (
-                                                <div key={index} className={`rounded border px-3 py-2 text-sm ${option === question.correctAnswer ? 'border-green-400 bg-green-50 font-medium text-green-800' : 'bg-gray-50'}`}>
-                                                  {index + 1}. {option}
-                                                </div>
-                                              ))}
-                                            </div>
-                                            {question.hint?.text && <p className="mt-3 rounded bg-yellow-50 px-3 py-2 text-sm text-gray-700">{question.hint.text}</p>}
-                                          </CardContent>
+                                        {isTopicOpen && (
+                                          <div className="mt-2 space-y-2">
+                                            {grouped[className][subject][topic].map((question) => {
+                                              const isOpen = expandedQuestion === question._id;
+                                              return (
+                                                <Card key={question._id} className="border-l-4 border-l-blue-300">
+                                                  <button onClick={() => setExpandedQuestion(isOpen ? null : question._id)} className="flex w-full items-start justify-between gap-3 px-4 py-3 text-left">
+                                                    <span>
+                                                      <span className="mb-1 inline-block rounded bg-green-100 px-1.5 py-0.5 text-xs text-green-700">Class {question.class}</span>
+                                                      <span className="block font-medium">{question.question}</span>
+                                                    </span>
+                                                    {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                                  </button>
+                                                  {isOpen && (
+                                                    <CardContent className="border-t pt-3">
+                                                      <div className="grid gap-2 sm:grid-cols-2">
+                                                        {question.options.map((option, index) => (
+                                                          <div key={index} className={`rounded border px-3 py-2 text-sm ${option === question.correctAnswer ? 'border-green-400 bg-green-50 font-medium text-green-800' : 'bg-gray-50'}`}>
+                                                            {index + 1}. {option}
+                                                          </div>
+                                                        ))}
+                                                      </div>
+                                                      {question.hint?.text && <p className="mt-3 rounded bg-yellow-50 px-3 py-2 text-sm text-gray-700">{question.hint.text}</p>}
+                                                    </CardContent>
+                                                  )}
+                                                </Card>
+                                              );
+                                            })}
+                                          </div>
                                         )}
-                                      </Card>
+                                      </div>
                                     );
                                   })}
                                 </div>

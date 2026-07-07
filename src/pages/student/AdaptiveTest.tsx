@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { getCurrentUser } from "@/lib/session";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const QUESTION_COUNT_OPTIONS = [10, 20, 30, 40, "unlimited"] as const;
@@ -131,7 +132,8 @@ const estimateReferenceTime = (question: AdaptiveQuestion) => {
 // (class = 2038 − batch), the inverse of the student batch backfill.
 const batchToClass = (batch?: string) => {
   const n = Number.parseInt(String(batch || "").replace(/\D/g, ""), 10);
-  return Number.isFinite(n) && n >= 2026 && n <= 2037 ? 2038 - n : 0;
+  const derived = Number.isFinite(n) && n >= 2026 && n <= 2037 ? 2038 - n : 0;
+  return derived >= 6 && derived <= 10 ? derived : 0;
 };
 
 // Resolve a student's grade for the adaptive engine. Prefer the legacy `class`
@@ -139,8 +141,8 @@ const batchToClass = (batch?: string) => {
 // default to 6 only if neither is present.
 const resolveClassNumber = (student?: { class?: string; batch?: string }) => {
   const parsed = Number.parseInt(String(student?.class || "").replace(/\D/g, ""), 10);
-  if (Number.isFinite(parsed) && parsed > 0) return parsed;
-  return batchToClass(student?.batch) || 6;
+  if (Number.isFinite(parsed) && parsed >= 6 && parsed <= 10) return parsed;
+  return batchToClass(student?.batch) || 10;
 };
 
 const getInitialRating = (classNumber: number) => {
@@ -243,9 +245,9 @@ const AdaptiveTest: React.FC = () => {
   const [language, setLanguage] = useState(() => localStorage.getItem("appLanguage") || "hi");
   const storedStudent = useMemo(() => {
     try {
-      return JSON.parse(localStorage.getItem("student") || "{}")?.student || {};
+      return JSON.parse(localStorage.getItem("student") || "{}")?.student || getCurrentUser() || {};
     } catch {
-      return {};
+      return getCurrentUser() || {};
     }
   }, []);
   const classNumber = resolveClassNumber(storedStudent);

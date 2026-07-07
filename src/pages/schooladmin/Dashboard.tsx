@@ -125,6 +125,20 @@ const SchoolAdminDashboard: React.FC = () => {
     ? `${window.location.protocol}//${window.location.host}`
     : 'http://localhost:6050';
   const lanEndpoint = currentBrowserEndpoint || systemStatus?.network?.lanUrl || 'http://localhost:6050';
+  const mergedAwsStatus = {
+    ...(systemStatus?.aws || {}),
+    ...(awsStatus || {}),
+    reachable: Boolean(awsStatus?.reachable || systemStatus?.awsSync?.lastSuccessAt || awsSyncStatus?.lastSuccessAt),
+    features: {
+      ...(awsStatus?.features || {}),
+      sync: Boolean(awsStatus?.features?.sync || systemStatus?.awsSync?.enabled || awsSyncStatus?.enabled),
+    },
+  };
+  const mergedSyncStatus = {
+    ...(systemStatus?.awsSync || {}),
+    ...(awsSyncStatus || {}),
+    enabled: Boolean(awsSyncStatus?.enabled || systemStatus?.awsSync?.enabled || awsStatus?.features?.sync),
+  };
 
   const fetchStats = async (uname: string) => {
     try {
@@ -293,8 +307,8 @@ const SchoolAdminDashboard: React.FC = () => {
                     <Cloud className="h-4 w-4" />
                     AWS Control
                   </div>
-                  <p className={`mt-2 text-lg font-bold ${awsStatus?.reachable ? 'text-green-600' : 'text-amber-600'}`}>
-                    {awsStatus?.reachable ? 'Online' : 'Offline-ready'}
+                  <p className={`mt-2 text-lg font-bold ${mergedAwsStatus.reachable ? 'text-green-600' : 'text-amber-600'}`}>
+                    {mergedAwsStatus.reachable ? 'Online' : mergedAwsStatus.enabled ? 'Configured' : 'Offline-ready'}
                   </p>
                   <p className="text-xs text-gray-500">Updates and sync resume whenever internet is available.</p>
                 </div>
@@ -303,20 +317,20 @@ const SchoolAdminDashboard: React.FC = () => {
                     <RefreshCw className="h-4 w-4" />
                     Sync Agent
                   </div>
-                  <p className={`mt-2 text-lg font-bold ${awsSyncStatus?.enabled ? 'text-green-600' : 'text-amber-600'}`}>
-                    {awsSyncStatus?.enabled ? 'Enabled' : 'Disabled'}
+                  <p className={`mt-2 text-lg font-bold ${mergedSyncStatus.enabled ? 'text-green-600' : 'text-amber-600'}`}>
+                    {mergedSyncStatus.inProgress ? 'Syncing...' : mergedSyncStatus.enabled ? 'Enabled' : 'Disabled'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    Last success: {awsSyncStatus?.lastSuccessAt ? new Date(awsSyncStatus.lastSuccessAt).toLocaleString() : 'Waiting'}
+                    Last success: {mergedSyncStatus.lastSuccessAt ? new Date(mergedSyncStatus.lastSuccessAt).toLocaleString() : 'Waiting'}
                   </p>
                 </div>
               </div>
               <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                 <div className="rounded-md bg-blue-50 p-3">
-                  School ID: <strong>{awsStatus?.schoolId || stats.schoolId || 'Not bound'}</strong>
+                  School ID: <strong>{mergedAwsStatus.schoolId || mergedSyncStatus.schoolId || stats.schoolId || 'Not bound'}</strong>
                 </div>
                 <div className="rounded-md bg-blue-50 p-3">
-                  Node ID: <strong>{awsStatus?.nodeId || awsSyncStatus?.nodeId || 'Not configured'}</strong>
+                  Node ID: <strong>{mergedAwsStatus.nodeId || mergedSyncStatus.nodeId || 'Not configured'}</strong>
                 </div>
                 <div className="rounded-md bg-blue-50 p-3">
                   Version: <strong>{systemStatus?.version || '1.0.0'}</strong>

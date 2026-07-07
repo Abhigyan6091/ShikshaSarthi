@@ -26,6 +26,94 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+const UI_TRANSLATIONS: Record<string, string> = {
+  Online: 'ऑनलाइन',
+  Offline: 'ऑफ़लाइन',
+  Dashboard: 'डैशबोर्ड',
+  Settings: 'सेटिंग्स',
+  Register: 'रजिस्टर',
+  Logout: 'लॉग आउट',
+  Profile: 'प्रोफ़ाइल',
+  'School Admin Dashboard': 'स्कूल एडमिन डैशबोर्ड',
+  'School ID': 'स्कूल आईडी',
+  'Local Server Connectivity': 'लोकल सर्वर कनेक्टिविटी',
+  'LAN access, local database, AWS updates, and sync-agent status': 'LAN, लोकल डेटाबेस, AWS अपडेट और सिंक-एजेंट स्थिति',
+  Refresh: 'रीफ्रेश',
+  'Student LAN URL': 'छात्र LAN URL',
+  'Local Database': 'लोकल डेटाबेस',
+  Connected: 'कनेक्टेड',
+  Checking: 'जांच हो रही है',
+  'AWS Control': 'AWS कंट्रोल',
+  Configured: 'कॉन्फ़िगर',
+  'Offline-ready': 'ऑफ़लाइन तैयार',
+  'Sync Agent': 'सिंक एजेंट',
+  Enabled: 'चालू',
+  Disabled: 'बंद',
+  Waiting: 'प्रतीक्षा',
+  Version: 'वर्जन',
+  'Total Teachers': 'कुल शिक्षक',
+  'Total Students': 'कुल छात्र',
+  'Register New Users': 'नए उपयोगकर्ता रजिस्टर करें',
+  'Feedback Management': 'फीडबैक प्रबंधन',
+  Teachers: 'शिक्षक',
+  'Students by Class': 'कक्षा के अनुसार छात्र',
+  'Question Bank': 'प्रश्न बैंक',
+  'Add Question Manually': 'प्रश्न मैन्युअल जोड़ें',
+  'Advanced Quiz Creator': 'एडवांस्ड क्विज़ निर्माता',
+  'Quiz Configuration': 'क्विज़ कॉन्फ़िगरेशन',
+  'Question Slots': 'प्रश्न स्लॉट',
+  'Create Quiz': 'क्विज़ बनाएं',
+  'Adaptive Test': 'अनुकूली परीक्षण',
+  'Adaptive Test History': 'अनुकूली परीक्षण इतिहास',
+  'Start Adaptive Test': 'अनुकूली परीक्षण शुरू करें',
+  'Take New Test': 'नया परीक्षण दें',
+  'No Adaptive Tests Yet': 'अभी कोई अनुकूली परीक्षण नहीं',
+  'Adaptive Test Setup': 'अनुकूली परीक्षण सेटअप',
+  'Mixed Test': 'मिश्रित परीक्षण',
+  'Subject-wise Test': 'विषयवार परीक्षण',
+  Subject: 'विषय',
+  Class: 'कक्षा',
+  Topic: 'टॉपिक',
+  Question: 'प्रश्न',
+  Options: 'विकल्प',
+  'Correct Answer': 'सही उत्तर',
+  'Add Question': 'प्रश्न जोड़ें',
+  'Upload JSON': 'JSON अपलोड करें',
+  Search: 'खोजें',
+  'Back': 'वापस',
+  'Back to Dashboard': 'डैशबोर्ड पर वापस',
+};
+
+const REVERSE_UI_TRANSLATIONS = Object.fromEntries(
+  Object.entries(UI_TRANSLATIONS).map(([en, hi]) => [hi, en])
+);
+
+function translateStaticUi(language: string) {
+  if (typeof document === 'undefined') return;
+  const source = language === 'hi' ? UI_TRANSLATIONS : REVERSE_UI_TRANSLATIONS;
+  const translateValue = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed || !source[trimmed]) return value;
+    return value.replace(trimmed, source[trimmed]);
+  };
+
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text;
+    const parent = node.parentElement;
+    if (!parent || ['SCRIPT', 'STYLE', 'TEXTAREA'].includes(parent.tagName)) continue;
+    textNodes.push(node);
+  }
+  textNodes.forEach((node) => {
+    node.nodeValue = translateValue(node.nodeValue || '');
+  });
+
+  document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('[placeholder]').forEach((element) => {
+    element.placeholder = translateValue(element.placeholder);
+  });
+}
+
 const getPhotoUrl = (photo: string) => {
   if (!photo) return '';
   if (photo.startsWith('data:') || photo.startsWith('http')) return photo;
@@ -113,6 +201,17 @@ const Header: React.FC = () => {
       window.removeEventListener('offline', markOffline);
     };
   }, []);
+
+  useEffect(() => {
+    const run = () => translateStaticUi(language);
+    const id = window.setTimeout(run, 0);
+    const observer = new MutationObserver(run);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      window.clearTimeout(id);
+      observer.disconnect();
+    };
+  }, [language]);
 
   const handleLogout = () => {
     // Clear every auth key/cookie (incl. nmmsUser + Login_student, which the old
