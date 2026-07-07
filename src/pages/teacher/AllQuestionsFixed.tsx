@@ -32,7 +32,9 @@ const emptyQuestion = {
   class: '',
   topic: '',
   question: '',
+  questionHindi: '',
   options: ['', '', '', ''],
+  optionsHindi: ['', '', '', ''],
   correctIndex: -1,
   hintText: '',
 };
@@ -153,7 +155,9 @@ const AllQuestionsFixed: React.FC = () => {
         class: manualQuestion.class,
         topic: manualQuestion.topic,
         question: manualQuestion.question,
+        questionHindi: manualQuestion.questionHindi.trim() || 'NA',
         options,
+        optionsHindi: manualQuestion.optionsHindi.map((o) => o.trim() || 'NA'),
         correctAnswer: options[manualQuestion.correctIndex],
         hint: { text: manualQuestion.hintText },
       });
@@ -221,8 +225,12 @@ const AllQuestionsFixed: React.FC = () => {
                   <Label>Question</Label>
                   <Textarea value={manualQuestion.question} onChange={(event) => setManualQuestion((prev) => ({ ...prev, question: event.target.value }))} />
                 </div>
+                <div>
+                  <Label>Question — हिंदी <span className="text-gray-400 font-normal">(optional)</span></Label>
+                  <Textarea value={manualQuestion.questionHindi} placeholder="प्रश्न (वैकल्पिक)" onChange={(event) => setManualQuestion((prev) => ({ ...prev, questionHindi: event.target.value }))} />
+                </div>
                 <div className="space-y-2">
-                  <Label>Options</Label>
+                  <Label>Options <span className="text-gray-400 font-normal">(Hindi optional)</span></Label>
                   {manualQuestion.options.map((opt, idx) => (
                     <div key={idx} className="flex items-center gap-2">
                       <span className="w-6 text-center font-semibold text-gray-600">{LETTERS[idx]}</span>
@@ -233,6 +241,15 @@ const AllQuestionsFixed: React.FC = () => {
                           const options = [...prev.options];
                           options[idx] = event.target.value;
                           return { ...prev, options };
+                        })}
+                      />
+                      <Input
+                        value={manualQuestion.optionsHindi[idx]}
+                        placeholder={`विकल्प ${LETTERS[idx]} (हिंदी)`}
+                        onChange={(event) => setManualQuestion((prev) => {
+                          const optionsHindi = [...prev.optionsHindi];
+                          optionsHindi[idx] = event.target.value;
+                          return { ...prev, optionsHindi };
                         })}
                       />
                     </div>

@@ -17,46 +17,47 @@ import {
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import SubjectIcon from '@/components/SubjectIcon';
+import { useLanguage } from '@/hooks/useLanguage';
 
 const subjectData = [
-  { 
-    id: 'गणित', 
-    name: 'गणित', 
-    description: 'गणना, बीजगणित, ज्यामिति आदि',
+  {
+    id: 'गणित',
+    name: { hi: 'गणित', en: 'Maths' },
+    description: { hi: 'गणना, बीजगणित, ज्यामिति आदि', en: 'Arithmetic, algebra, geometry & more' },
     color: 'from-blue-500 to-cyan-500',
     bgColor: 'bg-blue-50',
     iconBg: 'bg-blue-100'
   },
-  { 
-    id: 'विज्ञान', 
-    name: 'विज्ञान', 
-    description: 'भौतिकी, रसायन, जीव विज्ञान',
+  {
+    id: 'विज्ञान',
+    name: { hi: 'विज्ञान', en: 'Science' },
+    description: { hi: 'भौतिकी, रसायन, जीव विज्ञान', en: 'Physics, chemistry, biology' },
     color: 'from-green-500 to-emerald-500',
     bgColor: 'bg-green-50',
     iconBg: 'bg-green-100'
   },
-  { 
-    id: 'सामाजिक%20विज्ञान', 
-    name: 'सामाजिक विज्ञान', 
-    description: 'इतिहास, भूगोल, नागरिकशास्त्र',
+  {
+    id: 'सामाजिक%20विज्ञान',
+    name: { hi: 'सामाजिक विज्ञान', en: 'Social Science' },
+    description: { hi: 'इतिहास, भूगोल, नागरिकशास्त्र', en: 'History, geography, civics' },
     color: 'from-purple-500 to-pink-500',
     bgColor: 'bg-purple-50',
     iconBg: 'bg-purple-100'
   },
-  { 
-    id: 'मानसिक%20क्षमता%20परीक्षण', 
-    name: 'मानसिक क्षमता परीक्षण', 
-    description: 'तर्क, विश्लेषण, गणितीय क्षमता',
+  {
+    id: 'मानसिक%20क्षमता%20परीक्षण',
+    name: { hi: 'मानसिक क्षमता परीक्षण', en: 'Mental Ability Test' },
+    description: { hi: 'तर्क, विश्लेषण, गणितीय क्षमता', en: 'Reasoning, analysis, quantitative ability' },
     color: 'from-orange-500 to-red-500',
     bgColor: 'bg-orange-50',
     iconBg: 'bg-orange-100'
   },
 
   // ⭐ NEW SUBJECT ADDED FOR VOCABULARY
-  { 
-    id: 'vocab', 
-    name: 'शब्द ज्ञान (Vocabulary)', 
-    description: 'अर्थ, प्रयायवाची, विलोम, पैसेज आधारित शब्द अभ्यास',
+  {
+    id: 'vocab',
+    name: { hi: 'शब्द ज्ञान (Vocabulary)', en: 'Vocabulary' },
+    description: { hi: 'अर्थ, प्रयायवाची, विलोम, पैसेज आधारित शब्द अभ्यास', en: 'Meanings, synonyms, antonyms & passage-based word practice' },
     color: 'from-indigo-500 to-fuchsia-500',
     bgColor: 'bg-indigo-50',
     iconBg: 'bg-indigo-100'
@@ -65,6 +66,7 @@ const subjectData = [
 
 
 const StudentPractice: React.FC = () => {
+  const { language } = useLanguage();
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-indigo-50 via-white to-pink-50">
       <Header />
@@ -76,15 +78,21 @@ const StudentPractice: React.FC = () => {
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-medium mb-4">
               <Sparkles className="h-4 w-4" />
-              Practice Makes Perfect
+              {language === 'en' ? 'Practice Makes Perfect' : 'अभ्यास ही सफलता की कुंजी है'}
             </div>
 
             <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">
-              प्रश्न <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">अभ्यास</span>
+              {language === 'en' ? (
+                <>Question <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Practice</span></>
+              ) : (
+                <>प्रश्न <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">अभ्यास</span></>
+              )}
             </h1>
 
             <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
-              अपना विषय चुनें और हमारे व्यापक प्रश्न बैंक से अभ्यास शुरू करें
+              {language === 'en'
+                ? 'Choose your subject and start practising from our comprehensive question bank'
+                : 'अपना विषय चुनें और हमारे व्यापक प्रश्न बैंक से अभ्यास शुरू करें'}
             </p>
           </div>
 
@@ -105,10 +113,10 @@ const StudentPractice: React.FC = () => {
                     </div>
                     <div className="flex-1">
                       <CardTitle className="text-lg font-bold text-gray-900 group-hover:text-gray-800 transition-colors mb-2">
-                        {subject.name}
+                        {subject.name[language]}
                       </CardTitle>
                       <CardDescription className="text-gray-600 text-sm leading-relaxed">
-                        {subject.description}
+                        {subject.description[language]}
                       </CardDescription>
                     </div>
                   </div>
@@ -123,7 +131,7 @@ const StudentPractice: React.FC = () => {
                       size="sm"
                     >
                       <Play className="h-4 w-4 mr-2" />
-                      अभ्यास शुरू करें
+                      {language === 'en' ? 'Start Practice' : 'अभ्यास शुरू करें'}
                       <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform duration-300" />
                     </Button>
                   </Link>

@@ -13,7 +13,9 @@ export default function AddMyQuestion() {
     class: "",
     topic: "",
     question: "",
+    questionHindi: "",
     options: ["", "", "", ""],
+    optionsHindi: ["", "", "", ""],
     correctIndex: -1, // which option (0-3) is correct
     hintText: "",
   });
@@ -96,6 +98,7 @@ export default function AddMyQuestion() {
     }
 
     try {
+      const optionsHindi = formData.optionsHindi.map((o) => o.trim());
       const payload = {
         teacherId,
         questionData: {
@@ -103,7 +106,9 @@ export default function AddMyQuestion() {
           class: formData.class,
           topic: formData.topic,
           question: formData.question,
+          questionHindi: formData.questionHindi.trim() || "NA",
           options,
+          optionsHindi: optionsHindi.map((o) => o || "NA"),
           correctAnswer: options[formData.correctIndex], // store the option text (matches how quizzes grade)
           hint: { text: formData.hintText },
         },
@@ -112,7 +117,7 @@ export default function AddMyQuestion() {
       await axios.post(`${API_URL}/questions/teacher`, payload);
       toast({ title: "Success", description: "Question added successfully" });
 
-      setFormData({ subject: "", class: "", topic: "", question: "", options: ["", "", "", ""], correctIndex: -1, hintText: "" });
+      setFormData({ subject: "", class: "", topic: "", question: "", questionHindi: "", options: ["", "", "", ""], optionsHindi: ["", "", "", ""], correctIndex: -1, hintText: "" });
     } catch (error: any) {
       toast({ title: "Error", description: error.response?.data?.error || "Something went wrong", variant: "destructive" });
     }
@@ -138,12 +143,24 @@ export default function AddMyQuestion() {
         <textarea name="question" value={formData.question} onChange={(e) => setField("question", e.target.value)} placeholder="Question" className="w-full p-2 border rounded" />
       </div>
 
+      <div>
+        <label className="text-sm font-medium">Question — हिंदी <span className="text-gray-400 font-normal">(optional)</span></label>
+        <textarea value={formData.questionHindi} onChange={(e) => setField("questionHindi", e.target.value)} placeholder="प्रश्न (वैकल्पिक)" className="w-full p-2 border rounded" />
+      </div>
+
       <div className="space-y-2">
-        <label className="text-sm font-medium">Options</label>
+        <label className="text-sm font-medium">Options <span className="text-gray-400 font-normal">(Hindi optional)</span></label>
         {formData.options.map((opt, idx) => (
           <div key={idx} className="flex items-center gap-2">
             <span className="w-6 text-center font-semibold text-gray-600">{LETTERS[idx]}</span>
             <input type="text" value={opt} onChange={(e) => setOption(idx, e.target.value)} placeholder={`Option ${LETTERS[idx]}`} className="flex-1 p-2 border rounded" />
+            <input
+              type="text"
+              value={formData.optionsHindi[idx]}
+              onChange={(e) => setFormData((prev) => { const oh = [...prev.optionsHindi]; oh[idx] = e.target.value; return { ...prev, optionsHindi: oh }; })}
+              placeholder={`विकल्प ${LETTERS[idx]} (हिंदी)`}
+              className="flex-1 p-2 border rounded"
+            />
           </div>
         ))}
       </div>

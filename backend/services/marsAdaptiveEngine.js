@@ -239,18 +239,24 @@ function selectNextQuestion(questions, state, servedIds, weakTopics = []) {
   const recentTopics = new Set((state.recentTopics || []).slice(-5));
   const weakTopicSet = new Set(weakTopics);
 
-  return candidates
+  const scoredCandidates = candidates
     .map((question) => {
       const difficultyFit = 1 - Math.min(1, Math.abs(question.eloRating - targetRating) / 250);
       const weakTopicBonus = weakTopicSet.has(question.topicId) ? 0.2 : 0;
+      const wrongBonus = weakTopicSet.has(question.id) ? 0.3 : 0;
       const diversityBonus = recentTopics.has(question.topicId) ? -0.12 : 0.08;
       const timePenalty = estimateReferenceTime(question) / 300;
+      const randomJitter = Math.random() * 0.05;
       return {
         question,
-        score: 1.98 * difficultyFit + weakTopicBonus + diversityBonus - timePenalty,
+        score: 1.98 * difficultyFit + weakTopicBonus + wrongBonus + diversityBonus - timePenalty + randomJitter,
       };
     })
-    .sort((a, b) => b.score - a.score)[0].question;
+    .sort((a, b) => b.score - a.score);
+
+  const topN = Math.min(3, scoredCandidates.length);
+  const randomIndex = Math.floor(Math.random() * topN);
+  return scoredCandidates[randomIndex].question;
 }
 
 module.exports = {

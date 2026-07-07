@@ -93,8 +93,9 @@ function normalizeQuestionPayload(payload) {
     : [];
   const correctAnswer = String(payload.correctAnswer || "").trim();
 
-  if (!subject || !className || !topic || !question) {
-    throw new Error("subject, class, topic, and question are required");
+  // class is optional now (students are grouped by batch, not grade).
+  if (!subject || !topic || !question) {
+    throw new Error("subject, topic, and question are required");
   }
 
   if (options.length < 2) {
@@ -105,11 +106,20 @@ function normalizeQuestionPayload(payload) {
     throw new Error("correctAnswer must exactly match one of the options");
   }
 
+  // Hindi translation (optional). Missing → "NA" so single-lingual questions
+  // are explicitly tagged; a filled Hindi field lets the UI toggle language.
+  const questionHindi = String(payload.questionHindi || "").trim() || "NA";
+  const optionsHindi = Array.isArray(payload.optionsHindi) && payload.optionsHindi.some((o) => String(o || "").trim())
+    ? options.map((_, i) => String(payload.optionsHindi[i] || "").trim() || "NA")
+    : options.map(() => "NA");
+
   return {
     subject,
     class: className,
     topic,
     question,
+    questionHindi,
+    optionsHindi,
     questionImage: payload.questionImage || "",
     options,
     correctAnswer,

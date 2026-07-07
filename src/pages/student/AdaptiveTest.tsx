@@ -127,9 +127,20 @@ const estimateReferenceTime = (question: AdaptiveQuestion) => {
   return clamp(18 + stemLength * 0.12 + optionLength * 0.05 + complexity, 25, 120);
 };
 
-const getClassNumber = (className?: string) => {
-  const parsed = Number.parseInt(String(className || "").replace(/\D/g, ""), 10);
-  return Number.isFinite(parsed) ? parsed : 6;
+// A graduation batch maps back to a grade: batch 2026 → class 12, 2027 → 11, …
+// (class = 2038 − batch), the inverse of the student batch backfill.
+const batchToClass = (batch?: string) => {
+  const n = Number.parseInt(String(batch || "").replace(/\D/g, ""), 10);
+  return Number.isFinite(n) && n >= 2026 && n <= 2037 ? 2038 - n : 0;
+};
+
+// Resolve a student's grade for the adaptive engine. Prefer the legacy `class`
+// field; fall back to the batch-derived grade (students are keyed by batch now);
+// default to 6 only if neither is present.
+const resolveClassNumber = (student?: { class?: string; batch?: string }) => {
+  const parsed = Number.parseInt(String(student?.class || "").replace(/\D/g, ""), 10);
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  return batchToClass(student?.batch) || 6;
 };
 
 const getInitialRating = (classNumber: number) => {
@@ -188,7 +199,8 @@ const chooseNextQuestion = (
   questions: AdaptiveQuestion[],
   servedIds: Set<string>,
   state: { rating: number; velocity: number; variance: number; recentOutcomes: number[] },
-  recentTopics: string[]
+  recentTopics: string[],
+  wronglyAnsweredIds: Set<string>
 ) => {
   const candidates = questions.filter((question) => !servedIds.has(question.id));
   if (candidates.length === 0) return null;
@@ -203,14 +215,20 @@ const chooseNextQuestion = (
     clamp(2.783 * state.velocity + 54.3184 * (recentAccuracy - 0.7) - 26.3128 * volatilityTerm, -195.6223, 195.6223);
   const recentTopicSet = new Set(recentTopics.slice(-5));
 
-  return candidates
+  const scoredCandidates = candidates
     .map((question) => {
       const difficultyFit = 1 - Math.min(1, Math.abs(question.eloRating - targetRating) / 250);
+      const wrongBonus = wronglyAnsweredIds.has(question.id) ? 0.3 : 0;
       const diversity = recentTopicSet.has(question.topicId) ? -0.12 : 0.08;
       const timePenalty = estimateReferenceTime(question) / 300;
-      return { question, score: 1.98 * difficultyFit + diversity - timePenalty };
+      const randomJitter = Math.random() * 0.05;
+      return { question, score: 1.98 * difficultyFit + wrongBonus + diversity - timePenalty + randomJitter };
     })
-    .sort((a, b) => b.score - a.score)[0].question;
+    .sort((a, b) => b.score - a.score);
+
+  const topN = Math.min(3, scoredCandidates.length);
+  const randomIndex = Math.floor(Math.random() * topN);
+  return scoredCandidates[randomIndex].question;
 };
 
 // ── Status colour helpers ──────────────────────────────────────────────────
@@ -230,7 +248,7 @@ const AdaptiveTest: React.FC = () => {
       return {};
     }
   }, []);
-  const classNumber = getClassNumber(storedStudent?.class);
+  const classNumber = resolveClassNumber(storedStudent);
   const band = ratingBands[classNumber] || ratingBands[6];
   const [questions, setQuestions] = useState<AdaptiveQuestion[]>([]);
   const [testMode, setTestMode] = useState<"mixed" | "subject">("mixed");
@@ -261,6 +279,7 @@ const AdaptiveTest: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [showPalette, setShowPalette] = useState(true);
+  const [wronglyAnsweredIds, setWronglyAnsweredIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const handleLanguageChange = (event: Event) => {
@@ -285,6 +304,7 @@ const AdaptiveTest: React.FC = () => {
           ...prev,
           rating: res.data.currentRating || getInitialRating(classNumber),
         }));
+        setWronglyAnsweredIds(new Set(res.data.wronglyAnsweredIds || []));
         setQuestionHistory([]);
         setCurrentHistoryIndex(0);
       } catch (loadError) {
@@ -297,6 +317,30 @@ const AdaptiveTest: React.FC = () => {
 
     loadQuestions();
   }, [classNumber, storedStudent?.studentId]);
+
+  // Class-scoped leaderboard for the student's own school + grade.
+  const [leaderboard, setLeaderboard] = useState<{ studentId: string; name: string; rating: number; attempts: number }[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    const loadLeaderboard = async () => {
+      if (!storedStudent?.schoolId) { setLeaderboardLoading(false); return; }
+      try {
+        setLeaderboardLoading(true);
+        const res = await axios.get(`${API_URL}/quizzes/adaptive-test/leaderboard`, {
+          params: { schoolId: storedStudent.schoolId, classNumber },
+        });
+        if (active) setLeaderboard(res.data.leaderboard || []);
+      } catch (lbError) {
+        console.error("Leaderboard load failed:", lbError);
+        if (active) setLeaderboard([]);
+      } finally {
+        if (active) setLeaderboardLoading(false);
+      }
+    };
+    loadLeaderboard();
+    return () => { active = false; };
+  }, [classNumber, storedStudent?.schoolId, result]);
 
   const activeQuestions = useMemo(
     () => (testMode === "subject" ? questions.filter((question) => question.subject === selectedSubject) : questions),
@@ -419,7 +463,7 @@ const AdaptiveTest: React.FC = () => {
   });
 
   const startTest = () => {
-    const firstQuestion = chooseNextQuestion(activeQuestions, new Set(), adaptiveState, []);
+    const firstQuestion = chooseNextQuestion(activeQuestions, new Set(), adaptiveState, [], wronglyAnsweredIds);
     if (!firstQuestion) {
       setError("No adaptive questions are available for the selected mode.");
       return;
@@ -481,7 +525,8 @@ const AdaptiveTest: React.FC = () => {
       activeQuestions,
       servedIds,
       nextState,
-      updatedHistory.map((item) => item.question.topicId)
+      updatedHistory.map((item) => item.question.topicId),
+      wronglyAnsweredIds
     );
 
     if (!nextQuestion) {
@@ -544,7 +589,8 @@ const AdaptiveTest: React.FC = () => {
       activeQuestions,
       servedIds,
       adaptiveState,
-      updatedHistory.map((item) => item.question.topicId)
+      updatedHistory.map((item) => item.question.topicId),
+      wronglyAnsweredIds
     );
 
     if (nextQuestion) {
@@ -881,6 +927,43 @@ const AdaptiveTest: React.FC = () => {
                     <BrainCircuit className="mr-2 h-4 w-4" />
                     Start Test
                   </Button>
+                </div>
+
+                {/* ── Class leaderboard (this school + grade only) ──────────── */}
+                <div className="mt-6 rounded-lg border bg-white p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-amber-500" />
+                    <h3 className="font-semibold text-slate-900">
+                      {language === "hi" ? "क्लास लीडरबोर्ड" : "Class Leaderboard"}
+                    </h3>
+                    <Badge variant="outline" className="ml-auto">Class {classNumber}</Badge>
+                  </div>
+                  {leaderboardLoading ? (
+                    <p className="py-4 text-center text-sm text-slate-500">{language === "hi" ? "लोड हो रहा है…" : "Loading…"}</p>
+                  ) : leaderboard.length === 0 ? (
+                    <p className="py-4 text-center text-sm text-slate-500">
+                      {language === "hi" ? "अभी कोई रैंकिंग नहीं है। पहला टेस्ट पूरा करें!" : "No rankings yet. Be the first to complete a test!"}
+                    </p>
+                  ) : (
+                    <ol className="space-y-1">
+                      {leaderboard.map((entry, i) => {
+                        const isMe = entry.studentId === storedStudent?.studentId;
+                        return (
+                          <li
+                            key={entry.studentId}
+                            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm ${isMe ? "bg-blue-50 font-semibold" : ""}`}
+                          >
+                            <span className={`w-6 text-center font-bold ${
+                              i === 0 ? "text-amber-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-orange-600" : "text-slate-500"
+                            }`}>{i + 1}</span>
+                            <span className="flex-1 truncate">{entry.name}{isMe ? (language === "hi" ? " (आप)" : " (You)") : ""}</span>
+                            <span className="text-slate-500">{entry.attempts} {language === "hi" ? "टेस्ट" : "tests"}</span>
+                            <span className="w-16 text-right font-bold text-blue-700">{entry.rating}</span>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  )}
                 </div>
               </CardContent>
             </Card>

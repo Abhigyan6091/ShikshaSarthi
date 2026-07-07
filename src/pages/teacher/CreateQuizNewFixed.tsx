@@ -77,7 +77,9 @@ const emptyCustom = {
   class: '',
   topic: '',
   question: '',
+  questionHindi: '',
   options: ['', '', '', ''],
+  optionsHindi: ['', '', '', ''],
   correctIndex: -1,
   hintText: '',
 };
@@ -325,7 +327,9 @@ const CreateQuizNewFixed: React.FC = () => {
         class: customDraft.class,
         topic: customDraft.topic,
         question: customDraft.question,
+        questionHindi: customDraft.questionHindi.trim() || 'NA',
         options,
+        optionsHindi: customDraft.optionsHindi.map((o) => o.trim() || 'NA'),
         correctAnswer: options[customDraft.correctIndex], // option text (matches grading)
         hint: { text: customDraft.hintText },
       });
@@ -522,8 +526,9 @@ const CreateQuizNewFixed: React.FC = () => {
                 <TagSelect label="Topic" options={customTopics} value={customDraft.topic} onChange={(v) => setCustomDraft((prev) => ({ ...prev, topic: v }))} disabled={!customDraft.subject} emptyHint="Pick a subject first" />
               </div>
               <div><Label>Question</Label><Textarea value={customDraft.question} onChange={(event) => setCustomDraft((prev) => ({ ...prev, question: event.target.value }))} /></div>
+              <div><Label>Question — हिंदी <span className="text-gray-400 font-normal">(optional)</span></Label><Textarea value={customDraft.questionHindi} placeholder="प्रश्न (वैकल्पिक)" onChange={(event) => setCustomDraft((prev) => ({ ...prev, questionHindi: event.target.value }))} /></div>
               <div className="space-y-2">
-                <Label>Options</Label>
+                <Label>Options <span className="text-gray-400 font-normal">(Hindi optional)</span></Label>
                 {customDraft.options.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <span className="w-6 text-center font-semibold text-gray-600">{LETTERS[idx]}</span>
@@ -534,6 +539,15 @@ const CreateQuizNewFixed: React.FC = () => {
                         const options = [...prev.options];
                         options[idx] = event.target.value;
                         return { ...prev, options };
+                      })}
+                    />
+                    <Input
+                      value={customDraft.optionsHindi[idx]}
+                      placeholder={`विकल्प ${LETTERS[idx]} (हिंदी)`}
+                      onChange={(event) => setCustomDraft((prev) => {
+                        const optionsHindi = [...prev.optionsHindi];
+                        optionsHindi[idx] = event.target.value;
+                        return { ...prev, optionsHindi };
                       })}
                     />
                   </div>

@@ -243,16 +243,33 @@ router.get("/schools/:schoolId/class/:className/students", async (req, res) => {
   }
 });
 
-// Superadmin can delete any school profile.
+// Superadmin can delete any school profile. Deleting a school cascades to its
+// teachers, school admins, and students so no orphans are left behind.
 router.delete("/schools/:schoolId", requireAuth("superadmin"), async (req, res) => {
   try {
+    const schoolId = req.params.schoolId;
     const school = await School.findOneAndUpdate(
-      { schoolId: req.params.schoolId },
+      { schoolId },
       { isDeleted: true },
       { new: true }
     );
     if (!school) return res.status(404).json({ message: "School not found" });
-    res.status(200).json({ message: "School deleted successfully" });
+
+    const cascade = { $set: { isDeleted: true, synced: false, updatedAt: new Date() } };
+    const [students, teachers, admins] = await Promise.all([
+      Student.updateMany({ schoolId }, cascade),
+      Teacher.updateMany({ schoolId }, cascade),
+      SchoolAdmin.updateMany({ schoolId }, cascade),
+    ]);
+
+    res.status(200).json({
+      message: "School and its profiles deleted successfully",
+      cascaded: {
+        students: students.modifiedCount || 0,
+        teachers: teachers.modifiedCount || 0,
+        admins: admins.modifiedCount || 0,
+      },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
