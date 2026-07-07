@@ -24,26 +24,92 @@ router.get("/questions/:className", async (req, res) => {
     const studentId = String(req.query.studentId || "").trim();
     let currentRating = getInitialRating(req.params.className);
 
+    let correctlyAnsweredIds = new Set();
+    let wronglyAnsweredIds = new Set();
+
     if (studentId) {
       const student = await Student.findOne({ studentId });
-      currentRating = student?.adaptiveRating?.rating || currentRating;
+      if (student) {
+        currentRating = student.adaptiveRating?.rating || currentRating;
+        (student.adaptiveTestAttempts || []).forEach(attempt => {
+          (attempt.answers || []).forEach(ans => {
+             if (ans.isCorrect) {
+                 correctlyAnsweredIds.add(ans.questionId);
+                 wronglyAnsweredIds.delete(ans.questionId);
+             } else if (ans.isCorrect === false) {
+                 wronglyAnsweredIds.add(ans.questionId);
+                 correctlyAnsweredIds.delete(ans.questionId);
+             }
+          });
+        });
+      }
     }
+
+    const filteredQuestions = questions.filter(q => !correctlyAnsweredIds.has(q.id));
+    const wronglyAnsweredArray = Array.from(wronglyAnsweredIds);
 
     res.status(200).json({
       className: req.params.className,
       ratingBand,
       currentRating,
-      totalQuestions: questions.length,
-      questions,
+      totalQuestions: filteredQuestions.length,
+      questions: filteredQuestions,
+      wronglyAnsweredIds: wronglyAnsweredArray,
       nextQuestion: selectNextQuestion(
-        questions,
+        filteredQuestions,
         { rating: currentRating, className: req.params.className },
-        []
+        [],
+        wronglyAnsweredArray
       ),
     });
   } catch (error) {
     console.error("Adaptive question bank load failed:", error);
     res.status(500).json({ error: "Failed to load adaptive question bank" });
+  }
+});
+
+// Class-scoped leaderboard: top adaptive ratings within the caller's school and
+// grade only (global leaderboard is a later enhancement). Grade is resolved from
+// the legacy `class` field, falling back to the batch (class = 2038 − batch).
+router.get("/leaderboard", async (req, res) => {
+  try {
+    const schoolId = String(req.query.schoolId || "").trim();
+    const requestedClass = Number.parseInt(String(req.query.classNumber || ""), 10);
+    if (!schoolId) return res.status(400).json({ error: "schoolId is required" });
+
+    const students = await Student.find({ schoolId })
+      .select("studentId name class batch adaptiveRating")
+      .lean();
+
+    const batchToClass = (batch) => {
+      const n = Number.parseInt(String(batch || "").replace(/\D/g, ""), 10);
+      return Number.isFinite(n) && n >= 2026 && n <= 2037 ? 2038 - n : null;
+    };
+    const derivedClass = (s) => {
+      const c = Number.parseInt(String(s.class || "").replace(/\D/g, ""), 10);
+      return Number.isFinite(c) && c > 0 ? c : batchToClass(s.batch);
+    };
+
+    const leaderboard = students
+      .filter((s) => s.adaptiveRating && typeof s.adaptiveRating.rating === "number")
+      .filter((s) => !Number.isFinite(requestedClass) || derivedClass(s) === requestedClass)
+      .map((s) => ({
+        studentId: s.studentId,
+        name: s.name || s.studentId,
+        rating: Math.round(s.adaptiveRating.rating),
+        attempts: s.adaptiveRating.attempts || 0,
+      }))
+      .sort((a, b) => b.rating - a.rating)
+      .slice(0, 20);
+
+    res.status(200).json({
+      schoolId,
+      classNumber: Number.isFinite(requestedClass) ? requestedClass : null,
+      leaderboard,
+    });
+  } catch (error) {
+    console.error("Adaptive leaderboard failed:", error);
+    res.status(500).json({ error: "Failed to load adaptive leaderboard" });
   }
 });
 
@@ -123,7 +189,7 @@ router.post("/submit", async (req, res) => {
       weakTopics,
       updatedAt: new Date(),
     };
-    student.adaptiveTestAttempts.push({
+    const newAttempt = {
       className,
       ratingBefore: initialRating,
       ratingAfter: state.rating,
@@ -135,9 +201,15 @@ router.post("/submit", async (req, res) => {
       startedAt: startedAt ? new Date(startedAt) : new Date(),
       completedAt: new Date(),
       answers: review,
-    });
+    };
 
-    await student.save();
+    await Student.updateOne(
+      { studentId },
+      {
+        $push: { adaptiveTestAttempts: newAttempt },
+        $set: { adaptiveRating: student.adaptiveRating },
+      }
+    );
 
     res.status(200).json({
       ratingBand: getRatingBand(className),

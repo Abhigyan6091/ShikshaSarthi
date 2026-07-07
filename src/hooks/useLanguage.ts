@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { translate, type Language } from "@/locales";
+import { translate, translateSubject, type Language } from "@/locales";
 
 const STORAGE_KEY = "appLanguage";
 const EVENT = "appLanguageChanged";
@@ -53,6 +53,7 @@ export function useLanguage() {
   }, [setLanguage]);
 
   const t = useCallback((key: string) => translate(key, language), [language]);
+  const tSubject = useCallback((subject: string) => translateSubject(subject, language), [language]);
 
-  return { language, setLanguage, toggleLanguage, t };
+  return { language, setLanguage, toggleLanguage, t, tSubject };
 }

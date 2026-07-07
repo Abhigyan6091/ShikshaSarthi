@@ -110,6 +110,9 @@ mongoose
     } else if (appConfig.syncAutoEnabled) {
       console.log("Legacy direct sync skipped: no SYNC_REMOTE_URL or SYNC_SOURCE_URI configured");
     }
+    // One-time data fixes: backfill student batches from class, and clean up
+    // profiles orphaned by already-deleted schools.
+    require("./utils/dataMigrations").runStartupMigrations();
     startAwsAutoSync();
   })
   .catch((err) => {

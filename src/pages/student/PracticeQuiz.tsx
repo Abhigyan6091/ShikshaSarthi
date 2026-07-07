@@ -1,14 +1,17 @@
 import axios from 'axios';
-import { AlertCircle, BarChart3, CheckCircle, Clock, ExternalLink, Image, Lightbulb, SkipForward, Target, Timer, Trophy, Video, XCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft, BarChart3, CheckCircle, Clock, ExternalLink, Image, Lightbulb, SkipForward, Target, Timer, Trophy, Video, XCircle } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { useLanguage } from '@/hooks/useLanguage';
 const API_URL = import.meta.env.VITE_API_URL;
 interface Question {
   _id: string;
   question: string;
+  questionHindi?: string;
   questionImage?: string; // Added question image support
   options: string[];
+  optionsHindi?: string[];
   correctAnswer: string;
   hint?: {
     text?: string;
@@ -17,8 +20,23 @@ interface Question {
   };
 }
 
+// A Hindi value is only usable if it exists and isn't the "NA" single-lingual tag.
+const hasHindi = (value?: string) => !!value && value.trim() !== "" && value.trim().toUpperCase() !== "NA";
+
 const PracticeQuiz: React.FC = () => {
   const { subject, topic } = useParams<{ subject: string; topic: string }>();
+  const navigate = useNavigate();
+  const { language } = useLanguage();
+  // Grading always uses the English option text (that's what correctAnswer
+  // stores); only the *displayed* label switches to Hindi when available.
+  const displayQuestion = (q: Question) =>
+    language === "hi" && hasHindi(q.questionHindi) ? (q.questionHindi as string) : q.question;
+  const displayOption = (q: Question, i: number) =>
+    language === "hi" && hasHindi(q.optionsHindi?.[i]) ? (q.optionsHindi as string[])[i] : q.options[i];
+  const displayCorrect = (q: Question) => {
+    const idx = q.options.findIndex((o) => o === q.correctAnswer);
+    return idx >= 0 ? displayOption(q, idx) : q.correctAnswer;
+  };
   const [questions, setQuestions] = useState<Question[]>([]);
 const [current, setCurrent] = useState(0); 
 
@@ -288,7 +306,15 @@ const getResult = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
+          <button
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate(`/student/practice/${encodeURIComponent(String(subject || ''))}`))}
+            className="flex items-center gap-1 text-gray-600 hover:text-blue-600 font-medium px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors"
+            title={language === 'en' ? 'Back' : 'वापस'}
+          >
+            <ArrowLeft size={20} />
+            <span className="hidden sm:inline">{language === 'en' ? 'Back' : 'वापस'}</span>
+          </button>
           <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
             <Target className="text-blue-600" />
             Practice Quiz: {subject} - {topic}
@@ -346,7 +372,7 @@ const getResult = () => {
               )}
 
               <h2 className="text-xl font-semibold text-gray-800 mb-6 leading-relaxed">
-                {String(questions[current].question)}
+                {String(displayQuestion(questions[current]))}
               </h2>
 
               {/* Question Image with Fixed Size */}
@@ -380,7 +406,7 @@ const getResult = () => {
                       onClick={() => handleAnswer(opt)}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-medium">{String(opt)}</span>
+                        <span className="font-medium">{String(displayOption(questions[current], i))}</span>
                         {selectedAnswer !== null && (
                           <>
                             {isSelected && isCorrect && <CheckCircle className="text-green-600" size={20} />}
@@ -408,7 +434,7 @@ const getResult = () => {
                   </div>
                   {selectedAnswer !== questions[current].correctAnswer && (
                     <p className="text-sm text-gray-600">
-                      The correct answer is: <strong>{String(questions[current].correctAnswer)}</strong>
+                      The correct answer is: <strong>{String(displayCorrect(questions[current]))}</strong>
                     </p>
                   )}
                 </div>
