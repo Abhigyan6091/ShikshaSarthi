@@ -5,7 +5,7 @@ const { MongoClient, ObjectId } = require("mongodb");
 
 const uri = process.env.MONGO_URI || process.env.MONGO_URI_LOCAL || "mongodb://127.0.0.1:27017/app";
 const dbName = process.env.MONGO_DB_NAME || "app";
-const questionBankDir = path.resolve(process.argv[2] || path.join(__dirname, "..", "..", "question_bank"));
+const defaultQuestionBankDir = path.resolve(process.argv[2] || path.join(__dirname, "..", "..", "question_bank"));
 
 const SUBJECT_LABELS = {
   maths: "गणित",
@@ -62,7 +62,7 @@ function classFromSubjectId(subjectId, fallback) {
 function toQuestionDocument(question, chapter, sourceFile, occurrence) {
   const optionsHindi = Array.isArray(question.optionsHindi) ? question.optionsHindi : null;
   const optionsEnglish = Array.isArray(question.options) ? question.options : [];
-  const options = optionsHindi && optionsHindi.length ? optionsHindi : optionsEnglish;
+  const options = optionsEnglish.length ? optionsEnglish : (optionsHindi || []);
   const answerIndex = Number(question.correctAnswer);
   const correctAnswer = Number.isInteger(answerIndex) && options[answerIndex] != null
     ? options[answerIndex]
@@ -75,11 +75,13 @@ function toQuestionDocument(question, chapter, sourceFile, occurrence) {
     subject: subjectFromSubjectId(question.subjectId),
     class: classFromSubjectId(question.subjectId, question.class),
     topic: chapter.chapterTitleHindi || chapter.chapterTitle || question.topicId || "General",
-    question: question.questionHindi || question.question || "",
+    question: question.question || question.questionHindi || "",
+    questionHindi: question.questionHindi || "NA",
     questionImage: "",
     localPath: null,
     cloudUrl: null,
     options,
+    optionsHindi: optionsHindi && optionsHindi.length ? optionsHindi : options.map(() => "NA"),
     correctAnswer,
     hint: {
       text: (hintsHindi && hintsHindi[0]) || (hintsEnglish && hintsEnglish[0]) || question.explanationHindi || question.explanation || "",
@@ -108,12 +110,12 @@ function toQuestionDocument(question, chapter, sourceFile, occurrence) {
   };
 }
 
-async function main() {
+function buildQuestionBankDocuments(questionBankDir = defaultQuestionBankDir) {
   if (!fs.existsSync(questionBankDir)) {
     throw new Error(`Question bank directory not found: ${questionBankDir}`);
   }
 
-  const files = fs.readdirSync(questionBankDir).filter((file) => file.endsWith(".js")).sort();
+  const files = fs.readdirSync(questionBankDir).filter((file) => file.endsWith(".js") && file !== "index.js").sort();
   const documents = [];
   const sourceCounts = {};
   const sourceOccurrences = new Map();
@@ -133,101 +135,122 @@ async function main() {
     sourceCounts[file] = count;
   }
 
+  return { documents, sourceCounts };
+}
+
+async function importQuestionBank({ collection, questionBankDir = defaultQuestionBankDir } = {}) {
+  if (!collection) throw new Error("MongoDB questions collection is required");
+  const { documents, sourceCounts } = buildQuestionBankDocuments(questionBankDir);
+
+  const before = await collection.countDocuments();
+  const existingQuestionKeys = new Set(
+    (await collection.find(
+      {},
+      { projection: { class: 1, subject: 1, topic: 1, question: 1, options: 1, correctAnswer: 1 } }
+    ).toArray()).map((record) => [
+      normalizeText(record.class),
+      normalizeText(record.subject),
+      normalizeText(record.topic),
+      normalizeText(record.question),
+      normalizeOptions(record.options),
+      normalizeText(record.correctAnswer),
+    ].join("|"))
+  );
+  const strictTextDedupe = ["1", "true", "yes", "on"].includes(
+    String(process.env.QUESTION_BANK_STRICT_TEXT_DEDUPE || "").toLowerCase()
+  );
+
+  const operations = [];
+  let duplicateQuestionText = 0;
+
+  for (const document of documents) {
+    const questionKey = [
+      normalizeText(document.class),
+      normalizeText(document.subject),
+      normalizeText(document.topic),
+      normalizeText(document.question),
+      normalizeOptions(document.options),
+      normalizeText(document.correctAnswer),
+    ].join("|");
+    if (strictTextDedupe && existingQuestionKeys.has(questionKey)) {
+      duplicateQuestionText += 1;
+      continue;
+    }
+
+    const { _id, createdAt, ...setDocument } = document;
+    const filter = document.sourceQuestionBankOccurrence === 1
+      ? { $or: [
+        { sourceQuestionBankKey: document.sourceQuestionBankKey },
+        { sourceQuestionBankKey: document.sourceQuestionBankBaseKey },
+      ] }
+      : { sourceQuestionBankKey: document.sourceQuestionBankKey };
+
+    operations.push({
+      updateOne: {
+        filter,
+        update: {
+          $set: { ...setDocument, updatedAt: new Date(), isDeleted: false },
+          $setOnInsert: { _id, createdAt: createdAt || new Date() },
+        },
+        upsert: true,
+      },
+    });
+    existingQuestionKeys.add(questionKey);
+  }
+
+  let bulkResult = null;
+  if (operations.length) {
+    bulkResult = await collection.bulkWrite(operations, { ordered: false });
+  }
+
+  const after = await collection.countDocuments();
+  const distribution = await collection.aggregate([
+    { $group: { _id: { class: "$class", subject: "$subject" }, count: { $sum: 1 } } },
+    { $sort: { "_id.class": 1, "_id.subject": 1 } },
+  ]).toArray();
+
+  return {
+    ok: true,
+    questionBankDir,
+    sourceCounts,
+    totalQuestionBankRecords: documents.length,
+    inserted: bulkResult?.upsertedCount || 0,
+    updated: bulkResult?.modifiedCount || 0,
+    matched: bulkResult?.matchedCount || 0,
+    skipped: {
+      duplicateQuestionText,
+    },
+    before,
+    after,
+    distribution,
+  };
+}
+
+async function main() {
   const client = new MongoClient(uri, { serverSelectionTimeoutMS: 10000 });
   await client.connect();
 
   try {
-    const collection = client.db(dbName).collection("questions");
-    const before = await collection.countDocuments();
-    const existingSourceCounts = new Map();
-    for (const record of await collection.find(
-        { sourceQuestionBankId: { $exists: true, $ne: null } },
-        { projection: { sourceQuestionBankBaseKey: 1, sourceQuestionBankFile: 1, sourceQuestionBankId: 1 } }
-      ).toArray()) {
-      const baseKey = String(
-        record.sourceQuestionBankBaseKey || `${record.sourceQuestionBankFile || "unknown"}:${record.sourceQuestionBankId}`
-      );
-      existingSourceCounts.set(baseKey, (existingSourceCounts.get(baseKey) || 0) + 1);
-    }
-    const seenSourceCounts = new Map();
-    const existingQuestionKeys = new Set(
-      (await collection.find(
-        {},
-        { projection: { class: 1, subject: 1, topic: 1, question: 1, options: 1, correctAnswer: 1 } }
-      ).toArray()).map((record) => [
-        normalizeText(record.class),
-        normalizeText(record.subject),
-        normalizeText(record.topic),
-        normalizeText(record.question),
-        normalizeOptions(record.options),
-        normalizeText(record.correctAnswer),
-      ].join("|"))
-    );
-    const strictTextDedupe = ["1", "true", "yes", "on"].includes(
-      String(process.env.QUESTION_BANK_STRICT_TEXT_DEDUPE || "").toLowerCase()
-    );
-
-    const missing = [];
-    let duplicateSourceId = 0;
-    let duplicateQuestionText = 0;
-
-    for (const document of documents) {
-      const baseKey = String(document.sourceQuestionBankBaseKey);
-      const seenForBase = (seenSourceCounts.get(baseKey) || 0) + 1;
-      seenSourceCounts.set(baseKey, seenForBase);
-
-      if (seenForBase <= (existingSourceCounts.get(baseKey) || 0)) {
-        duplicateSourceId += 1;
-        continue;
-      }
-
-      const questionKey = [
-        normalizeText(document.class),
-        normalizeText(document.subject),
-        normalizeText(document.topic),
-        normalizeText(document.question),
-        normalizeOptions(document.options),
-        normalizeText(document.correctAnswer),
-      ].join("|");
-      if (strictTextDedupe && existingQuestionKeys.has(questionKey)) {
-        duplicateQuestionText += 1;
-        continue;
-      }
-
-      missing.push(document);
-      existingQuestionKeys.add(questionKey);
-    }
-
-    if (missing.length) {
-      await collection.insertMany(missing, { ordered: false });
-    }
-
-    const after = await collection.countDocuments();
-    const distribution = await collection.aggregate([
-      { $group: { _id: { class: "$class", subject: "$subject" }, count: { $sum: 1 } } },
-      { $sort: { "_id.class": 1, "_id.subject": 1 } },
-    ]).toArray();
-
-    console.log(JSON.stringify({
-      ok: true,
-      questionBankDir,
-      sourceCounts,
-      totalQuestionBankRecords: documents.length,
-      inserted: missing.length,
-      skipped: {
-        duplicateSourceId,
-        duplicateQuestionText,
-      },
-      before,
-      after,
-      distribution,
-    }, null, 2));
+    const result = await importQuestionBank({
+      collection: client.db(dbName).collection("questions"),
+      questionBankDir: defaultQuestionBankDir,
+    });
+    console.log(JSON.stringify(result, null, 2));
   } finally {
     await client.close();
   }
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  buildQuestionBankDocuments,
+  importQuestionBank,
+  loadBankFile,
+  toQuestionDocument,
+};

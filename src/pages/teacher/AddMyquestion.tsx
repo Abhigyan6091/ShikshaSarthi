@@ -6,6 +6,10 @@ import TagSelect from "@/components/TagSelect";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const LETTERS = ["A", "B", "C", "D"];
+const sortLabels = (values: string[]) =>
+  values
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, "en", { numeric: true, sensitivity: "base" }));
 
 export default function AddMyQuestion() {
   const [formData, setFormData] = useState({
@@ -25,8 +29,10 @@ export default function AddMyQuestion() {
 
   // Existing tags from the question bank.
   const [subjects, setSubjects] = useState<string[]>([]);
+  const [allSubjects, setAllSubjects] = useState<string[]>([]);
   const [classes, setClasses] = useState<string[]>([]);
   const [topics, setTopics] = useState<string[]>([]);
+  const [bankQuestions, setBankQuestions] = useState<any[]>([]);
 
   useEffect(() => {
     const teacherCookie = Cookies.get("teacher");
@@ -44,27 +50,48 @@ export default function AddMyQuestion() {
       .get(`${API_URL}/questions`)
       .then((res) => {
         const list = Array.isArray(res.data) ? res.data : [];
-        setSubjects([...new Set(list.map((q: any) => q?.subject).filter(Boolean))].sort() as string[]);
-        setClasses([...new Set(list.map((q: any) => q?.class).filter(Boolean))].sort() as string[]);
+        setBankQuestions(list);
+        setAllSubjects(sortLabels([...new Set(list.map((q: any) => q?.subject).filter(Boolean))] as string[]));
+        setClasses(sortLabels([...new Set(list.map((q: any) => q?.class).filter(Boolean))] as string[]));
       })
       .catch(() => {
+        setBankQuestions([]);
+        setAllSubjects([]);
         setSubjects([]);
         setClasses([]);
       });
   }, []);
 
-  // Refresh topics whenever the chosen subject changes.
+  // Class -> Subject -> Topic.
   useEffect(() => {
-    const subject = formData.subject?.trim();
-    if (!subject) {
+    const className = formData.class?.trim();
+    if (!className) {
+      setSubjects([]);
       setTopics([]);
       return;
     }
-    axios
-      .get(`${API_URL}/questions/all/topics/${encodeURIComponent(subject)}`)
-      .then((res) => setTopics((res.data?.topics || []).filter(Boolean).sort()))
-      .catch(() => setTopics([]));
-  }, [formData.subject]);
+    setSubjects(sortLabels([...new Set(
+      bankQuestions
+        .filter((q: any) => q?.class === className)
+        .map((q: any) => q?.subject)
+        .filter(Boolean)
+    )] as string[]));
+  }, [bankQuestions, formData.class]);
+
+  useEffect(() => {
+    const className = formData.class?.trim();
+    const subject = formData.subject?.trim();
+    if (!className || !subject) {
+      setTopics([]);
+      return;
+    }
+    setTopics(sortLabels([...new Set(
+      bankQuestions
+        .filter((q: any) => q?.class === className && q?.subject === subject)
+        .map((q: any) => q?.topic)
+        .filter(Boolean)
+    )] as string[]));
+  }, [bankQuestions, formData.class, formData.subject]);
 
   const setField = (name: string, value: any) => setFormData((prev) => ({ ...prev, [name]: value }));
 
@@ -127,15 +154,15 @@ export default function AddMyQuestion() {
     <form onSubmit={handleSubmit} className="max-w-xl mx-auto p-6 space-y-4 bg-white rounded shadow">
       <h2 className="text-xl font-bold mb-4">Add a Question</h2>
 
-      <TagSelect label="Subject" options={subjects} value={formData.subject} onChange={(v) => setFormData((p) => ({ ...p, subject: v, topic: "" }))} />
-      <TagSelect label="Class" options={classes} value={formData.class} onChange={(v) => setField("class", v)} />
+      <TagSelect label="Class" options={classes} value={formData.class} onChange={(v) => setFormData((p) => ({ ...p, class: v, subject: "", topic: "" }))} />
+      <TagSelect label="Subject" options={formData.class ? subjects : allSubjects} value={formData.subject} onChange={(v) => setFormData((p) => ({ ...p, subject: v, topic: "" }))} disabled={!formData.class} emptyHint="Pick a class first" />
       <TagSelect
         label="Topic"
         options={topics}
         value={formData.topic}
         onChange={(v) => setField("topic", v)}
-        disabled={!formData.subject}
-        emptyHint="Pick a subject first"
+        disabled={!formData.class || !formData.subject}
+        emptyHint="Pick class and subject first"
       />
 
       <div>

@@ -3,6 +3,7 @@ const Teacher = require("../models/Teacher");
 const SchoolAdmin = require("../models/SchoolAdmin");
 const School = require("../models/School");
 const Question = require("../models/Question");
+const { importQuestionBank } = require("../scripts/importQuestionBank");
 
 // Map a grade class number to a graduation batch year: class 12 → 2026,
 // class 11 → 2027, … i.e. batch = 2038 - class.
@@ -71,10 +72,20 @@ async function backfillQuestionBilingual() {
   return touched;
 }
 
+async function syncQuestionBankFromFiles() {
+  const result = await importQuestionBank({ collection: Question.collection });
+  const touched = (result.inserted || 0) + (result.updated || 0);
+  if (touched) {
+    console.log(`Migration: synced question bank files to Mongo (${result.inserted} inserted, ${result.updated} updated).`);
+  }
+  return result;
+}
+
 async function runStartupMigrations() {
   try {
     await backfillStudentBatches();
     await cleanupOrphanedProfiles();
+    await syncQuestionBankFromFiles();
     await backfillQuestionBilingual();
   } catch (error) {
     console.error("Startup migrations error:", error.message);
@@ -86,5 +97,6 @@ module.exports = {
   backfillStudentBatches,
   cleanupOrphanedProfiles,
   backfillQuestionBilingual,
+  syncQuestionBankFromFiles,
   classToBatch,
 };

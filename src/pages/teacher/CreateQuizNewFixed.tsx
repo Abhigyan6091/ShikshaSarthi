@@ -120,17 +120,38 @@ const CreateQuizNewFixed: React.FC = () => {
   const [selectedClassName, setSelectedClassName] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('');
+  const [customSubjects, setCustomSubjects] = useState<string[]>([]);
   const [customTopics, setCustomTopics] = useState<string[]>([]);
 
-  // Topics available for the custom-question form's chosen subject.
+  // Class -> Subject -> Topic options for the inline custom-question form.
   useEffect(() => {
+    const className = customDraft.class?.trim();
+    if (!className) {
+      setCustomSubjects([]);
+      setCustomTopics([]);
+      return;
+    }
+    setCustomSubjects(sortLabels([
+      ...new Set(
+        mcqRecords
+          .filter((q) => asString(q.class, 'Unassigned') === className)
+          .map((q) => asString(q.subject))
+      ),
+    ]));
+  }, [customDraft.class, mcqRecords]);
+
+  useEffect(() => {
+    const className = customDraft.class?.trim();
     const subject = customDraft.subject?.trim();
-    if (!subject) { setCustomTopics([]); return; }
-    axios
-      .get(`${API_URL}/questions/all/topics/${encodeURIComponent(subject)}`)
-      .then((res) => setCustomTopics((res.data?.topics || []).filter(Boolean).sort()))
-      .catch(() => setCustomTopics([]));
-  }, [customDraft.subject]);
+    if (!className || !subject) { setCustomTopics([]); return; }
+    setCustomTopics(sortLabels([
+      ...new Set(
+        mcqRecords
+          .filter((q) => asString(q.class, 'Unassigned') === className && asString(q.subject) === subject)
+          .map((q) => asString(q.topic))
+      ),
+    ]));
+  }, [customDraft.class, customDraft.subject, mcqRecords]);
 
   const totalQuestions = config.mcqCount + config.audioCount + config.videoCount + config.puzzleCount;
 
@@ -541,9 +562,9 @@ const CreateQuizNewFixed: React.FC = () => {
                 <ArrowLeft className="mr-1 h-4 w-4" /> Back to questions
               </Button>
               <div className="grid gap-3 sm:grid-cols-3">
-                <TagSelect label="Subject" options={subjects} value={customDraft.subject} onChange={(v) => setCustomDraft((prev) => ({ ...prev, subject: v, topic: '' }))} />
-                <TagSelect label="Class" options={classes} value={customDraft.class} onChange={(v) => setCustomDraft((prev) => ({ ...prev, class: v }))} />
-                <TagSelect label="Topic" options={customTopics} value={customDraft.topic} onChange={(v) => setCustomDraft((prev) => ({ ...prev, topic: v }))} disabled={!customDraft.subject} emptyHint="Pick a subject first" />
+                <TagSelect label="Class" options={classes} value={customDraft.class} onChange={(v) => setCustomDraft((prev) => ({ ...prev, class: v, subject: '', topic: '' }))} />
+                <TagSelect label="Subject" options={customDraft.class ? customSubjects : subjects} value={customDraft.subject} onChange={(v) => setCustomDraft((prev) => ({ ...prev, subject: v, topic: '' }))} disabled={!customDraft.class} emptyHint="Pick a class first" />
+                <TagSelect label="Topic" options={customTopics} value={customDraft.topic} onChange={(v) => setCustomDraft((prev) => ({ ...prev, topic: v }))} disabled={!customDraft.class || !customDraft.subject} emptyHint="Pick class and subject first" />
               </div>
               <div><Label>Question</Label><Textarea value={customDraft.question} onChange={(event) => setCustomDraft((prev) => ({ ...prev, question: event.target.value }))} /></div>
               <div><Label>Question — हिंदी <span className="text-gray-400 font-normal">(optional)</span></Label><Textarea value={customDraft.questionHindi} placeholder="प्रश्न (वैकल्पिक)" onChange={(event) => setCustomDraft((prev) => ({ ...prev, questionHindi: event.target.value }))} /></div>

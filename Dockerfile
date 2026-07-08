@@ -19,6 +19,7 @@ RUN apk add --no-cache nodejs npm
 
 WORKDIR /app
 COPY backend/ ./backend/
+COPY question_bank/ ./question_bank/
 COPY QuestionGenerator/ ./QuestionGenerator/
 COPY package.json package-lock.json ./
 

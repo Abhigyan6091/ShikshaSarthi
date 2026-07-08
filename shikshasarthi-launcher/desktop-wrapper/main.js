@@ -520,7 +520,7 @@ async function startLocalRuntime(resourcesPath) {
     const runtimeEnv = {
         ...fileEnv,
         NODE_ENV: 'production',
-        APP_VERSION_OVERRIDE: getPackagedAppVersion(),
+        APP_VERSION_OVERRIDE: activeApp.version || getPackagedAppVersion(),
         APP_MODE: fileEnv.APP_MODE || 'local-school',
         USE_LOCAL_DB: 'true',
         PORT: fileEnv.FRONTEND_PORT || '6050',

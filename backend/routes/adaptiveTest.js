@@ -16,13 +16,35 @@ async function loadQuestionBank() {
   return import(`file://${bankPath}`);
 }
 
+function loadAdaptiveQuestions(bankModule, requestedClassName) {
+  const requestedClass = String(requestedClassName || "10");
+  const preferredClasses = [
+    requestedClass,
+    "10",
+    "7",
+    "6",
+    "8",
+    "9",
+  ].filter((value, index, list) => list.indexOf(value) === index);
+
+  for (const className of preferredClasses) {
+    const questions = flattenQuestionBank(bankModule, className);
+    if (questions.length > 0) {
+      return { className, questions };
+    }
+  }
+
+  return { className: requestedClass, questions: [] };
+}
+
 router.get("/questions/:className", async (req, res) => {
   try {
     const bankModule = await loadQuestionBank();
-    const questions = flattenQuestionBank(bankModule, req.params.className);
-    const ratingBand = getRatingBand(req.params.className);
+    const loaded = loadAdaptiveQuestions(bankModule, req.params.className);
+    const questions = loaded.questions;
+    const ratingBand = getRatingBand(loaded.className);
     const studentId = String(req.query.studentId || "").trim();
-    let currentRating = getInitialRating(req.params.className);
+    let currentRating = getInitialRating(loaded.className);
 
     let correctlyAnsweredIds = new Set();
     let wronglyAnsweredIds = new Set();
@@ -49,7 +71,8 @@ router.get("/questions/:className", async (req, res) => {
     const wronglyAnsweredArray = Array.from(wronglyAnsweredIds);
 
     res.status(200).json({
-      className: req.params.className,
+      className: loaded.className,
+      requestedClassName: req.params.className,
       ratingBand,
       currentRating,
       totalQuestions: filteredQuestions.length,
@@ -57,7 +80,7 @@ router.get("/questions/:className", async (req, res) => {
       wronglyAnsweredIds: wronglyAnsweredArray,
       nextQuestion: selectNextQuestion(
         filteredQuestions,
-        { rating: currentRating, className: req.params.className },
+        { rating: currentRating, className: loaded.className },
         [],
         wronglyAnsweredArray
       ),

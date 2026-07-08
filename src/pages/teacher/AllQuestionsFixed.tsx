@@ -59,6 +59,11 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   return error instanceof Error ? error.message : fallback;
 };
 
+const sortLabels = (values: string[]) =>
+  values
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' }));
+
 const AllQuestionsFixed: React.FC = () => {
   const { toast } = useToast();
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -75,23 +80,33 @@ const AllQuestionsFixed: React.FC = () => {
 
   // Existing subjects/classes are derived from the already-loaded question bank.
   const bankSubjects = useMemo(
-    () => [...new Set(questions.map((q) => q.subject).filter(Boolean))].sort(),
+    () => sortLabels([...new Set(questions
+      .filter((q) => !manualQuestion.class || q.class === manualQuestion.class)
+      .map((q) => q.subject)
+      .filter(Boolean))]),
+    [questions, manualQuestion.class]
+  );
+  const allBankSubjects = useMemo(
+    () => sortLabels([...new Set(questions.map((q) => q.subject).filter(Boolean))]),
     [questions]
   );
   const bankClasses = useMemo(
-    () => [...new Set(questions.map((q) => q.class).filter(Boolean))].sort(),
+    () => sortLabels([...new Set(questions.map((q) => q.class).filter(Boolean))]),
     [questions]
   );
 
-  // Topics for the chosen subject, from the bank endpoint.
+  // Topics for the chosen class + subject.
   useEffect(() => {
+    const className = manualQuestion.class?.trim();
     const subject = manualQuestion.subject?.trim();
-    if (!subject) { setManualTopics([]); return; }
-    axios
-      .get(`${API_URL}/questions/all/topics/${encodeURIComponent(subject)}`)
-      .then((res) => setManualTopics((res.data?.topics || []).filter(Boolean).sort()))
-      .catch(() => setManualTopics([]));
-  }, [manualQuestion.subject]);
+    if (!className || !subject) { setManualTopics([]); return; }
+    setManualTopics(sortLabels([...new Set(
+      questions
+        .filter((q) => q.class === className && q.subject === subject)
+        .map((q) => q.topic)
+        .filter(Boolean)
+    )]));
+  }, [questions, manualQuestion.class, manualQuestion.subject]);
 
   const fetchQuestions = useCallback(async () => {
     try {
@@ -122,9 +137,6 @@ const AllQuestionsFixed: React.FC = () => {
         .some((field) => field.toLowerCase().includes(value))
     );
   }, [questions, search]);
-
-  const sortLabels = (values: string[]) =>
-    values.sort((a, b) => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' }));
 
   const grouped = useMemo(() => {
     return filtered.reduce<Record<string, Record<string, Record<string, Question[]>>>>((acc, question) => {
@@ -223,9 +235,9 @@ const AllQuestionsFixed: React.FC = () => {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-3">
-                  <TagSelect label="Subject" options={bankSubjects} value={manualQuestion.subject} onChange={(v) => setManualQuestion((prev) => ({ ...prev, subject: v, topic: '' }))} />
-                  <TagSelect label="Class" options={bankClasses} value={manualQuestion.class} onChange={(v) => setManualQuestion((prev) => ({ ...prev, class: v }))} />
-                  <TagSelect label="Topic" options={manualTopics} value={manualQuestion.topic} onChange={(v) => setManualQuestion((prev) => ({ ...prev, topic: v }))} disabled={!manualQuestion.subject} emptyHint="Pick a subject first" />
+                  <TagSelect label="Class" options={bankClasses} value={manualQuestion.class} onChange={(v) => setManualQuestion((prev) => ({ ...prev, class: v, subject: '', topic: '' }))} />
+                  <TagSelect label="Subject" options={manualQuestion.class ? bankSubjects : allBankSubjects} value={manualQuestion.subject} onChange={(v) => setManualQuestion((prev) => ({ ...prev, subject: v, topic: '' }))} disabled={!manualQuestion.class} emptyHint="Pick a class first" />
+                  <TagSelect label="Topic" options={manualTopics} value={manualQuestion.topic} onChange={(v) => setManualQuestion((prev) => ({ ...prev, topic: v }))} disabled={!manualQuestion.class || !manualQuestion.subject} emptyHint="Pick class and subject first" />
                 </div>
                 <div>
                   <Label>Question</Label>

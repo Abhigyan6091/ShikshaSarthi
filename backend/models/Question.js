@@ -9,6 +9,8 @@ const questionSchema = new mongoose.Schema({
   // version). The UI shows the Hindi text when it exists and isn't "NA".
   questionHindi: { type: String, default: "NA" },
   optionsHindi: { type: [String], default: undefined },
+  questionEnglish: { type: String },
+  optionsEnglish: { type: [String], default: undefined },
   questionImage: {
     type: String,
     required: false,
@@ -34,7 +36,21 @@ const questionSchema = new mongoose.Schema({
     text: { type: String, required: false },
     image: { type: String },
     video: { type: String },
-  }
+  },
+  synced: { type: Boolean, default: false },
+  sourceQuestionBankBaseKey: String,
+  sourceQuestionBankKey: { type: String, index: true },
+  sourceQuestionBankId: String,
+  sourceQuestionBankFile: String,
+  sourceQuestionBankOccurrence: Number,
+  sourceSubjectId: String,
+  sourceTopicId: String,
+  chapterNumber: Number,
+  correctAnswerIndex: Number,
+  explanation: String,
+  explanationHindi: String,
+  difficulty: String,
+  tags: [String],
 });
 
 questionSchema.index({ class: 1, subject: 1, topic: 1, question: 1 });
