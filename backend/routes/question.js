@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const path = require("path");
 const Question = require("../models/Question");
 const { appConfig } = require("../config/appConfig");
 const { requireAuth } = require("../middleware/auth");
 const { flattenQuestionBank } = require("../services/marsAdaptiveEngine");
+const { loadLocalQuestionBank } = require("../utils/localQuestionBank");
 require("dotenv").config();
 
 const OFFLINE_HINT_MESSAGE = "AI hints are unavailable in offline mode.";
@@ -29,17 +29,12 @@ function naturalSort(values) {
     .sort((left, right) => String(left).localeCompare(String(right), "en", { numeric: true, sensitivity: "base" }));
 }
 
-async function loadLocalQuestionBank() {
-  const bankPath = path.resolve(__dirname, "../../question_bank/index.js");
-  return import(`file://${bankPath}`);
-}
-
 function normalizeSubject(subject = "") {
   return SUBJECT_ALIASES[decodeURIComponent(String(subject)).trim().toLowerCase()] || decodeURIComponent(String(subject)).trim();
 }
 
 async function getLocalQuestions(className, subject) {
-  const bankModule = await loadLocalQuestionBank();
+  const bankModule = loadLocalQuestionBank();
   const normalizedSubject = normalizeSubject(subject);
   return flattenQuestionBank(bankModule, className).filter((question) => question.subject === normalizedSubject);
 }

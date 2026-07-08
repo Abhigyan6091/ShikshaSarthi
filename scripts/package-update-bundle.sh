@@ -78,7 +78,9 @@ if [[ ! -f "$ROOT_DIR/dist/index.html" ]]; then
 fi
 cp -r "$ROOT_DIR/dist" "$APP_WORK/dist"
 cp -r "$ROOT_DIR/backend" "$APP_WORK/backend"
-cp -r "$ROOT_DIR/question_bank" "$APP_WORK/question_bank"
+mkdir -p "$APP_WORK/question_bank"
+cp "$ROOT_DIR/question_bank"/*.js "$APP_WORK/question_bank/"
+cp "$ROOT_DIR/package.json" "$APP_WORK/package.json"
 # Strip everything the runtime provides from the baseline or creates at runtime.
 rm -rf \
   "$APP_WORK/backend/node_modules" \
@@ -86,8 +88,7 @@ rm -rf \
   "$APP_WORK/backend/.env" \
   "$APP_WORK/backend/backups" \
   "$APP_WORK/backend/uploads" \
-  "$APP_WORK/backend/updates" \
-  "$APP_WORK/question_bank/textbooks"
+  "$APP_WORK/backend/updates"
 
 (cd "$APP_WORK" && zip -qr "$OUT_DIR/$APP_BUNDLE_NAME" .)
 APP_SHA256="$(sha256sum "$OUT_DIR/$APP_BUNDLE_NAME" | awk '{print $1}')"

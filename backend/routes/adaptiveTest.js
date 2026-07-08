@@ -1,6 +1,6 @@
 const express = require("express");
-const path = require("path");
 const Student = require("../models/Student");
+const { loadLocalQuestionBank } = require("../utils/localQuestionBank");
 const {
   flattenQuestionBank,
   getInitialRating,
@@ -10,11 +10,6 @@ const {
 } = require("../services/marsAdaptiveEngine");
 
 const router = express.Router();
-
-async function loadQuestionBank() {
-  const bankPath = path.resolve(__dirname, "../../question_bank/index.js");
-  return import(`file://${bankPath}`);
-}
 
 function loadAdaptiveQuestions(bankModule, requestedClassName) {
   const requestedClass = String(requestedClassName || "10");
@@ -39,7 +34,7 @@ function loadAdaptiveQuestions(bankModule, requestedClassName) {
 
 router.get("/questions/:className", async (req, res) => {
   try {
-    const bankModule = await loadQuestionBank();
+    const bankModule = loadLocalQuestionBank();
     const loaded = loadAdaptiveQuestions(bankModule, req.params.className);
     const questions = loaded.questions;
     const ratingBand = getRatingBand(loaded.className);

@@ -11,7 +11,10 @@ import {
   Clock,
   Flag,
   Globe2,
+  Languages,
   Lightbulb,
+  Maximize2,
+  Minimize2,
   RotateCcw,
   Send,
   SkipForward,
@@ -282,6 +285,7 @@ const AdaptiveTest: React.FC = () => {
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [showPalette, setShowPalette] = useState(true);
   const [wronglyAnsweredIds, setWronglyAnsweredIds] = useState<Set<string>>(new Set());
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     const handleLanguageChange = (event: Event) => {
@@ -291,6 +295,12 @@ const AdaptiveTest: React.FC = () => {
 
     window.addEventListener("appLanguageChanged", handleLanguageChange);
     return () => window.removeEventListener("appLanguageChanged", handleLanguageChange);
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
   useEffect(() => {
@@ -368,10 +378,30 @@ const AdaptiveTest: React.FC = () => {
 
   const currentHistoryEntry = questionHistory[currentHistoryIndex];
   const currentQuestion = currentHistoryEntry?.question || null;
+  const isHindi = language === "hi";
   const visibleHint =
-    language === "hi"
+    isHindi
       ? currentQuestion?.hintsHindi?.[0] || currentQuestion?.hints?.[0] || ""
       : currentQuestion?.hints?.[0] || currentQuestion?.hintsHindi?.[0] || "";
+
+  const toggleLanguage = () => {
+    const nextLanguage = isHindi ? "en" : "hi";
+    setLanguage(nextLanguage);
+    localStorage.setItem("appLanguage", nextLanguage);
+    window.dispatchEvent(new CustomEvent("appLanguageChanged", { detail: { language: nextLanguage } }));
+  };
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch (fullscreenError) {
+      console.warn("Fullscreen toggle failed:", fullscreenError);
+    }
+  };
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -747,21 +777,35 @@ const AdaptiveTest: React.FC = () => {
               </h1>
               <p className="mt-1 text-slate-600">MARS-based routing — Class {classNumber} · Rating band {band.min}–{band.max}.</p>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:min-w-72">
-              <Card>
-                <CardContent className="pt-4">
-                  <p className="text-xs text-slate-500">Current rating</p>
-                  <p className="text-2xl font-bold text-blue-700">{result?.ratingAfter ?? adaptiveState.rating}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="pt-4">
-                  <p className="text-xs text-slate-500">Questions</p>
-                  <p className="text-2xl font-bold text-slate-900">
-                    {result?.score.total ?? answeredCount}/{isUnlimitedMode ? "∞" : plannedQuestionCount}
-                  </p>
-                </CardContent>
-              </Card>
+            <div className="flex flex-col gap-3 sm:items-end">
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={toggleLanguage} className="gap-2">
+                  <Languages className="h-4 w-4" />
+                  {isHindi ? "English" : "हिंदी"}
+                </Button>
+                {testStarted && !result && (
+                  <Button type="button" variant="outline" size="sm" onClick={toggleFullscreen} className="gap-2">
+                    {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                    {isFullscreen ? (isHindi ? "बाहर निकलें" : "Exit") : (isHindi ? "पूर्ण स्क्रीन" : "Fullscreen")}
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:min-w-72">
+                <Card>
+                  <CardContent className="pt-4">
+                    <p className="text-xs text-slate-500">Current rating</p>
+                    <p className="text-2xl font-bold text-blue-700">{result?.ratingAfter ?? adaptiveState.rating}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-4">
+                    <p className="text-xs text-slate-500">Questions</p>
+                    <p className="text-2xl font-bold text-slate-900">
+                      {result?.score.total ?? answeredCount}/{isUnlimitedMode ? "∞" : plannedQuestionCount}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
 
@@ -1026,27 +1070,47 @@ const AdaptiveTest: React.FC = () => {
                           <Flag className="h-3 w-3" /> Marked for Review
                         </Badge>
                       )}
-                      <span className="ml-auto inline-flex items-center gap-1 text-sm text-slate-500">
-                        <Clock className="h-4 w-4" />
-                        Ref {currentQuestion ? Math.round(estimateReferenceTime(currentQuestion)) : 0}s
-                      </span>
+                      <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={toggleLanguage} className="h-8 gap-1 px-2">
+                          <Languages className="h-3.5 w-3.5" />
+                          {isHindi ? "English" : "हिंदी"}
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={toggleFullscreen} className="h-8 gap-1 px-2">
+                          {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                          {isFullscreen ? (isHindi ? "बाहर" : "Exit") : (isHindi ? "पूर्ण" : "Full")}
+                        </Button>
+                        <span className="inline-flex items-center gap-1 text-sm text-slate-500">
+                          <Clock className="h-4 w-4" />
+                          Ref {currentQuestion ? Math.round(estimateReferenceTime(currentQuestion)) : 0}s
+                        </span>
+                      </div>
                     </div>
                     <CardTitle className="text-xl leading-relaxed">
-                      {language === "hi"
+                      {isHindi
                         ? currentQuestion?.questionHindi || currentQuestion?.question
                         : currentQuestion?.question || currentQuestion?.questionHindi}
                     </CardTitle>
-                    {language === "hi" && currentQuestion?.questionHindi && (
-                      <CardDescription className="text-base">{currentQuestion.question}</CardDescription>
+                    {currentQuestion && (
+                      <CardDescription className="text-base">
+                        {isHindi
+                          ? currentQuestion.questionHindi && currentQuestion.question
+                          : currentQuestion.questionHindi || ""}
+                      </CardDescription>
                     )}
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid gap-3">
                       {(currentQuestion?.options || []).map((option, index) => {
                         const label =
-                          language === "hi"
+                          isHindi
                             ? currentQuestion?.optionsHindi?.[index] || option
                             : option || currentQuestion?.optionsHindi?.[index];
+                        const secondaryLabel =
+                          isHindi && currentQuestion?.optionsHindi?.[index]
+                            ? option
+                            : !isHindi
+                              ? currentQuestion?.optionsHindi?.[index] || ""
+                              : "";
                         const selected = selectedOptionIndex === index;
                         return (
                           <button
@@ -1061,6 +1125,9 @@ const AdaptiveTest: React.FC = () => {
                           >
                             <span className="mr-3 font-semibold">{String.fromCharCode(65 + index)}.</span>
                             <span>{label}</span>
+                            {secondaryLabel && secondaryLabel !== label && (
+                              <span className="mt-1 block pl-7 text-sm text-slate-500">{secondaryLabel}</span>
+                            )}
                           </button>
                         );
                       })}
@@ -1308,14 +1375,25 @@ const AdaptiveTest: React.FC = () => {
                         <div>
                           <p className="font-semibold text-slate-900">
                             <span className="mr-1 text-blue-600">Q{index + 1}.</span>
-                            {item.questionHindi || item.question}
+                            {isHindi ? item.questionHindi || item.question : item.question || item.questionHindi}
                           </p>
-                          {item.questionHindi && <p className="mt-1 text-sm text-slate-600">{item.question}</p>}
+                          {isHindi && item.questionHindi && item.question && (
+                            <p className="mt-1 text-sm text-slate-600">{item.question}</p>
+                          )}
+                          {!isHindi && item.questionHindi && (
+                            <p className="mt-1 text-sm text-slate-600">{item.questionHindi}</p>
+                          )}
                         </div>
                       </div>
                       <div className="grid gap-2 md:grid-cols-2">
                         {item.options.map((option, optionIndex) => {
-                          const label = item.optionsHindi?.[optionIndex] || option;
+                          const label = isHindi ? item.optionsHindi?.[optionIndex] || option : option || item.optionsHindi?.[optionIndex];
+                          const secondaryLabel =
+                            isHindi && item.optionsHindi?.[optionIndex]
+                              ? option
+                              : !isHindi
+                                ? item.optionsHindi?.[optionIndex] || ""
+                                : "";
                           const isSelected = item.selectedOptionIndex === optionIndex;
                           const isCorrect = item.correctAnswerIndex === optionIndex;
                           return (
@@ -1330,13 +1408,16 @@ const AdaptiveTest: React.FC = () => {
                               }`}
                             >
                               {String.fromCharCode(65 + optionIndex)}. {label}
+                              {secondaryLabel && secondaryLabel !== label && (
+                                <span className="mt-1 block text-xs opacity-80">{secondaryLabel}</span>
+                              )}
                             </div>
                           );
                         })}
                       </div>
                       {(item.explanationHindi || item.explanation) && (
                         <p className="mt-3 rounded-md bg-slate-50 p-3 text-sm text-slate-700">
-                          {item.explanationHindi || item.explanation}
+                          {isHindi ? item.explanationHindi || item.explanation : item.explanation || item.explanationHindi}
                         </p>
                       )}
                       <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
