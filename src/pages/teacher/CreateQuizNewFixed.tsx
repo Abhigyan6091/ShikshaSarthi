@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import TagSelect from '@/components/TagSelect';
-import { ArrowLeft, BookOpen, CheckCircle, ChevronRight, FolderOpen, Loader2, Plus, Search } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle, ChevronRight, FolderOpen, Languages, Loader2, Plus, Search } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -24,11 +24,13 @@ type McqStep = 'class' | 'subject' | 'topic' | 'questions';
 interface QuestionChoice {
   _id: string;
   question: string;
+  questionHindi?: string;
   subject?: string;
   class?: string;
   topic?: string;
   type: SlotType | 'custom';
   options?: string[];
+  optionsHindi?: string[];
   correctAnswer?: string;
   parentVideoId?: string;
   questionIndex?: number;
@@ -59,6 +61,11 @@ const resolveTeacherId = () => {
 };
 
 const asString = (value: unknown, fallback = '') => typeof value === 'string' ? value : fallback;
+
+const cleanText = (value: unknown) => {
+  const text = typeof value === 'string' ? value.trim() : '';
+  return text && text.toUpperCase() !== 'NA' ? text : '';
+};
 
 const asRecordArray = (value: unknown): ApiRecord[] => Array.isArray(value)
   ? value.filter((item): item is ApiRecord => Boolean(item) && typeof item === 'object' && !Array.isArray(item))
@@ -91,6 +98,7 @@ const emptyCustom = {
 
 const CreateQuizNewFixed: React.FC = () => {
   const { toast } = useToast();
+  const [language, setLanguage] = useState(() => localStorage.getItem('appLanguage') || 'hi');
   const [config, setConfig] = useState({
     quizId: '',
     timeLimit: 60,
@@ -122,6 +130,40 @@ const CreateQuizNewFixed: React.FC = () => {
   const [selectedTopic, setSelectedTopic] = useState('');
   const [customSubjects, setCustomSubjects] = useState<string[]>([]);
   const [customTopics, setCustomTopics] = useState<string[]>([]);
+  const isHindi = language === 'hi';
+  const getPrimaryText = (english?: unknown, hindi?: unknown, fallback = '') =>
+    isHindi ? cleanText(hindi) || cleanText(english) || fallback : cleanText(english) || cleanText(hindi) || fallback;
+  const getSecondaryText = (english?: unknown, hindi?: unknown) =>
+    isHindi ? cleanText(english) : cleanText(hindi);
+
+  useEffect(() => {
+    const handleLanguageChange = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      setLanguage(detail?.language || localStorage.getItem('appLanguage') || 'hi');
+    };
+    window.addEventListener('appLanguageChanged', handleLanguageChange);
+    return () => window.removeEventListener('appLanguageChanged', handleLanguageChange);
+  }, []);
+
+  const toggleLanguage = () => {
+    const nextLanguage = isHindi ? 'en' : 'hi';
+    setLanguage(nextLanguage);
+    localStorage.setItem('appLanguage', nextLanguage);
+    window.dispatchEvent(new CustomEvent('appLanguageChanged', { detail: { language: nextLanguage } }));
+  };
+
+  const renderChoiceText = (choice: Pick<QuestionChoice, 'question' | 'questionHindi'> | null | undefined, fallback = 'Select question') => {
+    const primary = getPrimaryText(choice?.question, choice?.questionHindi, fallback);
+    const secondary = getSecondaryText(choice?.question, choice?.questionHindi);
+    return (
+      <>
+        <span className="block">{primary}</span>
+        {secondary && secondary !== primary && (
+          <span className="mt-1 block text-xs font-normal text-muted-foreground">{secondary}</span>
+        )}
+      </>
+    );
+  };
 
   // Class -> Subject -> Topic options for the inline custom-question form.
   useEffect(() => {
@@ -182,11 +224,13 @@ const CreateQuizNewFixed: React.FC = () => {
   const mapMcq = (question: ApiRecord): QuestionChoice => ({
     _id: asString(question._id),
     question: asString(question.question, 'MCQ question'),
+    questionHindi: asString(question.questionHindi),
     subject: asString(question.subject),
     class: asString(question.class),
     topic: asString(question.topic),
     type: 'mcq',
     options: Array.isArray(question.options) ? question.options.map(String) : [],
+    optionsHindi: Array.isArray(question.optionsHindi) ? question.optionsHindi.map(String) : [],
     correctAnswer: asString(question.correctAnswer),
   });
 
@@ -229,11 +273,13 @@ const CreateQuizNewFixed: React.FC = () => {
         mapped = asRecordArray(response.data).map((question) => ({
           _id: asString(question._id),
           question: asString(question.question) || asString(question.title, 'Audio question'),
+          questionHindi: asString(question.questionHindi),
           subject: asString(question.subject),
           class: asString(question.class),
           topic: asString(question.topic),
           type: 'audio',
           options: Array.isArray(question.options) ? question.options.map(String) : [],
+          optionsHindi: Array.isArray(question.optionsHindi) ? question.optionsHindi.map(String) : [],
           correctAnswer: asString(question.correctAnswer),
         }));
       } else if (slot.type === 'video') {
@@ -246,11 +292,13 @@ const CreateQuizNewFixed: React.FC = () => {
               parentVideoId: asString(video._id),
               questionIndex: index,
               question: asString(question.question) || asString(video.videoTitle, 'Video question'),
+              questionHindi: asString(question.questionHindi),
               subject: asString(video.subject),
               class: asString(video.class),
               topic: asString(video.topic),
               type: 'video' as SlotType,
               options: Array.isArray(question.options) ? question.options.map(String) : [],
+              optionsHindi: Array.isArray(question.optionsHindi) ? question.optionsHindi.map(String) : [],
               correctAnswer: asString(question.correctAnswer),
             }));
           }
@@ -387,7 +435,15 @@ const CreateQuizNewFixed: React.FC = () => {
     const value = query.trim().toLowerCase();
     if (!value) return choices;
     return choices.filter((choice) =>
-      [choice.question, choice.subject, choice.topic, choice.class].filter(Boolean).some((field) => String(field).toLowerCase().includes(value))
+      [
+        choice.question,
+        choice.questionHindi,
+        choice.subject,
+        choice.topic,
+        choice.class,
+        ...(choice.options || []),
+        ...(choice.optionsHindi || []),
+      ].filter(Boolean).some((field) => String(field).toLowerCase().includes(value))
     );
   }, [choices, query]);
 
@@ -516,7 +572,7 @@ const CreateQuizNewFixed: React.FC = () => {
                           <span className="rounded bg-blue-50 px-2 py-1 text-xs font-semibold uppercase text-blue-700">{slot.type}</span>
                           {slot.question ? <CheckCircle className="h-5 w-5 text-green-600" /> : null}
                         </div>
-                        <p className="line-clamp-3 text-sm font-medium">{slot.question?.question || 'Select question'}</p>
+                        <p className="line-clamp-4 text-sm font-medium">{renderChoiceText(slot.question)}</p>
                       </button>
                     ))}
                   </div>
@@ -547,11 +603,16 @@ const CreateQuizNewFixed: React.FC = () => {
                     ? 'Select MCQ Question'
                     : `Select ${selectedSlotType} Question`}
               </DialogTitle>
-              {isMcq && !showCustomForm && (
-                <Button size="sm" variant="outline" onClick={openCustomForm}>
-                  <Plus className="mr-1 h-4 w-4" /> Add custom question
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button size="sm" variant="outline" onClick={toggleLanguage}>
+                  <Languages className="mr-1 h-4 w-4" /> {isHindi ? 'English' : 'हिंदी'}
                 </Button>
-              )}
+                {isMcq && !showCustomForm && (
+                  <Button size="sm" variant="outline" onClick={openCustomForm}>
+                    <Plus className="mr-1 h-4 w-4" /> Add custom question
+                  </Button>
+                )}
+              </div>
             </div>
           </DialogHeader>
 
@@ -677,7 +738,7 @@ const CreateQuizNewFixed: React.FC = () => {
                     <div className="space-y-2">
                       {filteredChoices.slice(0, 300).map((choice) => (
                         <button key={choice._id} onClick={() => selectChoice(choice)} className="w-full rounded-md border bg-white p-3 text-left hover:bg-blue-50">
-                          <p className="font-medium">{choice.question}</p>
+                          <p className="font-medium">{renderChoiceText(choice, 'Question')}</p>
                           <p className="mt-1 text-xs text-muted-foreground">
                             {[choice.subject, choice.class ? `Class ${choice.class}` : '', choice.topic].filter(Boolean).join(' | ')}
                           </p>
@@ -703,7 +764,7 @@ const CreateQuizNewFixed: React.FC = () => {
                 <div className="space-y-2">
                   {filteredChoices.slice(0, 200).map((choice) => (
                     <button key={choice._id} onClick={() => selectChoice(choice)} className="w-full rounded-md border bg-white p-3 text-left hover:bg-blue-50">
-                      <p className="font-medium">{choice.question}</p>
+                      <p className="font-medium">{renderChoiceText(choice, 'Question')}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {[choice.subject, choice.class ? `Class ${choice.class}` : '', choice.topic].filter(Boolean).join(' | ')}
                       </p>

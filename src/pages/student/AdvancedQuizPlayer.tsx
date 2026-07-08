@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Volume2, Video, BookOpen, Puzzle, ChevronLeft, ChevronRight, Flag, CheckCircle } from 'lucide-react';
+import { Clock, Volume2, Video, BookOpen, Puzzle, ChevronLeft, ChevronRight, Flag, CheckCircle, Languages } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import axios from 'axios';
 import EmbeddableMemoryMatch from '@/components/puzzles/EmbeddableMemoryMatch';
@@ -99,6 +99,7 @@ const AdvancedQuizPlayer: React.FC = () => {
   const [proctoringState, setProctoringState] = useState<ProctoringState>(defaultProctoringState);
   const [fullscreenRequired, setFullscreenRequired] = useState(false);
   const [browserSupportsStrictProctoring, setBrowserSupportsStrictProctoring] = useState(true);
+  const [language, setLanguage] = useState(() => localStorage.getItem('appLanguage') || 'hi');
   
   // Puzzle results tracking — maps questionId to puzzle result data
   const [puzzleResults, setPuzzleResults] = useState<{[key: string]: any}>({});
@@ -128,6 +129,22 @@ const AdvancedQuizPlayer: React.FC = () => {
   const SERVER_DRAFT_SYNC_INTERVAL_SECONDS = 10 * 60;
   const INITIAL_SERVER_DRAFT_SYNC_DELAY_SECONDS = 20;
   const LOCAL_DRAFT_TIME_CHECKPOINT_SECONDS = 30;
+
+  const isHindi = language === 'hi';
+  const cleanText = (value: unknown) => {
+    const text = typeof value === 'string' ? value.trim() : '';
+    return text && text.toUpperCase() !== 'NA' ? text : '';
+  };
+  const getPrimaryText = (english?: unknown, hindi?: unknown, fallback = '') =>
+    isHindi ? cleanText(hindi) || cleanText(english) || fallback : cleanText(english) || cleanText(hindi) || fallback;
+  const getSecondaryText = (english?: unknown, hindi?: unknown) =>
+    isHindi ? cleanText(english) : cleanText(hindi);
+  const toggleLanguage = () => {
+    const nextLanguage = isHindi ? 'en' : 'hi';
+    setLanguage(nextLanguage);
+    localStorage.setItem('appLanguage', nextLanguage);
+    window.dispatchEvent(new CustomEvent('appLanguageChanged', { detail: { language: nextLanguage } }));
+  };
 
   const createDraftSnapshot = () => {
     if (!quizInfo || !studentId) {
@@ -220,6 +237,15 @@ const AdvancedQuizPlayer: React.FC = () => {
     const userAgent = navigator.userAgent.toLowerCase();
     const isFirefox = userAgent.includes('firefox');
     setBrowserSupportsStrictProctoring(!isFirefox);
+  }, []);
+
+  useEffect(() => {
+    const handleLanguageChange = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      setLanguage(detail?.language || localStorage.getItem('appLanguage') || 'hi');
+    };
+    window.addEventListener('appLanguageChanged', handleLanguageChange);
+    return () => window.removeEventListener('appLanguageChanged', handleLanguageChange);
   }, []);
 
   useEffect(() => {
@@ -1116,33 +1142,49 @@ const AdvancedQuizPlayer: React.FC = () => {
     if (!data) {
       return <div className="p-4 text-red-600">Error: MCQ data not loaded</div>;
     }
+    const questionText = getPrimaryText(data.question, data.questionHindi, 'Question not available');
+    const secondaryQuestion = getSecondaryText(data.question, data.questionHindi);
+    const options = Array.isArray(data.options) ? data.options : [];
+    const optionsHindi = Array.isArray(data.optionsHindi) ? data.optionsHindi : [];
 
     return (
       <div className="space-y-4">
         <div className="p-4 bg-blue-50 rounded-lg">
-          <h3 className="text-lg font-semibold mb-2">{data.question || 'Question not available'}</h3>
+          <h3 className="text-lg font-semibold mb-2">{questionText}</h3>
+          {secondaryQuestion && secondaryQuestion !== questionText && (
+            <p className="mb-2 text-sm text-gray-600">{secondaryQuestion}</p>
+          )}
           {data.questionImage && (
             <img src={data.questionImage} alt="Question" className="max-w-full h-auto rounded mt-2" />
           )}
         </div>
         <div className="space-y-2">
-          {data.options && data.options.length > 0 ? (
-            data.options.map((option: string, index: number) => (
-              <button
-                key={index}
-                onClick={() => handleAnswerSelect(option)}
-                className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
-                  selectedAnswer === option
-                    ? 'border-blue-500 bg-blue-100'
-                    : 'border-gray-200 hover:border-blue-300'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="font-semibold">{String.fromCharCode(65 + index)}.</span>
-                  <span>{option}</span>
-                </div>
-              </button>
-            ))
+          {options.length > 0 ? (
+            options.map((option: string, index: number) => {
+              const label = getPrimaryText(option, optionsHindi[index], option);
+              const secondaryLabel = getSecondaryText(option, optionsHindi[index]);
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleAnswerSelect(option)}
+                  className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
+                    selectedAnswer === option
+                      ? 'border-blue-500 bg-blue-100'
+                      : 'border-gray-200 hover:border-blue-300'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="font-semibold">{String.fromCharCode(65 + index)}.</span>
+                    <span>
+                      <span>{label}</span>
+                      {secondaryLabel && secondaryLabel !== label && (
+                        <span className="mt-1 block text-sm text-gray-500">{secondaryLabel}</span>
+                      )}
+                    </span>
+                  </div>
+                </button>
+              );
+            })
           ) : (
             <div className="p-4 text-gray-600">No options available</div>
           )}
@@ -1165,6 +1207,10 @@ const AdvancedQuizPlayer: React.FC = () => {
     if (!data) {
       return <div className="p-4 text-red-600">Error: Audio question data not loaded</div>;
     }
+    const questionText = getPrimaryText(data.question, data.questionHindi, 'Question not available');
+    const secondaryQuestion = getSecondaryText(data.question, data.questionHindi);
+    const options = Array.isArray(data.options) ? data.options : [];
+    const optionsHindi = Array.isArray(data.optionsHindi) ? data.optionsHindi : [];
 
     return (
       <div className="space-y-4">
@@ -1185,29 +1231,41 @@ const AdvancedQuizPlayer: React.FC = () => {
               ⚠️ Audio file not available
             </div>
           )}
-          <h3 className="text-lg font-semibold mb-2">{data.question || 'Question not available'}</h3>
+          <h3 className="text-lg font-semibold mb-2">{questionText}</h3>
+          {secondaryQuestion && secondaryQuestion !== questionText && (
+            <p className="mb-2 text-sm text-gray-600">{secondaryQuestion}</p>
+          )}
           {data.questionImage && (
             <img src={data.questionImage} alt="Question" className="max-w-full h-auto rounded mt-2" />
           )}
         </div>
         <div className="space-y-2">
-          {data.options && data.options.length > 0 ? (
-            data.options.map((option: string, index: number) => (
-              <button
-                key={index}
-                onClick={() => handleAnswerSelect(option)}
-                className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
-                  selectedAnswer === option
-                    ? 'border-green-500 bg-green-100'
-                    : 'border-gray-200 hover:border-green-300'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="font-semibold">{String.fromCharCode(65 + index)}.</span>
-                  <span>{option}</span>
-                </div>
-              </button>
-            ))
+          {options.length > 0 ? (
+            options.map((option: string, index: number) => {
+              const label = getPrimaryText(option, optionsHindi[index], option);
+              const secondaryLabel = getSecondaryText(option, optionsHindi[index]);
+              return (
+                <button
+                  key={index}
+                  onClick={() => handleAnswerSelect(option)}
+                  className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
+                    selectedAnswer === option
+                      ? 'border-green-500 bg-green-100'
+                      : 'border-gray-200 hover:border-green-300'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="font-semibold">{String.fromCharCode(65 + index)}.</span>
+                    <span>
+                      <span>{label}</span>
+                      {secondaryLabel && secondaryLabel !== label && (
+                        <span className="mt-1 block text-sm text-gray-500">{secondaryLabel}</span>
+                      )}
+                    </span>
+                  </div>
+                </button>
+              );
+            })
           ) : (
             <div className="p-4 text-gray-600">No options available</div>
           )}
@@ -1398,26 +1456,44 @@ const AdvancedQuizPlayer: React.FC = () => {
         {currentQuestion ? (
           <>
             <div className="p-4 bg-white rounded-lg border">
-              <h3 className="text-lg font-semibold mb-2">{currentQuestion.question}</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                {getPrimaryText(currentQuestion.question, currentQuestion.questionHindi, 'Question not available')}
+              </h3>
+              {getSecondaryText(currentQuestion.question, currentQuestion.questionHindi) &&
+                getSecondaryText(currentQuestion.question, currentQuestion.questionHindi) !== getPrimaryText(currentQuestion.question, currentQuestion.questionHindi, 'Question not available') && (
+                <p className="text-sm text-gray-600">
+                  {getSecondaryText(currentQuestion.question, currentQuestion.questionHindi)}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               {currentQuestion.options && currentQuestion.options.length > 0 ? (
-                currentQuestion.options.map((option: string, index: number) => (
-                  <button
-                    key={index}
-                    onClick={() => handleAnswerSelect(option)}
-                    className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
-                      selectedAnswer === option
-                        ? 'border-purple-500 bg-purple-100'
-                        : 'border-gray-200 hover:border-purple-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold">{String.fromCharCode(65 + index)}.</span>
-                      <span>{option}</span>
-                    </div>
-                  </button>
-                ))
+                currentQuestion.options.map((option: string, index: number) => {
+                  const optionHindi = Array.isArray(currentQuestion.optionsHindi) ? currentQuestion.optionsHindi[index] : '';
+                  const label = getPrimaryText(option, optionHindi, option);
+                  const secondaryLabel = getSecondaryText(option, optionHindi);
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleAnswerSelect(option)}
+                      className={`w-full p-4 text-left rounded-lg border-2 transition-all ${
+                        selectedAnswer === option
+                          ? 'border-purple-500 bg-purple-100'
+                          : 'border-gray-200 hover:border-purple-300'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className="font-semibold">{String.fromCharCode(65 + index)}.</span>
+                        <span>
+                          <span>{label}</span>
+                          {secondaryLabel && secondaryLabel !== label && (
+                            <span className="mt-1 block text-sm text-gray-500">{secondaryLabel}</span>
+                          )}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
               ) : (
                 <div className="p-4 text-gray-600">No options available</div>
               )}
@@ -1977,6 +2053,10 @@ const AdvancedQuizPlayer: React.FC = () => {
               <span className="text-base sm:text-xl">Question {currentIndex + 1} of {questions.length}</span>
             </CardTitle>
             <div className="flex items-center gap-3 self-start sm:self-auto">
+              <Button type="button" variant="outline" onClick={toggleLanguage} className="gap-2">
+                <Languages className="h-4 w-4" />
+                {isHindi ? 'English' : 'हिंदी'}
+              </Button>
               <Badge variant={timeRemaining < 60 ? 'destructive' : 'default'} className="text-base sm:text-lg px-3 sm:px-4 py-2">
                 <Clock className="h-4 w-4 mr-2" />
                 {formatTime(timeRemaining)}
