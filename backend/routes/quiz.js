@@ -5,6 +5,8 @@ const Quiz = require("../models/Quiz");
 const Teacher = require("../models/Teacher"); // adjust the path as needed
 const Question = require("../models/Question");
 const StudentReport = require("../models/StudentReport");
+const Student = require("../models/Student");
+const Class = require("../models/Class");
 const adaptiveTestRoutes = require("./adaptiveTest");
 
 router.use("/adaptive-test", adaptiveTestRoutes);
@@ -47,6 +49,46 @@ const serializeDraftFromStudentReport = (reportDoc) => ({
   updatedAt: reportDoc.updatedAt,
 });
 
+async function getStudentClassIds(studentId) {
+  const student = await Student.findOne({ studentId }).lean();
+  if (!student) return [];
+
+  const classDocs = await Class.find({
+    $or: [
+      { students: student.studentId },
+      { classId: { $in: student.classes || [] } },
+    ],
+  }).select("classId").lean();
+
+  return [...new Set([
+    ...(student.classes || []).map(String),
+    ...classDocs.map((classDoc) => String(classDoc.classId)),
+  ])];
+}
+
+function quizIsAvailableToStudent(quiz, classIds) {
+  const audienceType = quiz?.audience?.type || "global";
+  if (audienceType === "global") return true;
+  const allowedClassIds = (quiz?.audience?.classIds || []).map(String);
+  return allowedClassIds.some((classId) => classIds.includes(classId));
+}
+
+function normalizeQuizPayload(payload) {
+  const next = { ...(payload || {}) };
+  const requestedAudience = next.audience || {};
+  const requestedType = requestedAudience.type === "classes" ? "classes" : "global";
+  const classIds = Array.isArray(requestedAudience.classIds)
+    ? requestedAudience.classIds.map(String).filter(Boolean)
+    : [];
+
+  next.audience = {
+    type: requestedType === "classes" && classIds.length ? "classes" : "global",
+    classIds: requestedType === "classes" ? classIds : [],
+  };
+
+  return next;
+}
+
 
 // Create a new quiz
 router.post("/", async (req, res) => {
@@ -60,7 +102,7 @@ router.post("/", async (req, res) => {
     }
 
     // Create and save the quiz
-    const quiz = new Quiz(req.body);
+    const quiz = new Quiz(normalizeQuizPayload(req.body));
     await quiz.save();
 
     // Add quiz ID to teacher's quizzesCreated array
@@ -86,6 +128,49 @@ router.get("/", async (req, res) => {
         console.log(`Question populate skipped for quiz ${quiz.quizId} (mixed ID types)`);
       }
     }
+    res.status(200).json(quizzes);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Specific quiz lookup routes must stay above /:id.
+router.get("/by-id/:quizId", async (req, res) => {
+  try {
+    const quiz = await Quiz.findOne({ quizId: req.params.quizId });
+    if (!quiz) return res.status(404).json({ message: "Quiz not found" });
+    res.status(200).json(quiz);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/by-id/:quizId/student/:studentId", async (req, res) => {
+  try {
+    const quiz = await Quiz.findOne({ quizId: req.params.quizId });
+    if (!quiz) return res.status(404).json({ message: "Quiz not found" });
+
+    const classIds = await getStudentClassIds(req.params.studentId);
+    if (!quizIsAvailableToStudent(quiz, classIds)) {
+      return res.status(403).json({ message: "This quiz is not assigned to your class." });
+    }
+
+    res.status(200).json(quiz);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/student/:studentId/available", async (req, res) => {
+  try {
+    const classIds = await getStudentClassIds(req.params.studentId);
+    const quizzes = await Quiz.find({
+      $or: [
+        { "audience.type": "global" },
+        { "audience.classIds": { $in: classIds } },
+        { audience: { $exists: false } },
+      ],
+    }).sort({ startTime: -1, createdAt: -1 });
     res.status(200).json(quizzes);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -271,7 +356,7 @@ router.post("/create", async (req, res) => {
     }
 
     // Create and save the quiz
-    const quiz = new Quiz(req.body);
+    const quiz = new Quiz(normalizeQuizPayload(req.body));
     await quiz.save();
 
     // Add quiz ID to teacher's quizzesCreated array

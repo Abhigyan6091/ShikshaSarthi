@@ -27,6 +27,10 @@ interface QuizInfo {
   startTime: string;
   endTime: string;
   questions: string[];
+  audience?: {
+    type?: 'global' | 'classes';
+    classIds?: string[];
+  };
 }
 
 const TakeAdvancedQuiz: React.FC = () => {
@@ -196,11 +200,20 @@ const TakeAdvancedQuiz: React.FC = () => {
       // SECOND: Load the quiz (try advanced format first, fall back to simple)
       let quiz;
       try {
-        const response = await axios.get(`${API_URL}/quizzes/by-id/${quizId}`);
+        const response = await axios.get(`${API_URL}/quizzes/by-id/${quizId}/student/${studentId}`);
         quiz = response.data;
       } catch {
         const response = await axios.get(`${API_URL}/quizzes/${quizId}`);
         quiz = response.data;
+        if (quiz?.audience?.type === 'classes') {
+          toast({
+            title: "Quiz Not Assigned",
+            description: "This quiz is available only to selected classes.",
+            variant: "destructive"
+          });
+          setLoading(false);
+          return;
+        }
       }
 
       // Normalize simple quiz to advanced quiz format

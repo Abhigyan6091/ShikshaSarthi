@@ -60,6 +60,13 @@ const resolveTeacherId = () => {
   return teacher?.teacherId || teacher?._id || '';
 };
 
+const resolveTeacherSession = () => {
+  const fromCookie = unwrapTeacher(Cookies.get('teacher') || null);
+  const fromTeacherStorage = unwrapTeacher(localStorage.getItem('teacher'));
+  const fromCurrentUser = unwrapTeacher(localStorage.getItem('currentUser'));
+  return fromCookie || fromTeacherStorage || fromCurrentUser;
+};
+
 const asString = (value: unknown, fallback = '') => typeof value === 'string' ? value : fallback;
 
 const cleanText = (value: unknown) => {
@@ -130,6 +137,9 @@ const CreateQuizNewFixed: React.FC = () => {
   const [selectedTopic, setSelectedTopic] = useState('');
   const [customSubjects, setCustomSubjects] = useState<string[]>([]);
   const [customTopics, setCustomTopics] = useState<string[]>([]);
+  const [teacherClasses, setTeacherClasses] = useState<ApiRecord[]>([]);
+  const [audienceType, setAudienceType] = useState<'global' | 'classes'>('global');
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const isHindi = language === 'hi';
   const getPrimaryText = (english?: unknown, hindi?: unknown, fallback = '') =>
     isHindi ? cleanText(hindi) || cleanText(english) || fallback : cleanText(english) || cleanText(hindi) || fallback;
@@ -196,6 +206,15 @@ const CreateQuizNewFixed: React.FC = () => {
   }, [customDraft.class, customDraft.subject, mcqRecords]);
 
   const totalQuestions = config.mcqCount + config.audioCount + config.videoCount + config.puzzleCount;
+
+  useEffect(() => {
+    const teacher = resolveTeacherSession();
+    const teacherId = teacher?.teacherId || teacher?._id || '';
+    if (!teacherId) return;
+    axios.get(`${API_URL}/classes/teacher/${teacherId}`)
+      .then((response) => setTeacherClasses(asRecordArray(response.data)))
+      .catch((error) => console.error('Could not load teacher classes:', error));
+  }, []);
 
   const updateCount = (field: CountField, value: number) => {
     setConfig((prev) => ({ ...prev, [field]: Math.max(0, value || 0) }));
@@ -453,6 +472,10 @@ const CreateQuizNewFixed: React.FC = () => {
       toast({ title: 'Teacher not found', description: 'Please login again.', variant: 'destructive' });
       return;
     }
+    if (audienceType === 'classes' && selectedClassIds.length === 0) {
+      toast({ title: 'Select classes', description: 'Choose at least one class or switch availability to Global.', variant: 'destructive' });
+      return;
+    }
     const missing = slots.filter((slot) => !slot.question);
     if (!slots.length || missing.length) {
       toast({ title: 'Incomplete quiz', description: `${missing.length || totalQuestions} slots still need questions.`, variant: 'destructive' });
@@ -488,12 +511,18 @@ const CreateQuizNewFixed: React.FC = () => {
           video: slots.filter((slot) => slot.type === 'video').length,
           puzzle: slots.filter((slot) => slot.type === 'puzzle').length,
         },
+        audience: {
+          type: audienceType,
+          classIds: audienceType === 'classes' ? selectedClassIds : [],
+        },
         startTime: config.startTime,
         endTime: config.endTime,
       });
       toast({ title: 'Quiz created', description: `${config.quizId} was created successfully.` });
       setSlots([]);
       setConfig({ quizId: '', timeLimit: 60, mcqCount: 0, audioCount: 0, videoCount: 0, puzzleCount: 0, startTime: '', endTime: '' });
+      setAudienceType('global');
+      setSelectedClassIds([]);
     } catch (error: unknown) {
       toast({ title: 'Quiz creation failed', description: getErrorMessage(error, 'Could not create quiz.'), variant: 'destructive' });
     } finally {
@@ -543,6 +572,37 @@ const CreateQuizNewFixed: React.FC = () => {
                 <div>
                   <Label>End Time</Label>
                   <Input type="datetime-local" value={config.endTime} onChange={(event) => setConfig((prev) => ({ ...prev, endTime: event.target.value }))} />
+                </div>
+                <div className="space-y-3 rounded-md border bg-white p-3">
+                  <Label>Quiz Availability</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" variant={audienceType === 'global' ? 'default' : 'outline'} onClick={() => setAudienceType('global')}>Global</Button>
+                    <Button type="button" variant={audienceType === 'classes' ? 'default' : 'outline'} onClick={() => setAudienceType('classes')}>Select Class</Button>
+                  </div>
+                  {audienceType === 'classes' && (
+                    <div className="max-h-44 space-y-2 overflow-y-auto rounded border bg-gray-50 p-2">
+                      {teacherClasses.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No classes found. Create classes first.</p>
+                      ) : teacherClasses.map((classDoc) => {
+                        const classId = asString(classDoc.classId);
+                        const checked = selectedClassIds.includes(classId);
+                        return (
+                          <label key={classId} className="flex cursor-pointer items-center gap-2 rounded bg-white p-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(event) => {
+                                setSelectedClassIds((prev) => event.target.checked
+                                  ? [...new Set([...prev, classId])]
+                                  : prev.filter((id) => id !== classId));
+                              }}
+                            />
+                            <span>Class {asString(classDoc.className)} - {asString(classDoc.subject)}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </CardContent>
               <CardFooter>

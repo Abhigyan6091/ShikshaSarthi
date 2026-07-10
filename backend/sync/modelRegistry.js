@@ -20,6 +20,8 @@ const FeedbackResponse = require("../models/FeedbackResponse");
 const StudentReport = require("../models/StudentReport");
 const QuizReport = require("../models/QuizReport");
 const VocabularyChapter = require("../models/VocabularyChapter");
+const ClassDocument = require("../models/ClassDocument");
+const ClassAnnouncement = require("../models/ClassAnnouncement");
 
 const SYNC_MODELS = {
   questions: Question,
@@ -44,6 +46,8 @@ const SYNC_MODELS = {
   studentReports: StudentReport,
   quizReports: QuizReport,
   vocabularyChapters: VocabularyChapter,
+  classDocuments: ClassDocument,
+  classAnnouncements: ClassAnnouncement,
 };
 
 const SYNC_COLLECTIONS = Object.keys(SYNC_MODELS);

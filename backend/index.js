@@ -61,6 +61,7 @@ const updateRoutes = require("./routes/updates");
 const phaseTwoUpdateRoutes = require("./routes/update");
 const backupRoutes = require("./routes/backup");
 const awsRoutes = require("./routes/aws");
+const notificationRoutes = require("./routes/notifications");
 const helmet = require("helmet");
 const { mongoSanitize, globalRateLimiter } = require("./middleware/security");
 
@@ -168,6 +169,7 @@ app.use("/api/updates", updateRoutes);
 app.use("/api/update", requireAuth("superadmin"), phaseTwoUpdateRoutes);
 app.use("/api/backup", requireAuth("superadmin"), backupRoutes);
 app.use("/api/aws", requireAuth("superadmin"), awsRoutes);
+app.use("/notifications", notificationRoutes);
 
 const frontendDistDir = process.env.FRONTEND_DIST_DIR
   ? path.resolve(process.env.FRONTEND_DIST_DIR)

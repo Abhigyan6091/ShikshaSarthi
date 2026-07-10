@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from '@/components/ui/use-toast';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { School, Users, GraduationCap, UserCog, PlusCircle, User, Phone, IdCard, Building, BookOpen, Key, Copy, Check, ArrowLeft, Mail, Shield, UserCheck, Trash2 } from 'lucide-react';
+import { School, Users, GraduationCap, UserCog, PlusCircle, User, Phone, IdCard, Building, BookOpen, Key, Copy, Check, ArrowLeft, Mail, Shield, UserCheck, Trash2, Database } from 'lucide-react';
 import axios from 'axios';
 import CloudUpdateControl from './CloudUpdateControl';
 import SyncStatusControl from './SyncStatusControl';
@@ -703,7 +703,7 @@ const SuperAdminDashboard: React.FC = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <Card className="border-2 border-edu-blue/20 hover:border-edu-blue/40 transition-colors">
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -735,6 +735,25 @@ const SuperAdminDashboard: React.FC = () => {
                 <Link to="/uploadquestion">
                   <Button variant="outline" className="w-full border-edu-purple text-edu-purple hover:bg-edu-purple/10">
                     Upload Questions
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-teal-500/20 hover:border-teal-500/40 transition-colors">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-xl mb-1">Question Bank Manager</CardTitle>
+                    <CardDescription>View and delete synced questions, topics, and subjects</CardDescription>
+                  </div>
+                  <Database className="h-8 w-8 text-teal-600" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Link to="/superadmin/question-bank">
+                  <Button variant="outline" className="w-full border-teal-600 text-teal-600 hover:bg-teal-50">
+                    Manage Question Bank
                   </Button>
                 </Link>
               </CardContent>

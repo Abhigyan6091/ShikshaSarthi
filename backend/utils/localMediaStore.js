@@ -9,6 +9,7 @@ const MEDIA_DIRECTORIES = {
   images: path.join(UPLOAD_ROOT, "images"),
   videos: path.join(UPLOAD_ROOT, "videos"),
   audios: path.join(UPLOAD_ROOT, "audios"),
+  documents: path.join(UPLOAD_ROOT, "documents"),
 };
 
 function ensureUploadDirectories() {
@@ -20,7 +21,7 @@ function ensureUploadDirectories() {
 
 function resolveMediaType(inputMediaType, mimeType = "") {
   const normalizedMediaType = String(inputMediaType || "").trim().toLowerCase();
-  if (["images", "videos", "audios"].includes(normalizedMediaType)) {
+  if (["images", "videos", "audios", "documents"].includes(normalizedMediaType)) {
     return normalizedMediaType;
   }
 
@@ -28,6 +29,15 @@ function resolveMediaType(inputMediaType, mimeType = "") {
   if (normalizedMime.startsWith("image/")) return "images";
   if (normalizedMime.startsWith("video/")) return "videos";
   if (normalizedMime.startsWith("audio/")) return "audios";
+  if (
+    normalizedMime === "application/pdf" ||
+    normalizedMime.includes("word") ||
+    normalizedMime.includes("presentation") ||
+    normalizedMime.includes("powerpoint") ||
+    normalizedMime.includes("officedocument")
+  ) {
+    return "documents";
+  }
 
   return "images";
 }
@@ -56,6 +66,11 @@ function guessExtension(fileName, mimeType = "") {
     "audio/mp3": ".mp3",
     "audio/wav": ".wav",
     "audio/ogg": ".ogg",
+    "application/pdf": ".pdf",
+    "application/msword": ".doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "application/vnd.ms-powerpoint": ".ppt",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
   };
 
   return mimeToExt[String(mimeType || "").toLowerCase()] || ".bin";

@@ -21,7 +21,8 @@ import {
   Wifi,
   WifiOff,
   Settings,
-  Languages
+  Languages,
+  Bell
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -128,6 +129,8 @@ const Header: React.FC = () => {
   const [studentId, setStudentId] = useState<string>('');
   const [language, setLanguage] = useState<string>(() => localStorage.getItem('appLanguage') || 'hi');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Array<{ id: string; title: string; message: string; link?: string; createdAt?: string }>>([]);
   const [isOnline, setIsOnline] = useState<boolean>(() => {
     if (typeof window === 'undefined') {
       return true;
@@ -180,6 +183,36 @@ const Header: React.FC = () => {
   useEffect(() => {
     readUserData();
   }, [refreshKey]);
+
+  useEffect(() => {
+    if (!userRole || !['teacher', 'student'].includes(userRole)) {
+      setNotifications([]);
+      return;
+    }
+
+    const currentUser = (() => {
+      try {
+        const parsed = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        const roleData = userRole === 'teacher'
+          ? JSON.parse(localStorage.getItem('teacher') || '{}')
+          : JSON.parse(localStorage.getItem('student') || '{}');
+        return roleData.teacher || roleData.student || parsed;
+      } catch {
+        return {};
+      }
+    })();
+
+    const identifier = userRole === 'teacher'
+      ? currentUser.teacherId || currentUser._id
+      : currentUser.studentId || studentId;
+
+    if (!identifier) return;
+
+    fetch(`${API_URL}/notifications/${userRole}/${encodeURIComponent(identifier)}`)
+      .then((response) => response.ok ? response.json() : { notifications: [] })
+      .then((data) => setNotifications(Array.isArray(data.notifications) ? data.notifications.slice(0, 20) : []))
+      .catch(() => setNotifications([]));
+  }, [userRole, studentId, refreshKey]);
 
   useEffect(() => {
     const handleUserDataChanged = () => {
@@ -265,6 +298,33 @@ const Header: React.FC = () => {
     </Avatar>
   );
 
+  const renderNotifications = () => (
+    <div className="relative">
+      <Button variant="ghost" size="sm" onClick={() => setNotificationsOpen((open) => !open)} className="relative">
+        <Bell className="h-4 w-4 mr-2" />
+        Notifications
+        {notifications.length > 0 && (
+          <span className="ml-2 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{notifications.length}</span>
+        )}
+      </Button>
+      {notificationsOpen && (
+        <div className="absolute right-0 z-50 mt-2 w-80 rounded-md border bg-white p-2 shadow-lg">
+          <div className="max-h-96 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <p className="p-3 text-sm text-muted-foreground">No notifications yet.</p>
+            ) : notifications.map((item) => (
+              <Link key={item.id} to={item.link || getDashboardPath()} onClick={() => setNotificationsOpen(false)} className="block rounded p-3 hover:bg-blue-50">
+                <p className="text-sm font-semibold">{item.title}</p>
+                <p className="line-clamp-2 text-xs text-muted-foreground">{item.message}</p>
+                {item.createdAt && <p className="mt-1 text-[11px] text-gray-400">{new Date(item.createdAt).toLocaleString()}</p>}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <header className="bg-white shadow">
       <div className="edu-container py-3 lg:py-4 flex items-center justify-between">
@@ -298,6 +358,8 @@ const Header: React.FC = () => {
                 <Languages className="h-4 w-4 mr-2" />
                 {language === 'hi' ? 'English' : 'हिंदी'}
               </Button>
+
+              {(userRole === 'teacher' || userRole === 'student') && renderNotifications()}
               
               {/* User Profile Button */}
               {userRole === 'student' && studentId ? (
@@ -411,6 +473,25 @@ const Header: React.FC = () => {
                       <Languages className="h-4 w-4 mr-2" />
                       {language === 'hi' ? 'Switch to English' : 'हिंदी में बदलें'}
                     </Button>
+
+                    {(userRole === 'teacher' || userRole === 'student') && (
+                      <div className="rounded-md border p-2">
+                        <div className="mb-2 flex items-center gap-2 px-1 text-sm font-semibold">
+                          <Bell className="h-4 w-4" />
+                          Notifications
+                        </div>
+                        {notifications.length === 0 ? (
+                          <p className="px-1 text-sm text-muted-foreground">No notifications yet.</p>
+                        ) : notifications.slice(0, 6).map((item) => (
+                          <SheetClose asChild key={item.id}>
+                            <Link to={item.link || getDashboardPath()} className="block rounded p-2 text-sm hover:bg-blue-50">
+                              <span className="block font-medium">{item.title}</span>
+                              <span className="line-clamp-2 text-xs text-muted-foreground">{item.message}</span>
+                            </Link>
+                          </SheetClose>
+                        ))}
+                      </div>
+                    )}
 
                     {userRole === 'student' && studentId && (
                       <SheetClose asChild>

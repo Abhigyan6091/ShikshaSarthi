@@ -26,6 +26,14 @@ const quizSchema = new mongoose.Schema({
     questionIndex: Number,
     questionText: String
   }],
+  audience: {
+    type: {
+      type: String,
+      enum: ["global", "classes"],
+      default: "global",
+    },
+    classIds: [{ type: String, ref: "Class" }],
+  },
   startTime: { type: Date }, // Contest start time
   endTime: { type: Date }, // Contest end time
   createdAt: { type: Date, default: Date.now },

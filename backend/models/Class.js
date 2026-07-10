@@ -7,6 +7,7 @@ const classSchema = new mongoose.Schema({
   teacherId: { type: String, ref: "Teacher", required: true },
   schoolId: { type: String, ref: "School", required: true },
   students: [{ type: String, ref: "Student" }],
+  description: { type: String, default: "" },
   createdAt: { type: Date, default: Date.now }
 });
 

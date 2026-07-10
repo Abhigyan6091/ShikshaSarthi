@@ -271,6 +271,45 @@ router.delete("/:id", requireAuth("superadmin"), async (req, res) => {
   }
 });
 
+router.delete("/topic/:className/:subject/:topic", requireAuth("superadmin"), async (req, res) => {
+  try {
+    const { className, subject, topic } = req.params;
+    const result = await Question.updateMany(
+      {
+        class: decodeURIComponent(className),
+        subject: decodeURIComponent(subject),
+        topic: decodeURIComponent(topic),
+      },
+      { $set: { isDeleted: true, synced: false, updatedAt: new Date() } }
+    );
+    res.status(200).json({
+      message: "Topic deleted successfully",
+      modifiedCount: result.modifiedCount || 0,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete("/subject/:className/:subject", requireAuth("superadmin"), async (req, res) => {
+  try {
+    const { className, subject } = req.params;
+    const result = await Question.updateMany(
+      {
+        class: decodeURIComponent(className),
+        subject: decodeURIComponent(subject),
+      },
+      { $set: { isDeleted: true, synced: false, updatedAt: new Date() } }
+    );
+    res.status(200).json({
+      message: "Subject deleted successfully",
+      modifiedCount: result.modifiedCount || 0,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get("/all/topics/:subject", async (req, res) => {
   try {
     const { subject } = req.params;

@@ -58,6 +58,7 @@ import LabQuiz from "./pages/student/experimentSimulation/LabQuiz";
 import ExperimentAnalytics from "./pages/student/experimentSimulation/ExperimentAnalytics";
 import GyanKiYatra from "./pages/student/GyanKiYatra";
 import AdaptiveTest from "./pages/student/AdaptiveTest";
+import MyClasses from "./pages/student/MyClasses";
 
 // Question Page
 import Upload_question from "./components/questions/Upload_question";
@@ -78,6 +79,7 @@ import TeacherProfile from "./pages/TeacherProfileFixed";
 
 // Admin Pages
 import SuperAdminDashboard from "./pages/superadmin/Dashboard";
+import SuperadminQuestionBankManagement from "./pages/superadmin/QuestionBankManagement";
 import SchoolAdminDashboard from "./pages/schooladmin/Dashboard";
 import SchoolAdminProfile from "./pages/schooladmin/Profile";
 import TeacherProfileView from "./pages/schooladmin/TeacherProfileView";
@@ -116,6 +118,7 @@ const AppRoutes = () => {
 
       {/* Admin Routes */}
       <Route path="/superadmin" element={<SuperAdminDashboard />} />
+      <Route path="/superadmin/question-bank" element={<SuperadminQuestionBankManagement />} />
       <Route path="/schooladmin" element={<SchoolAdminDashboard />} />
       <Route path="/schooladmin/profile" element={<SchoolAdminProfile />} />
       <Route path="/schooladmin/teacher-profile/:teacherId" element={<TeacherProfileView />} />
@@ -142,6 +145,7 @@ const AppRoutes = () => {
       <Route path="/student/experiments/:subject/quiz" element={<LabQuiz />} />
       <Route path="/student/practice" element={<StudentPractice />} />
       <Route path="/student/adaptive-test" element={<AdaptiveTest />} />
+      <Route path="/student/my-classes" element={<MyClasses />} />
       <Route path="/student/practice/:subject" element={<SubjectTopics />} />
       <Route path="/student/practice/vocab" element={<VocabularyQuizPage />} />
       <Route path="/student/practice/:subject/:topic" element={<PracticeQuiz />} />

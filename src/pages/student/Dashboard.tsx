@@ -382,6 +382,30 @@ const StudentDashboard: React.FC = () => {
               </CardFooter>
             </Card>
 
+            <Card className="group border-0 bg-white shadow-sm ring-1 ring-emerald-100 transition hover:-translate-y-1 hover:shadow-lg">
+              <CardHeader>
+                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white">
+                  <School className="h-6 w-6" />
+                </div>
+                <CardTitle>{isHindi ? "My Classes" : "My Classes"}</CardTitle>
+                <CardDescription>
+                  {isHindi ? "कक्षा announcements, documents और quizzes देखें" : "See class announcements, documents, and quizzes"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-500">
+                  {isHindi ? "आप जिन classes में enrolled हैं, उनका पूरा class work एक जगह देखें।" : "Open the classroom feed for the classes you are enrolled in."}
+                </p>
+              </CardContent>
+              <CardFooter>
+                <Link to="/student/my-classes" className="w-full">
+                  <Button variant="outline" className="w-full border-emerald-600 text-emerald-700 hover:bg-emerald-50">
+                    {isHindi ? "Classes खोलें" : "Open Classes"}
+                  </Button>
+                </Link>
+              </CardFooter>
+            </Card>
+
             <Card className="group border-0 bg-gradient-to-br from-cyan-600 to-blue-700 text-white shadow-md transition hover:-translate-y-1 hover:shadow-xl md:col-span-2 xl:col-span-1">
               <CardHeader>
                 <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 text-white">
