@@ -91,10 +91,16 @@ jobs:
         if: ${{ vars.AWS_SCHOOL_DATA_BUCKET != '' }}
         shell: bash
         run: |
+          SCOPE="${{ vars.AWS_SYNC_SCOPE || 'global' }}"
           node backend/scripts/buildSeedFromCloudSync.js \
             "${{ vars.AWS_SCHOOL_DATA_BUCKET }}" \
-            "${{ vars.AWS_SYNC_SCOPE || 'global' }}" \
+            "$SCOPE" \
             backend/data/school-seed.ejson
+          node backend/scripts/mergeQuestionBankIntoSeed.js backend/data/school-seed.ejson question_bank
+          node backend/scripts/prepareCloudSyncSeed.js backend/data/school-seed.ejson dist-release/cloud-sync-seed "$SCOPE"
+          aws s3 sync "dist-release/cloud-sync-seed/cloud-sync/$SCOPE/collections/" \
+            "s3://${{ vars.AWS_SCHOOL_DATA_BUCKET }}/cloud-sync/$SCOPE/collections/" \
+            --exclude "*" --include "*.json" --content-type "application/json"
           aws s3 cp backend/data/school-seed.ejson \
             "s3://${{ vars.AWS_SCHOOL_DATA_BUCKET }}/seeds/current/school-seed.ejson"
 

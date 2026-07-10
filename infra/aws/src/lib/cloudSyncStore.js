@@ -30,6 +30,17 @@ const DEFAULT_COLLECTIONS = [
   "classAnnouncements",
 ];
 
+function isMissingObjectError(error) {
+  const name = error && (error.name || error.Code || error.code);
+  const status = error && error.$metadata && error.$metadata.httpStatusCode;
+  const message = String(error && (error.message || error.errorMessage) || "");
+  return (
+    name === "NoSuchKey" ||
+    name === "NotFound" ||
+    (name === "AccessDenied" && status === 403 && message.includes("s3:ListBucket"))
+  );
+}
+
 function sanitizeScope(scope, schoolId) {
   const raw = String(scope || "global").trim();
   if (raw === "school") return `school-${sanitizeSchoolId(schoolId)}`;
@@ -66,8 +77,7 @@ async function readCollectionState({ bucket, scope, collectionName }) {
       updatedAt: parsed.updatedAt || null,
     };
   } catch (error) {
-    const name = error.name || error.Code || error.code;
-    if (name === "NoSuchKey" || name === "NotFound") {
+    if (isMissingObjectError(error)) {
       return { key, collectionName, records: [], updatedAt: null };
     }
     throw error;

@@ -29,6 +29,8 @@ const COLLECTION_NAME_MAP = {
   studentreports: "studentReports",
   quizreports: "quizReports",
   vocabularychapters: "vocabularyChapters",
+  classdocuments: "classDocuments",
+  classannouncements: "classAnnouncements",
 };
 
 function normalizeId(id) {

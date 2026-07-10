@@ -129,6 +129,12 @@ Resources:
               - !GetAtt SyncLogsTable.Arn
           - Effect: Allow
             Action:
+              - s3:ListBucket
+            Resource:
+              - !GetAtt ShikshaSchoolDataBucket.Arn
+              - !GetAtt ShikshaUpdatesBucket.Arn
+          - Effect: Allow
+            Action:
               - s3:GetObject
               - s3:PutObject
             Resource:

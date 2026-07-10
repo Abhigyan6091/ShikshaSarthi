@@ -13,7 +13,7 @@ const DATA_DIR = process.env.APP_STATE_DIR
   ? path.resolve(process.env.APP_STATE_DIR)
   : path.join(__dirname, "..", "data");
 const STATE_FILE = path.join(DATA_DIR, "aws-cloud-sync-state.json");
-const CLOUD_PULL_CURSOR_VERSION = 2;
+const CLOUD_PULL_CURSOR_VERSION = 3;
 
 function readState() {
   try {
@@ -105,52 +105,81 @@ async function pushPendingRecords({ collections, limit } = {}) {
 async function pullCloudRecords({ collections, limit, forceFull = false } = {}) {
   const state = readState();
   const needsCursorMigration = state.cloudPullCursorVersion !== CLOUD_PULL_CURSOR_VERSION;
-  const since = forceFull || needsCursorMigration ? null : state.lastCloudPullAt || null;
-  const pull = await request("/sync/pull", {
-    method: "POST",
-    timeoutMs: Number(process.env.AWS_SYNC_REQUEST_TIMEOUT_MS || 30000),
-    body: {
-      schoolId: appConfig.aws.schoolId,
-      nodeId: appConfig.aws.nodeId,
-      scope: cloudScope(),
-      appVersion: appConfig.version,
-      since,
-      limit: limit || Number(process.env.AWS_SYNC_PULL_LIMIT || 500),
-      collections,
-    },
-  });
+  const pageLimit = limit || Number(process.env.AWS_SYNC_PULL_LIMIT || 500);
+  const maxPages = Math.max(1, Math.min(Number(process.env.AWS_SYNC_PULL_MAX_PAGES || 20), 100));
+  let since = forceFull || needsCursorMigration ? null : state.lastCloudPullAt || null;
+  let totalDownloadedRecords = 0;
+  let lastPull = null;
+  let lastCursor = since;
+  const applied = {
+    summary: { received: 0, inserted: 0, updated: 0, skipped: 0, failed: 0 },
+    results: [],
+  };
 
-  if (!pull.ok) {
-    return {
-      ok: false,
-      downloadedRecords: 0,
-      applied: null,
-      pull,
-      error: pull.lastError || "Cloud sync pull failed",
-    };
-  }
+  for (let page = 0; page < maxPages; page += 1) {
+    const pull = await request("/sync/pull", {
+      method: "POST",
+      timeoutMs: Number(process.env.AWS_SYNC_REQUEST_TIMEOUT_MS || 30000),
+      body: {
+        schoolId: appConfig.aws.schoolId,
+        nodeId: appConfig.aws.nodeId,
+        scope: cloudScope(),
+        appVersion: appConfig.version,
+        since,
+        limit: pageLimit,
+        collections,
+      },
+    });
 
-  const downloadedRecords = pull.data?.totalRecords || 0;
-  const applied = downloadedRecords > 0
-    ? await applyUploadedChanges(
+    lastPull = pull;
+
+    if (!pull.ok) {
+      return {
+        ok: false,
+        downloadedRecords: totalDownloadedRecords,
+        applied,
+        pull,
+        error: pull.lastError || "Cloud sync pull failed",
+      };
+    }
+
+    const downloadedRecords = pull.data?.totalRecords || 0;
+    totalDownloadedRecords += downloadedRecords;
+
+    if (downloadedRecords > 0) {
+      const pageApplied = await applyUploadedChanges(
         { collections: pull.data.collections || {} },
         { collections, markSynced: true }
-      )
-    : { summary: { received: 0, inserted: 0, updated: 0, skipped: 0, failed: 0 }, results: [] };
+      );
+      for (const key of Object.keys(applied.summary)) {
+        applied.summary[key] += pageApplied.summary?.[key] || 0;
+      }
+      applied.results.push(...(pageApplied.results || []));
+    }
+
+    const nextCursor = pull.data?.cursorTime || pull.data?.serverTime || new Date().toISOString();
+    if (!downloadedRecords || downloadedRecords < pageLimit || nextCursor === lastCursor) {
+      lastCursor = nextCursor;
+      break;
+    }
+
+    lastCursor = nextCursor;
+    since = nextCursor;
+  }
 
   const nextState = writeState({
-    lastCloudPullAt: pull.data?.cursorTime || pull.data?.serverTime || new Date().toISOString(),
+    lastCloudPullAt: lastCursor || new Date().toISOString(),
     cloudPullCursorVersion: CLOUD_PULL_CURSOR_VERSION,
-    scope: pull.data?.scope || cloudScope(),
-    lastDownloadedRecords: downloadedRecords,
+    scope: lastPull?.data?.scope || cloudScope(),
+    lastDownloadedRecords: totalDownloadedRecords,
     lastCursorMigrationAt: needsCursorMigration ? new Date().toISOString() : state.lastCursorMigrationAt,
   });
 
   return {
     ok: true,
-    downloadedRecords,
+    downloadedRecords: totalDownloadedRecords,
     applied,
-    pull,
+    pull: lastPull,
     state: nextState,
   };
 }

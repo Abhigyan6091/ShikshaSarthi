@@ -29,6 +29,8 @@ const CLOUD_SYNC_TO_MONGO_COLLECTION = {
   studentReports: "studentreports",
   quizReports: "quizreports",
   vocabularyChapters: "vocabularychapters",
+  classDocuments: "classdocuments",
+  classAnnouncements: "classannouncements",
 };
 
 const bucket = process.argv[2] || process.env.AWS_SCHOOL_DATA_BUCKET;
