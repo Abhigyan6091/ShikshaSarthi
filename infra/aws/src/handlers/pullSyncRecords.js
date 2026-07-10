@@ -33,8 +33,16 @@ exports.handler = async (event) => {
   const nodeId = String(body.nodeId || query.nodeId || `${schoolId}-node`);
   const scope = sanitizeScope(body.scope || query.scope || "global", schoolId);
   const since = body.since || query.since || null;
-  const limit = body.limit || query.limit || 500;
   const selectedCollections = resolveCollections(body.collections || query.collections);
+  const requestedLimit = Number(body.limit || query.limit || 500);
+  // Older school servers request every collection in one pull with limit=500.
+  // After large question-bank seeds, that response can exceed Lambda/API
+  // Gateway payload limits and surfaces to schools only as "Internal Server
+  // Error". Keep single-collection pulls fast, but cap all-collection legacy
+  // pulls to a response size that the gateway can return reliably.
+  const limit = selectedCollections.length > 1
+    ? Math.min(requestedLimit || 500, Number(process.env.MULTI_COLLECTION_PULL_LIMIT || 100))
+    : (requestedLimit || 500);
   const timestamp = nowIso();
 
   const collections = {};

@@ -5,6 +5,7 @@ const {
   applyUploadedChanges,
   fetchPendingChanges,
   markRecordsSynced,
+  resolveCollections,
 } = require("../sync/syncService");
 
 // Honor APP_STATE_DIR so runtime state is written to a writable location
@@ -13,7 +14,7 @@ const DATA_DIR = process.env.APP_STATE_DIR
   ? path.resolve(process.env.APP_STATE_DIR)
   : path.join(__dirname, "..", "data");
 const STATE_FILE = path.join(DATA_DIR, "aws-cloud-sync-state.json");
-const CLOUD_PULL_CURSOR_VERSION = 3;
+const CLOUD_PULL_CURSOR_VERSION = 4;
 
 function readState() {
   try {
@@ -106,69 +107,90 @@ async function pullCloudRecords({ collections, limit, forceFull = false } = {}) 
   const state = readState();
   const needsCursorMigration = state.cloudPullCursorVersion !== CLOUD_PULL_CURSOR_VERSION;
   const pageLimit = limit || Number(process.env.AWS_SYNC_PULL_LIMIT || 500);
-  const maxPages = Math.max(1, Math.min(Number(process.env.AWS_SYNC_PULL_MAX_PAGES || 20), 100));
-  let since = forceFull || needsCursorMigration ? null : state.lastCloudPullAt || null;
+  const maxPages = Math.max(1, Math.min(Number(process.env.AWS_SYNC_PULL_MAX_PAGES || 100), 500));
+  const selectedCollections = resolveCollections(collections);
+  const collectionCursors = state.cloudCollectionPullCursors || {};
+  const nextCollectionCursors = { ...collectionCursors };
   let totalDownloadedRecords = 0;
   let lastPull = null;
-  let lastCursor = since;
+  let lastCursor = null;
   const applied = {
     summary: { received: 0, inserted: 0, updated: 0, skipped: 0, failed: 0 },
     results: [],
   };
+  const collectionStats = {};
 
-  for (let page = 0; page < maxPages; page += 1) {
-    const pull = await request("/sync/pull", {
-      method: "POST",
-      timeoutMs: Number(process.env.AWS_SYNC_REQUEST_TIMEOUT_MS || 30000),
-      body: {
-        schoolId: appConfig.aws.schoolId,
-        nodeId: appConfig.aws.nodeId,
-        scope: cloudScope(),
-        appVersion: appConfig.version,
-        since,
-        limit: pageLimit,
-        collections,
-      },
-    });
+  for (const collectionName of selectedCollections) {
+    let since = forceFull ? null : (needsCursorMigration ? state.lastCloudPullAt || null : collectionCursors[collectionName] || null);
+    let collectionDownloadedRecords = 0;
+    let collectionCursor = since;
 
-    lastPull = pull;
+    for (let page = 0; page < maxPages; page += 1) {
+      const pull = await request("/sync/pull", {
+        method: "POST",
+        timeoutMs: Number(process.env.AWS_SYNC_REQUEST_TIMEOUT_MS || 30000),
+        body: {
+          schoolId: appConfig.aws.schoolId,
+          nodeId: appConfig.aws.nodeId,
+          scope: cloudScope(),
+          appVersion: appConfig.version,
+          since,
+          limit: pageLimit,
+          collections: [collectionName],
+        },
+      });
 
-    if (!pull.ok) {
-      return {
-        ok: false,
-        downloadedRecords: totalDownloadedRecords,
-        applied,
-        pull,
-        error: pull.lastError || "Cloud sync pull failed",
-      };
-    }
+      lastPull = pull;
 
-    const downloadedRecords = pull.data?.totalRecords || 0;
-    totalDownloadedRecords += downloadedRecords;
-
-    if (downloadedRecords > 0) {
-      const pageApplied = await applyUploadedChanges(
-        { collections: pull.data.collections || {} },
-        { collections, markSynced: true }
-      );
-      for (const key of Object.keys(applied.summary)) {
-        applied.summary[key] += pageApplied.summary?.[key] || 0;
+      if (!pull.ok) {
+        return {
+          ok: false,
+          collection: collectionName,
+          downloadedRecords: totalDownloadedRecords,
+          applied,
+          pull,
+          error: pull.lastError || `Cloud sync pull failed for ${collectionName}`,
+        };
       }
-      applied.results.push(...(pageApplied.results || []));
+
+      const downloadedRecords = pull.data?.totalRecords || 0;
+      totalDownloadedRecords += downloadedRecords;
+      collectionDownloadedRecords += downloadedRecords;
+
+      if (downloadedRecords > 0) {
+        const pageApplied = await applyUploadedChanges(
+          { collections: pull.data.collections || {} },
+          { collections: [collectionName], markSynced: true }
+        );
+        for (const key of Object.keys(applied.summary)) {
+          applied.summary[key] += pageApplied.summary?.[key] || 0;
+        }
+        applied.results.push(...(pageApplied.results || []));
+      }
+
+      const nextCursor = pull.data?.cursorTime || pull.data?.serverTime || new Date().toISOString();
+      collectionCursor = nextCursor;
+      if (!lastCursor || new Date(nextCursor).getTime() > new Date(lastCursor).getTime()) {
+        lastCursor = nextCursor;
+      }
+
+      if (!downloadedRecords || downloadedRecords < pageLimit || nextCursor === since) {
+        break;
+      }
+
+      since = nextCursor;
     }
 
-    const nextCursor = pull.data?.cursorTime || pull.data?.serverTime || new Date().toISOString();
-    if (!downloadedRecords || downloadedRecords < pageLimit || nextCursor === lastCursor) {
-      lastCursor = nextCursor;
-      break;
-    }
-
-    lastCursor = nextCursor;
-    since = nextCursor;
+    nextCollectionCursors[collectionName] = collectionCursor || new Date().toISOString();
+    collectionStats[collectionName] = {
+      downloadedRecords: collectionDownloadedRecords,
+      cursor: nextCollectionCursors[collectionName],
+    };
   }
 
   const nextState = writeState({
     lastCloudPullAt: lastCursor || new Date().toISOString(),
+    cloudCollectionPullCursors: nextCollectionCursors,
     cloudPullCursorVersion: CLOUD_PULL_CURSOR_VERSION,
     scope: lastPull?.data?.scope || cloudScope(),
     lastDownloadedRecords: totalDownloadedRecords,
@@ -178,6 +200,7 @@ async function pullCloudRecords({ collections, limit, forceFull = false } = {}) 
   return {
     ok: true,
     downloadedRecords: totalDownloadedRecords,
+    collectionStats,
     applied,
     pull: lastPull,
     state: nextState,
