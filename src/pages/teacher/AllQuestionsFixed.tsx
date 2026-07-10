@@ -19,8 +19,10 @@ interface Question {
   class: string;
   topic: string;
   question: string;
+  questionHindi?: string;
   questionImage?: string;
   options: string[];
+  optionsHindi?: string[];
   correctAnswer: string;
   hint?: { text?: string; image?: string; video?: string };
 }
@@ -41,13 +43,20 @@ const emptyQuestion = {
 
 const sampleJson = `[
   {
-    "subject": "Mathematics",
     "class": "8",
+    "subject": "Mathematics",
     "topic": "Algebra",
     "question": "What is the value of x if x + 5 = 12?",
+    "questionHindi": "यदि x + 5 = 12 है, तो x का मान क्या है?",
     "options": ["5", "6", "7", "8"],
+    "optionsHindi": ["5", "6", "7", "8"],
     "correctAnswer": "7",
-    "hint": { "text": "Subtract 5 from both sides." }
+    "questionImage": "",
+    "hint": {
+      "text": "Subtract 5 from both sides.",
+      "image": "",
+      "video": ""
+    }
   }
 ]`;
 
@@ -197,7 +206,11 @@ const AllQuestionsFixed: React.FC = () => {
     setSaving(true);
     try {
       const parsed = JSON.parse(jsonText);
-      const questionsToUpload = Array.isArray(parsed) ? parsed : [parsed];
+      const questionsToUpload = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed.questions)
+          ? parsed.questions
+          : [parsed];
       const response = await axios.post(`${API_URL}/questions/bulk`, { questions: questionsToUpload });
       const failedCount = response.data.failed?.length || 0;
       toast({
@@ -301,11 +314,20 @@ const AllQuestionsFixed: React.FC = () => {
                 <CardTitle>Upload JSON</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                <div className="rounded-md border bg-blue-50 p-3 text-sm text-blue-950">
+                  <p className="font-medium">Required format</p>
+                  <p>Upload an array of questions or an object with a <code>questions</code> array. Required fields: <code>class</code>, <code>subject</code>, <code>topic</code>, <code>question</code>, <code>options</code>, and <code>correctAnswer</code>. <code>correctAnswer</code> must exactly match one English option. Hindi fields are optional but should be included when available.</p>
+                </div>
                 <Textarea value={jsonText} onChange={(event) => setJsonText(event.target.value)} className="min-h-[292px] font-mono text-xs" />
-                <Button onClick={handleJsonUpload} disabled={saving}>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload JSON
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={handleJsonUpload} disabled={saving}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload JSON
+                  </Button>
+                  <Button variant="outline" onClick={() => setJsonText(sampleJson)} disabled={saving}>
+                    Reset sample
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>

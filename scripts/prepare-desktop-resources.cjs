@@ -70,6 +70,24 @@ if (!fs.existsSync(frontendIndex)) {
   throw new Error('Frontend build is missing. Run npm run build before preparing desktop resources.');
 }
 
+const rootPackage = require(path.join(targetRoot, 'package.json'));
+const backendPackage = require(path.join(targetRoot, 'backend', 'package.json'));
+const desktopPackage = require(path.join(targetRoot, 'shikshasarthi-launcher', 'desktop-wrapper', 'package.json'));
+const versions = [rootPackage.version, backendPackage.version, desktopPackage.version];
+if (new Set(versions).size !== 1) {
+  throw new Error(`Desktop resource version mismatch: app=${versions[0]} backend=${versions[1]} desktop=${versions[2]}`);
+}
+
+fs.writeFileSync(
+  path.join(targetRoot, 'release-baseline.json'),
+  JSON.stringify({
+    version: rootPackage.version,
+    preparedAt: new Date().toISOString(),
+    frontend: 'dist/index.html',
+    backend: 'backend/index.js',
+  }, null, 2)
+);
+
 const backendRoot = path.join(targetRoot, 'backend');
 const backendLock = path.join(backendRoot, 'package-lock.json');
 if (!fs.existsSync(backendLock)) {

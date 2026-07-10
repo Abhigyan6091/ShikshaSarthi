@@ -22,10 +22,19 @@ import {
   WifiOff,
   Settings,
   Languages,
-  Bell
+  Bell,
+  CheckCheck
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
+
+type NotificationItem = {
+  id: string;
+  title: string;
+  message: string;
+  link?: string;
+  createdAt?: string;
+};
 
 const UI_TRANSLATIONS: Record<string, string> = {
   Online: 'ऑनलाइन',
@@ -130,7 +139,9 @@ const Header: React.FC = () => {
   const [language, setLanguage] = useState<string>(() => localStorage.getItem('appLanguage') || 'hi');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Array<{ id: string; title: string; message: string; link?: string; createdAt?: string }>>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notificationScope, setNotificationScope] = useState('');
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
   const [isOnline, setIsOnline] = useState<boolean>(() => {
     if (typeof window === 'undefined') {
       return true;
@@ -187,6 +198,8 @@ const Header: React.FC = () => {
   useEffect(() => {
     if (!userRole || !['teacher', 'student'].includes(userRole)) {
       setNotifications([]);
+      setNotificationScope('');
+      setReadNotificationIds([]);
       return;
     }
 
@@ -207,6 +220,15 @@ const Header: React.FC = () => {
       : currentUser.studentId || studentId;
 
     if (!identifier) return;
+
+    const scope = `${userRole}:${identifier}`;
+    setNotificationScope(scope);
+    try {
+      const stored = JSON.parse(localStorage.getItem(`notificationsRead:${scope}`) || '[]');
+      setReadNotificationIds(Array.isArray(stored) ? stored.filter(Boolean) : []);
+    } catch {
+      setReadNotificationIds([]);
+    }
 
     fetch(`${API_URL}/notifications/${userRole}/${encodeURIComponent(identifier)}`)
       .then((response) => response.ok ? response.json() : { notifications: [] })
@@ -285,6 +307,24 @@ const Header: React.FC = () => {
     }
   };
 
+  const unreadNotificationIds = notifications
+    .map((item) => item.id)
+    .filter((id) => !readNotificationIds.includes(id));
+
+  const markAllNotificationsRead = () => {
+    if (!notificationScope || notifications.length === 0) return;
+    const next = Array.from(new Set([...readNotificationIds, ...notifications.map((item) => item.id)]));
+    setReadNotificationIds(next);
+    localStorage.setItem(`notificationsRead:${notificationScope}`, JSON.stringify(next));
+  };
+
+  const markNotificationRead = (id: string) => {
+    if (!notificationScope || !id || readNotificationIds.includes(id)) return;
+    const next = [...readNotificationIds, id];
+    setReadNotificationIds(next);
+    localStorage.setItem(`notificationsRead:${notificationScope}`, JSON.stringify(next));
+  };
+
   const renderAvatar = (sizeClass = 'h-8 w-8', textSize = 'text-sm') => (
     <Avatar className={`${sizeClass} ring-2 ring-edu-blue/20`}>
       {profilePhoto ? (
@@ -303,17 +343,32 @@ const Header: React.FC = () => {
       <Button variant="ghost" size="sm" onClick={() => setNotificationsOpen((open) => !open)} className="relative">
         <Bell className="h-4 w-4 mr-2" />
         Notifications
-        {notifications.length > 0 && (
-          <span className="ml-2 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{notifications.length}</span>
+        {unreadNotificationIds.length > 0 && (
+          <span className="ml-2 rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{unreadNotificationIds.length}</span>
         )}
       </Button>
       {notificationsOpen && (
         <div className="absolute right-0 z-50 mt-2 w-80 rounded-md border bg-white p-2 shadow-lg">
+          <div className="mb-2 flex items-center justify-between border-b px-2 pb-2">
+            <span className="text-sm font-semibold">Notifications</span>
+            <Button variant="ghost" size="sm" onClick={markAllNotificationsRead} disabled={notifications.length === 0 || unreadNotificationIds.length === 0}>
+              <CheckCheck className="mr-1 h-4 w-4" />
+              Mark all read
+            </Button>
+          </div>
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
               <p className="p-3 text-sm text-muted-foreground">No notifications yet.</p>
             ) : notifications.map((item) => (
-              <Link key={item.id} to={item.link || getDashboardPath()} onClick={() => setNotificationsOpen(false)} className="block rounded p-3 hover:bg-blue-50">
+              <Link
+                key={item.id}
+                to={item.link || getDashboardPath()}
+                onClick={() => {
+                  markNotificationRead(item.id);
+                  setNotificationsOpen(false);
+                }}
+                className={`block rounded p-3 hover:bg-blue-50 ${readNotificationIds.includes(item.id) ? 'opacity-70' : 'bg-blue-50/60'}`}
+              >
                 <p className="text-sm font-semibold">{item.title}</p>
                 <p className="line-clamp-2 text-xs text-muted-foreground">{item.message}</p>
                 {item.createdAt && <p className="mt-1 text-[11px] text-gray-400">{new Date(item.createdAt).toLocaleString()}</p>}
@@ -479,12 +534,25 @@ const Header: React.FC = () => {
                         <div className="mb-2 flex items-center gap-2 px-1 text-sm font-semibold">
                           <Bell className="h-4 w-4" />
                           Notifications
+                          {unreadNotificationIds.length > 0 && (
+                            <span className="ml-auto rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{unreadNotificationIds.length}</span>
+                          )}
                         </div>
+                        {notifications.length > 0 && (
+                          <Button variant="ghost" size="sm" className="mb-2 w-full justify-start" onClick={markAllNotificationsRead} disabled={unreadNotificationIds.length === 0}>
+                            <CheckCheck className="mr-2 h-4 w-4" />
+                            Mark all as read
+                          </Button>
+                        )}
                         {notifications.length === 0 ? (
                           <p className="px-1 text-sm text-muted-foreground">No notifications yet.</p>
                         ) : notifications.slice(0, 6).map((item) => (
                           <SheetClose asChild key={item.id}>
-                            <Link to={item.link || getDashboardPath()} className="block rounded p-2 text-sm hover:bg-blue-50">
+                            <Link
+                              to={item.link || getDashboardPath()}
+                              onClick={() => markNotificationRead(item.id)}
+                              className={`block rounded p-2 text-sm hover:bg-blue-50 ${readNotificationIds.includes(item.id) ? 'opacity-70' : 'bg-blue-50/60'}`}
+                            >
                               <span className="block font-medium">{item.title}</span>
                               <span className="line-clamp-2 text-xs text-muted-foreground">{item.message}</span>
                             </Link>

@@ -26,6 +26,8 @@ const DEFAULT_COLLECTIONS = [
   "studentReports",
   "quizReports",
   "vocabularyChapters",
+  "classDocuments",
+  "classAnnouncements",
 ];
 
 function sanitizeScope(scope, schoolId) {

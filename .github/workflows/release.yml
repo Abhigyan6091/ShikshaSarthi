@@ -178,6 +178,30 @@ jobs:
       - name: Prepare bundled app resources
         run: node scripts/prepare-desktop-resources.cjs
 
+      - name: Verify bundled app resources
+        shell: bash
+        run: |
+          VERSION="${{ needs.build-web-and-update.outputs.version }}"
+          export VERSION
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const expected = process.env.VERSION;
+          const root = path.join('shikshasarthi-launcher', 'desktop-wrapper', 'launcher-data');
+          const files = ['package.json', 'backend/package.json', 'shikshasarthi-launcher/desktop-wrapper/package.json'];
+          for (const file of files) {
+            const pkg = require(path.resolve(root, file));
+            if (pkg.version !== expected) {
+              throw new Error(`${file} is ${pkg.version}, expected ${expected}`);
+            }
+          }
+          for (const file of ['dist/index.html', 'backend/index.js', 'release-baseline.json']) {
+            if (!fs.existsSync(path.join(root, file))) {
+              throw new Error(`Missing bundled resource: ${file}`);
+            }
+          }
+          NODE
+
       - name: Download MongoDB runtime
         run: node scripts/download-mongodb-runtime.cjs
 
@@ -228,9 +252,11 @@ jobs:
         working-directory: shikshasarthi-launcher/desktop-wrapper
         shell: bash
         run: |
+          rm -rf dist
           npx electron-builder --win --publish never
           VERSION="${{ needs.build-web-and-update.outputs.version }}"
-          INSTALLER="$(find dist -maxdepth 1 -name '*.exe' -type f | head -n 1)"
+          INSTALLER="$(find dist -maxdepth 1 -name "*$VERSION*.exe" -type f | head -n 1)"
+          test -n "$INSTALLER"
           echo "installer_path=$INSTALLER" >> "$GITHUB_OUTPUT"
           echo "installer_sha256=$(sha256sum "$INSTALLER" | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
         env:
@@ -292,6 +318,30 @@ jobs:
       - name: Prepare bundled app resources
         run: node scripts/prepare-desktop-resources.cjs
 
+      - name: Verify bundled app resources
+        shell: bash
+        run: |
+          VERSION="${{ needs.build-web-and-update.outputs.version }}"
+          export VERSION
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const expected = process.env.VERSION;
+          const root = path.join('shikshasarthi-launcher', 'desktop-wrapper', 'launcher-data');
+          const files = ['package.json', 'backend/package.json', 'shikshasarthi-launcher/desktop-wrapper/package.json'];
+          for (const file of files) {
+            const pkg = require(path.resolve(root, file));
+            if (pkg.version !== expected) {
+              throw new Error(`${file} is ${pkg.version}, expected ${expected}`);
+            }
+          }
+          for (const file of ['dist/index.html', 'backend/index.js', 'release-baseline.json']) {
+            if (!fs.existsSync(path.join(root, file))) {
+              throw new Error(`Missing bundled resource: ${file}`);
+            }
+          }
+          NODE
+
       - name: Download MongoDB runtime
         run: node scripts/download-mongodb-runtime.cjs
 
@@ -333,8 +383,11 @@ jobs:
         working-directory: shikshasarthi-launcher/desktop-wrapper
         shell: bash
         run: |
+          rm -rf dist
           npx electron-builder --linux deb --publish never
-          INSTALLER="$(find dist -maxdepth 1 -name '*.deb' -type f | head -n 1)"
+          VERSION="${{ needs.build-web-and-update.outputs.version }}"
+          INSTALLER="$(find dist -maxdepth 1 -name "*$VERSION*.deb" -type f | head -n 1)"
+          test -n "$INSTALLER"
           echo "installer_path=$INSTALLER" >> "$GITHUB_OUTPUT"
           echo "installer_sha256=$(sha256sum "$INSTALLER" | cut -d ' ' -f1)" >> "$GITHUB_OUTPUT"
         env:

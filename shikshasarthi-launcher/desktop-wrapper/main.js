@@ -67,6 +67,27 @@ function getPackagedAppVersion() {
     }
 }
 
+function parseSemverParts(version) {
+    const match = String(version || '').trim().match(/^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
+    if (!match) return null;
+    return [
+        Number(match[1] || 0),
+        Number(match[2] || 0),
+        Number(match[3] || 0),
+    ];
+}
+
+function compareSemver(left, right) {
+    const leftParts = parseSemverParts(left);
+    const rightParts = parseSemverParts(right);
+    if (!leftParts || !rightParts) return 0;
+    for (let index = 0; index < 3; index += 1) {
+        if (leftParts[index] > rightParts[index]) return 1;
+        if (leftParts[index] < rightParts[index]) return -1;
+    }
+    return 0;
+}
+
 function getLocalIp() {
     const interfaces = os.networkInterfaces();
     const defaultInterface = getDefaultRouteInterface();
@@ -248,11 +269,20 @@ function isValidAppDir(dir) {
 // Directory the running app code should load from: the pointed-to bundle if it
 // is present and structurally valid, else the installer baseline.
 function resolveActiveAppRoot(resourcesPath) {
+    const packagedVersion = getPackagedAppVersion();
     const pointer = readAppPointer();
     if (pointer && pointer.path && isValidAppDir(pointer.path)) {
+        const pointerVersion = pointer.version || null;
+        if (!pointerVersion || compareSemver(pointerVersion, packagedVersion) < 0) {
+            console.warn(
+                `Ignoring stale app bundle pointer ${pointerVersion || '(unknown)'}; packaged baseline is ${packagedVersion}`
+            );
+            revertToBaselineAppRoot();
+            return { dir: resourcesPath, version: packagedVersion, isBaseline: true };
+        }
         return { dir: pointer.path, version: pointer.version || null, isBaseline: false };
     }
-    return { dir: resourcesPath, version: null, isBaseline: true };
+    return { dir: resourcesPath, version: packagedVersion, isBaseline: true };
 }
 
 // Drop the active bundle pointer so the next start falls back to the baseline.

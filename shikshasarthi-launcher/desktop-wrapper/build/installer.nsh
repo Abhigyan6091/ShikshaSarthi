@@ -20,6 +20,9 @@
   ; ----- Shared data directory under ProgramData -----
   CreateDirectory "$1"
   CreateDirectory "$1\data"
+  ; A full installer must boot the bundled baseline it just installed. Preserve
+  ; school data, but clear any older quick-update pointer from ProgramData.
+  Delete "$1\app\current.json"
   ; Grant the local Users group modify rights so standard accounts can run
   ; the bundled MongoDB and write school data.
   nsExec::ExecToLog 'icacls "$1" /grant *S-1-5-32-545:(OI)(CI)M /T /C'
