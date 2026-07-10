@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { User, Phone, Building, IdCard, Users, GraduationCap, Calendar } from 'lucide-react';
+import Header from '@/components/Header';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -100,7 +101,9 @@ const SchoolAdminProfile: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <Header />
+      <div className="py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-8">
@@ -234,6 +237,7 @@ const SchoolAdminProfile: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

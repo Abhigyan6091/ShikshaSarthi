@@ -722,6 +722,16 @@ async function saveAdvancedDraft(body) {
     return { status: 400, payload: { error: "quizId and studentId are required" } };
   }
 
+  const quiz = await Quiz.findOne({ quizId }).lean();
+  if (!quiz) {
+    return { status: 404, payload: { error: "Quiz not found" } };
+  }
+
+  const classIds = await getStudentClassIds(studentId);
+  if (!quizIsAvailableToStudent(quiz, classIds)) {
+    return { status: 403, payload: { error: "This quiz is not assigned to your class." } };
+  }
+
   const submittedReport = await StudentReport.findOne(submittedReportFilter(quizId, studentId)).lean();
   if (submittedReport) {
     return {
@@ -844,6 +854,11 @@ router.post("/submit-advanced", async (req, res) => {
     }
 
     const normalizedStudentId = studentId.trim();
+
+    const classIds = await getStudentClassIds(normalizedStudentId);
+    if (!quizIsAvailableToStudent(quiz, classIds)) {
+      return res.status(403).json({ error: "This quiz is not assigned to your class." });
+    }
 
     // Check if student has already submitted this quiz
     const existingSubmission = await StudentReport.findOne(

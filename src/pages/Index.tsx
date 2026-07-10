@@ -18,10 +18,10 @@ const Index: React.FC = () => {
             <div className="flex flex-col md:flex-row items-center justify-between">
               <div className="md:w-1/2 mb-8 md:mb-0">
                 <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
-                  आत्मविश्वास के साथ NMMS परीक्षा की तैयारी करें
+                  ShikshaSarthi के साथ आत्मविश्वास से परीक्षा की तैयारी करें
                 </h1>
                 <p className="text-lg text-gray-700 mb-6">
-                  कक्षा 6, 7, और 8 के सरकारी स्कूल के छात्रों के लिए विशेष रूप से डिज़ाइन किया गया एक व्यापक शिक्षण प्लेटफ़ॉर्म जो NMMS परीक्षा में उत्कृष्ट प्रदर्शन करने में मदद करता है।
+                  कक्षा 6 से 10 तक के सरकारी स्कूल के छात्रों के लिए विशेष रूप से डिज़ाइन किया गया एक व्यापक शिक्षण प्लेटफ़ॉर्म, जो NMMS जैसी छात्रवृत्ति परीक्षाओं में उत्कृष्ट प्रदर्शन करने में मदद करता है।
                 </p>
                 <div className="flex flex-wrap gap-4"></div>
               </div>
@@ -43,14 +43,14 @@ const Index: React.FC = () => {
           </div>
         </section>
         
-        {/* What is NMMS Section */}
+        {/* What is ShikshaSarthi Section */}
         <section className="py-16 bg-white">
           <div className="edu-container">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">NMMS क्या है?</h2>
+              <h2 className="text-3xl font-bold mb-4">ShikshaSarthi क्या है?</h2>
               <p className="text-gray-700 max-w-3xl mx-auto">
-                राष्ट्रीय साधन-सह-मेधा छात्रवृत्ति (NMMS) एक केंद्रीय प्रायोजित छात्रवृत्ति कार्यक्रम है जिसका उद्देश्य 
-                आर्थिक रूप से कमजोर वर्गों के मेधावी छात्रों को वित्तीय सहायता प्रदान करना और उन्हें अपनी पढ़ाई जारी रखने के लिए प्रेरित करना है।
+                ShikshaSarthi एक व्यापक शिक्षण मंच है जो छात्रों को राष्ट्रीय साधन-सह-मेधा छात्रवृत्ति (NMMS) जैसी छात्रवृत्ति परीक्षाओं की तैयारी में मदद करता है,
+                ताकि आर्थिक रूप से कमजोर वर्गों के मेधावी छात्रों को वित्तीय सहायता मिल सके और वे अपनी पढ़ाई जारी रख सकें।
               </p>
             </div>
             

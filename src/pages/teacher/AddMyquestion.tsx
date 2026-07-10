@@ -3,6 +3,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { useToast } from "@/components/ui/use-toast";
 import TagSelect from "@/components/TagSelect";
+import Header from "@/components/Header";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const LETTERS = ["A", "B", "C", "D"];
@@ -151,7 +152,9 @@ export default function AddMyQuestion() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-xl mx-auto p-6 space-y-4 bg-white rounded shadow">
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <form onSubmit={handleSubmit} className="max-w-xl mx-auto p-6 my-6 space-y-4 bg-white rounded shadow">
       <h2 className="text-xl font-bold mb-4">Add a Question</h2>
 
       <TagSelect label="Class" options={classes} value={formData.class} onChange={(v) => setFormData((p) => ({ ...p, class: v, subject: "", topic: "" }))} />
@@ -208,6 +211,7 @@ export default function AddMyQuestion() {
       </div>
 
       <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Submit Question</button>
-    </form>
+      </form>
+    </div>
   );
 }

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/components/ui/use-toast';
+import Header from '@/components/Header';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -139,14 +140,19 @@ const GiveFeedbackFixed: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex min-h-screen flex-col bg-gray-50">
+        <Header />
+        <div className="flex flex-1 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="p-6">
       <div className="mx-auto max-w-4xl">
         <Button variant="ghost" onClick={() => navigate('/teacher')} className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -236,6 +242,7 @@ const GiveFeedbackFixed: React.FC = () => {
             </Card>
           </form>
         )}
+      </div>
       </div>
     </div>
   );

@@ -114,7 +114,10 @@ function updateAdaptiveState(previousState, response) {
   const varianceRatio = variance / (variance + MARS_CONFIG.sigma0);
   const beta = MARS_CONFIG.betaMin + (MARS_CONFIG.betaMax - MARS_CONFIG.betaMin) * (1 - varianceRatio);
   const nextVelocity = beta * velocity + (1 - beta) * rawUpdate;
-  const ratingChange = clamp(nextVelocity, -MARS_CONFIG.velocityMax, MARS_CONFIG.velocityMax);
+  const boundedMagnitude = Math.max(1, Math.round(Math.abs(nextVelocity)));
+  const ratingChange = isCorrect
+    ? clamp(boundedMagnitude, 1, 10)
+    : -clamp(boundedMagnitude, 1, 5);
   const nextRating = clamp(Math.round(priorRating + ratingChange), band.min, band.max);
   const nextOutcomes = [...recentOutcomes.slice(-9), isCorrect ? 1 : 0];
   const recentAccuracy = nextOutcomes.reduce((sum, value) => sum + value, 0) / nextOutcomes.length;

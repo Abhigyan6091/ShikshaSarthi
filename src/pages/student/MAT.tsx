@@ -190,7 +190,7 @@ const MAT: React.FC = () => {
                   मानसिक योग्यता परीक्षा (MAT) 🧠
                 </h1>
                 <p className="text-gray-600">
-                  इंटरैक्टिव अभ्यास के माध्यम से NMMSE मानसिक योग्यता में महारत हासिल करें
+                  इंटरैक्टिव अभ्यास के माध्यम से ShikshaSarthi मानसिक योग्यता में महारत हासिल करें
                 </p>
               </div>
             </div>
@@ -207,7 +207,7 @@ const MAT: React.FC = () => {
                       विषयवार अभ्यास
                     </h3>
                     <p className="text-sm text-gray-700">
-                      सभी NMMSE MAT विषयों को कवर करने वाले 14 मॉड्यूल
+                      सभी ShikshaSarthi MAT विषयों को कवर करने वाले 14 मॉड्यूल
                     </p>
                   </div>
                 </div>

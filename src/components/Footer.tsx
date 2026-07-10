@@ -10,7 +10,7 @@ const Footer: React.FC = () => {
           <div>
             <h3 className="font-bold text-lg mb-4">ShikshaSarthi</h3>
             <p className="text-gray-600">
-              A comprehensive platform for NMMS exam preparation designed for government school students.
+              A comprehensive learning platform for ShikshaSarthi exam preparation designed for government school students.
             </p>
           </div>
           
@@ -24,7 +24,7 @@ const Footer: React.FC = () => {
               </li>
               <li>
                 <Link to="/about" className="text-edu-blue hover:underline">
-                  About NMMSE
+                  About ShikshaSarthi
                 </Link>
               </li>
             </ul>

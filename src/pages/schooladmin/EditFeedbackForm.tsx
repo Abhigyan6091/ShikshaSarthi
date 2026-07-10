@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { PlusCircle, Trash2, ArrowLeft, Loader2 } from 'lucide-react';
+import Header from '@/components/Header';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -190,18 +191,22 @@ const EditFeedbackForm: React.FC = () => {
 
   if (fetchingForm) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-6 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-          <p>Loading form...</p>
+      <div className="flex min-h-screen flex-col bg-gradient-to-b from-blue-50 to-white">
+        <Header />
+        <div className="flex flex-1 items-center justify-center p-6">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+            <p>Loading form...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <Header />
+      <div className="max-w-4xl mx-auto p-6">
         <Button
           variant="ghost"
           onClick={() => navigate('/schooladmin/feedback-management')}

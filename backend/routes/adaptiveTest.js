@@ -132,6 +132,27 @@ router.get("/leaderboard", async (req, res) => {
   }
 });
 
+// Fetch one past adaptive-test attempt (for the history -> review-answers page).
+router.get("/attempt/:studentId/:attemptId", async (req, res) => {
+  try {
+    const { studentId, attemptId } = req.params;
+    const student = await Student.findOne(
+      { studentId },
+      { adaptiveTestAttempts: { $elemMatch: { _id: attemptId } } }
+    ).lean();
+
+    const attempt = student?.adaptiveTestAttempts?.[0];
+    if (!attempt) {
+      return res.status(404).json({ error: "Adaptive test attempt not found" });
+    }
+
+    res.status(200).json({ attempt });
+  } catch (error) {
+    console.error("Adaptive attempt fetch failed:", error);
+    res.status(500).json({ error: "Failed to load adaptive test attempt" });
+  }
+});
+
 router.post("/submit", async (req, res) => {
   try {
     const { studentId, className, answers = [], startedAt } = req.body;
@@ -183,6 +204,8 @@ router.post("/submit", async (req, res) => {
         isCorrect,
         hintUsed: Boolean(answer.hintUsed),
         timeSpentMs: Number(answer.timeSpentMs) || 0,
+        hints: question.hints || [],
+        hintsHindi: question.hintsHindi || [],
         explanation: question.explanation,
         explanationHindi: question.explanationHindi,
         ratingBefore: nextState.ratingBefore,

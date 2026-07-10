@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import Header from "@/components/Header";
 const API_URL = import.meta.env.VITE_API_URL;
 export default function StudentReport() {
   const { id } = useParams();
@@ -62,7 +63,9 @@ export default function StudentReport() {
   if (!student) return <div>No student found</div>;
 
   return (
-    <div
+    <div>
+      <Header />
+      <div
       style={{
         maxWidth: 800,
         margin: "2rem auto",
@@ -205,6 +208,7 @@ export default function StudentReport() {
           </ul>
         </section>
       ))}
+      </div>
     </div>
   );
 }

@@ -92,6 +92,81 @@ const UI_TRANSLATIONS: Record<string, string> = {
   Search: 'खोजें',
   'Back': 'वापस',
   'Back to Dashboard': 'डैशबोर्ड पर वापस',
+
+  // Login / auth
+  'Login': 'लॉग इन',
+  'Welcome back': 'वापसी पर स्वागत है',
+  'Select Role': 'भूमिका चुनें',
+  'Student': 'छात्र',
+  'Teacher': 'अध्यापक',
+  'School Admin': 'स्कूल एडमिन',
+  'Super Admin': 'सुपर एडमिन',
+  'Student ID': 'छात्र आईडी',
+  'Teacher ID': 'शिक्षक आईडी',
+  'Username': 'उपयोगकर्ता नाम',
+  'Password': 'पासवर्ड',
+  'Forgot Password?': 'पासवर्ड भूल गए?',
+  'Logging in...': 'लॉग इन हो रहा है...',
+  'Registered Email': 'पंजीकृत ईमेल',
+  'Reset Password': 'पासवर्ड रीसेट करें',
+  'Forgot Password': 'पासवर्ड भूल गए',
+
+  // Common actions / status
+  'Save': 'सहेजें',
+  'Cancel': 'रद्द करें',
+  'Submit': 'जमा करें',
+  'Delete': 'हटाएं',
+  'Edit': 'संपादित करें',
+  'Loading...': 'लोड हो रहा है...',
+  'Loading': 'लोड हो रहा है',
+  'Error': 'त्रुटि',
+  'Success': 'सफलता',
+  'Yes': 'हाँ',
+  'No': 'नहीं',
+  'Next': 'अगला',
+  'Previous': 'पिछला',
+  'Continue': 'जारी रखें',
+  'Close': 'बंद करें',
+  'View': 'देखें',
+  'Download': 'डाउनलोड करें',
+  'Upload': 'अपलोड करें',
+  'Manage Classes': 'कक्षाएं प्रबंधित करें',
+  'My Classes': 'मेरी कक्षाएं',
+  'Notifications': 'सूचनाएं',
+  'Mark all read': 'सभी को पढ़ा हुआ चिह्नित करें',
+  'No notifications yet.': 'अभी कोई सूचना नहीं है।',
+
+  // Student dashboard
+  'Practice Questions': 'अभ्यास प्रश्न',
+  'Start Practice': 'अभ्यास शुरू करें',
+  'Open Classes': 'कक्षाएं खोलें',
+  'Group Quiz': 'समूह क्विज़',
+  'Multimedia Assessment': 'मल्टीमीडिया मूल्यांकन',
+  'Experiment Simulation': 'प्रयोग सिमुलेशन',
+  'Give Feedback': 'प्रतिक्रिया दें',
+  'Reports': 'रिपोर्ट',
+  'Member Since': 'सदस्य बने',
+  'Correct': 'सही',
+  'Incorrect': 'गलत',
+  'Accuracy': 'सटीकता',
+  'Rating': 'रेटिंग',
+  'Class Leaderboard': 'क्लास लीडरबोर्ड',
+  'Review Answers': 'उत्तर समीक्षा',
+  'Take Again': 'दोबारा दें',
+  'Hint used': 'संकेत इस्तेमाल किया',
+  'Skipped': 'छोड़ा गया',
+  'Show Hint': 'संकेत दिखाएं',
+  'Skip': 'छोड़ें',
+  'Finish Test': 'परीक्षण समाप्त करें',
+  'Next Question': 'अगला प्रश्न',
+
+  // Teacher / school admin
+  'Create Enhanced Quiz': 'एडवांस्ड क्विज़ बनाएं',
+  'Quiz Analytics': 'क्विज़ विश्लेषण',
+  'All Questions': 'सभी प्रश्न',
+  'Announcements': 'घोषणाएं',
+  'Documents': 'दस्तावेज़',
+  'Post Announcement': 'घोषणा पोस्ट करें',
 };
 
 const REVERSE_UI_TRANSLATIONS = Object.fromEntries(
@@ -381,19 +456,21 @@ const Header: React.FC = () => {
   );
 
   return (
-    <header className="bg-white shadow">
-      <div className="edu-container py-3 lg:py-4 flex items-center justify-between">
+    <header className="sticky top-0 z-50 border-b border-white/50 bg-white/70 shadow-[0_1px_24px_-8px_rgba(30,64,175,0.25)] backdrop-blur-xl backdrop-saturate-150 supports-[backdrop-filter]:bg-white/60">
+      {/* subtle top sheen for the "liquid glass" look */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-full bg-gradient-to-b from-white/40 via-white/0 to-white/0" />
+      <div className="edu-container relative py-3 lg:py-4 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <Link to="/" className="flex items-center space-x-3">
-            <img src="/logo.png" alt="ShikshaSarthi logo" className="h-9 w-12" />
-            <span className="text-xl sm:text-2xl font-bold text-edu-blue">ShikshaSarthi</span>
+            <img src="/logo.png" alt="ShikshaSarthi logo" className="h-9 w-12 drop-shadow-sm" />
+            <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-edu-blue to-edu-purple bg-clip-text text-transparent">ShikshaSarthi</span>
           </Link>
         </div>
-        
+
         <div className="hidden lg:flex items-center space-x-3 xl:space-x-4">
           <div
-            className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ${
-              isOnline ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+            className={`flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium backdrop-blur-sm ${
+              isOnline ? 'border-emerald-200 bg-emerald-100/80 text-emerald-700' : 'border-red-200 bg-red-100/80 text-red-700'
             }`}
             title={isOnline ? 'Online' : 'Offline'}
           >

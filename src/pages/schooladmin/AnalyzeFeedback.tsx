@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft, Search, BarChart3, Users, FileText, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import Header from '@/components/Header';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -114,8 +115,9 @@ const AnalyzeFeedback: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <Header />
+      <div className="max-w-7xl mx-auto p-6">
         <Button
           variant="ghost"
           onClick={() => navigate('/schooladmin/feedback-management')}

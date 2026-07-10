@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import DatabaseInteractiveDemo from '@/components/DatabaseInteractiveDemo';
 import { Button } from '@/components/ui/button';
+import Header from '@/components/Header';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -34,8 +35,9 @@ const DemoTest: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen p-8 bg-gray-100">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-100">
+      <Header />
+      <div className="max-w-4xl mx-auto p-8">
         <h1 className="text-3xl font-bold mb-6">Demo Test Page</h1>
         
         <div className="bg-white p-4 rounded-lg mb-6">

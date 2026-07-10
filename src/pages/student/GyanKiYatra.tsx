@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/session";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +23,8 @@ import {
   AlertTriangle,
   Zap,
 } from "lucide-react";
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 // ─── Inline CSS for Custom Animations ─────────────────────────────────────────
 
@@ -102,11 +106,27 @@ const customStyles = `
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Question {
-  id: number;
+  id: string;
+  subject?: string;
+  topicId?: string;
+  questionHindi?: string;
   question: string;
   options: string[];
-  correct: number;
-  explanation: string;
+  optionsHindi?: string[];
+  correct?: number;
+  correctAnswerIndex?: number;
+  explanation?: string;
+  explanationHindi?: string;
+  eloRating?: number;
+}
+
+interface JourneyReviewItem {
+  question: Question;
+  selectedOptionIndex: number;
+  isCorrect: boolean;
+  square: number;
+  context: "ladder" | "snake" | "question" | null;
+  timeSpentMs: number;
 }
 
 type SquareType = "normal" | "ladder-foot" | "ladder-top" | "snake-head" | "snake-tail" | "question";
@@ -154,6 +174,26 @@ const SNAKES: Record<number, number> = {
 };
 
 const QUESTION_BOXES = new Set([4, 14, 19, 24, 29, 36, 51, 56, 60, 66, 70, 71, 77, 81, 87, 96]);
+
+const SUBJECT_OPTIONS = [
+  { id: "maths", label: "Mathematics", labelHindi: "गणित" },
+  { id: "science", label: "Science", labelHindi: "विज्ञान" },
+  { id: "social", label: "Social Science", labelHindi: "सामाजिक विज्ञान" },
+];
+
+const batchToClass = (batch?: string) => {
+  const n = Number.parseInt(String(batch || "").replace(/\D/g, ""), 10);
+  const derived = Number.isFinite(n) && n >= 2026 && n <= 2037 ? 2038 - n : 0;
+  return derived >= 6 && derived <= 10 ? derived : 0;
+};
+
+const resolveClassNumber = (student?: { class?: string; batch?: string }) => {
+  const parsed = Number.parseInt(String(student?.class || "").replace(/\D/g, ""), 10);
+  if (Number.isFinite(parsed) && parsed >= 6 && parsed <= 10) return parsed;
+  return batchToClass(student?.batch) || 10;
+};
+
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
 const buildSpecialSquares = (): Record<number, SpecialSquare> => {
   const map: Record<number, SpecialSquare> = {};
@@ -437,6 +477,15 @@ const BoardCell: React.FC<BoardCellProps> = ({ num, isPlayer, special, isBouncin
 
 const GyanKiYatra: React.FC = () => {
   const navigate = useNavigate();
+  const storedStudent = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("student") || "{}")?.student || getCurrentUser() || {};
+    } catch {
+      return getCurrentUser() || {};
+    }
+  })();
+  const classNumber = resolveClassNumber(storedStudent);
+  const [language, setLanguage] = useState(() => localStorage.getItem("appLanguage") || "hi");
 
   // Game state
   const [phase, setPhase] = useState<GamePhase>("intro");
@@ -469,7 +518,15 @@ const GyanKiYatra: React.FC = () => {
   const logEndRef = useRef<HTMLDivElement>(null);
 
   // Question pool tracking
-  const [usedQIds, setUsedQIds] = useState<Set<number>>(new Set());
+  const [questionBank, setQuestionBank] = useState<Question[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState("maths");
+  const [loadingQuestions, setLoadingQuestions] = useState(true);
+  const [questionError, setQuestionError] = useState("");
+  const [usedQIds, setUsedQIds] = useState<Set<string>>(new Set());
+  const [questionStartedAt, setQuestionStartedAt] = useState(Date.now());
+  const [gameStartedAt, setGameStartedAt] = useState<number | null>(null);
+  const [completedAt, setCompletedAt] = useState<number | null>(null);
+  const [reviewAnswers, setReviewAnswers] = useState<JourneyReviewItem[]>([]);
 
   // Confetti for win
   const [stars, setStars] = useState<{ id: number; left: string; delay: string; duration: string }[]>([]);
@@ -480,17 +537,68 @@ const GyanKiYatra: React.FC = () => {
     }
   }, [log]);
 
+  useEffect(() => {
+    const handleLanguageChange = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      setLanguage(detail?.language || localStorage.getItem("appLanguage") || "hi");
+    };
+
+    window.addEventListener("appLanguageChanged", handleLanguageChange);
+    return () => window.removeEventListener("appLanguageChanged", handleLanguageChange);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadQuestions = async () => {
+      try {
+        setLoadingQuestions(true);
+        setQuestionError("");
+        const res = await axios.get(`${API_URL}/quizzes/adaptive-test/questions/${classNumber}`, {
+          params: { studentId: storedStudent?.studentId },
+        });
+        if (!active) return;
+        setQuestionBank(Array.isArray(res.data.questions) ? res.data.questions : []);
+      } catch (error) {
+        console.error("Failed to load Gyan Ki Yatra questions:", error);
+        if (active) setQuestionError("Question bank could not be loaded right now.");
+      } finally {
+        if (active) setLoadingQuestions(false);
+      }
+    };
+
+    loadQuestions();
+    return () => {
+      active = false;
+    };
+  }, [classNumber, storedStudent?.studentId]);
+
   const addLog = useCallback((msg: string) => {
     setLog((prev) => [...prev, msg].slice(-10)); // Keep last 10
   }, []);
 
-  const pickQuestion = useCallback((): Question => {
-    const available = QUESTIONS.filter((q) => !usedQIds.has(q.id));
-    const pool = available.length > 0 ? available : QUESTIONS;
-    const q = pool[Math.floor(Math.random() * pool.length)];
+  const subjectQuestions = questionBank
+    .filter((question) => question.subject === selectedSubject)
+    .sort((a, b) => (a.eloRating || 0) - (b.eloRating || 0));
+
+  const pickQuestion = useCallback((square: number): Question | null => {
+    const subjectPool = questionBank
+      .filter((question) => question.subject === selectedSubject)
+      .sort((a, b) => (a.eloRating || 0) - (b.eloRating || 0));
+    const available = subjectPool.filter((q) => !usedQIds.has(String(q.id)));
+    const pool = available.length > 0 ? available : subjectPool;
+    if (pool.length === 0) return null;
+
+    const progress = clamp(square / 100, 0, 1);
+    const targetIndex = Math.round(progress * (pool.length - 1));
+    const windowSize = Math.max(4, Math.ceil(pool.length * 0.08));
+    const start = Math.max(0, targetIndex - windowSize);
+    const end = Math.min(pool.length, targetIndex + windowSize + 1);
+    const difficultyWindow = pool.slice(start, end);
+    const q = difficultyWindow[Math.floor(Math.random() * difficultyWindow.length)];
     setUsedQIds((prev) => new Set([...prev, q.id]));
     return q;
-  }, [usedQIds]);
+  }, [questionBank, selectedSubject, usedQIds]);
 
   const triggerWin = useCallback(() => {
     const newStars = Array.from({ length: 50 }).map((_, i) => ({
@@ -500,8 +608,25 @@ const GyanKiYatra: React.FC = () => {
       duration: `${3 + Math.random() * 2}s`
     }));
     setStars(newStars);
+    setCompletedAt(Date.now());
     setPhase("won");
   }, []);
+
+  const openQuestion = useCallback((square: number, context: "ladder" | "snake" | "question") => {
+    const question = pickQuestion(square);
+    if (!question) {
+      addLog("⚠️ इस विषय के प्रश्न उपलब्ध नहीं हैं। दूसरा विषय चुनें।");
+      setCanRoll(true);
+      return;
+    }
+
+    setLandedSquare(square);
+    setCurrentQuestion(question);
+    setQuestionContext(context);
+    setQuestionStartedAt(Date.now());
+    setSelectedOption(null);
+    setPhase("question");
+  }, [addLog, pickQuestion]);
 
   const handleArrivalAtSquare = useCallback((newPos: number) => {
     addLog(`📍 घर ${newPos} पर पहुँचे`);
@@ -514,34 +639,22 @@ const GyanKiYatra: React.FC = () => {
     const special = SPECIAL_SQUARES[newPos];
     if (special) {
       if (special.type === "ladder-foot") {
-        setLandedSquare(newPos);
-        setCurrentQuestion(pickQuestion());
-        setQuestionContext("ladder");
-        setSelectedOption(null);
-        setPhase("question");
+        openQuestion(newPos, "ladder");
       } else if (special.type === "snake-head") {
         setShowSnakeAnimation(true);
         setTimeout(() => {
           setShowSnakeAnimation(false);
-          setLandedSquare(newPos);
-          setCurrentQuestion(pickQuestion());
-          setQuestionContext("snake");
-          setSelectedOption(null);
-          setPhase("question");
+          openQuestion(newPos, "snake");
         }, 1800);
       } else if (special.type === "question") {
-        setLandedSquare(newPos);
-        setCurrentQuestion(pickQuestion());
-        setQuestionContext("question");
-        setSelectedOption(null);
-        setPhase("question");
+        openQuestion(newPos, "question");
       } else {
         setCanRoll(true);
       }
     } else {
       setCanRoll(true);
     }
-  }, [pickQuestion, addLog, triggerWin]);
+  }, [addLog, triggerWin, openQuestion]);
 
   // Player walking effect
   useEffect(() => {
@@ -622,7 +735,21 @@ const GyanKiYatra: React.FC = () => {
     if (selectedOption !== null || !currentQuestion) return;
     setSelectedOption(idx);
 
-    const isCorrect = idx === currentQuestion.correct;
+    const correctIndex = Number.isInteger(currentQuestion.correctAnswerIndex)
+      ? Number(currentQuestion.correctAnswerIndex)
+      : Number(currentQuestion.correct || 0);
+    const isCorrect = idx === correctIndex;
+    setReviewAnswers((answers) => [
+      ...answers,
+      {
+        question: currentQuestion,
+        selectedOptionIndex: idx,
+        isCorrect,
+        square: landedSquare,
+        context: questionContext,
+        timeSpentMs: Date.now() - questionStartedAt,
+      },
+    ]);
 
     if (isCorrect) {
       setScore((s) => s + 10);
@@ -677,7 +804,7 @@ const GyanKiYatra: React.FC = () => {
     setTimeout(() => {
       setPhase("result-feedback");
     }, 500);
-  }, [selectedOption, currentQuestion, questionContext, landedSquare, position, addLog, movePlayerInstantly, triggerWin]);
+  }, [selectedOption, currentQuestion, questionContext, landedSquare, position, addLog, movePlayerInstantly, triggerWin, questionStartedAt]);
 
   const dismissFeedback = useCallback(() => {
     setPhase("playing");
@@ -707,8 +834,54 @@ const GyanKiYatra: React.FC = () => {
     setMoves(0);
     setLog([]);
     setUsedQIds(new Set());
+    setReviewAnswers([]);
+    setGameStartedAt(Date.now());
+    setCompletedAt(null);
     setStars([]);
   }, []);
+
+  const startGame = useCallback(() => {
+    if (loadingQuestions || subjectQuestions.length === 0) return;
+    setPhase("playing");
+    setPosition(0);
+    setDisplayPosition(0);
+    setTargetPosition(0);
+    setCurrentDestination(null);
+    setDiceValue(1);
+    setRolling(false);
+    setCanRoll(true);
+    setSkipTurns(0);
+    setCurrentQuestion(null);
+    setSelectedOption(null);
+    setQuestionContext(null);
+    setLandedSquare(0);
+    setScore(0);
+    setMoves(0);
+    setLog([]);
+    setUsedQIds(new Set());
+    setReviewAnswers([]);
+    setGameStartedAt(Date.now());
+    setCompletedAt(null);
+    setStars([]);
+  }, [loadingQuestions, subjectQuestions.length]);
+
+  const selectedSubjectMeta = SUBJECT_OPTIONS.find((subject) => subject.id === selectedSubject) || SUBJECT_OPTIONS[0];
+  const isHindi = language === "hi";
+  const questionText = (question: Question) =>
+    isHindi ? (question.questionHindi || question.question) : question.question;
+  const questionOptions = (question: Question) =>
+    isHindi && question.optionsHindi?.length === question.options.length ? question.optionsHindi : question.options;
+  const questionExplanation = (question: Question) =>
+    isHindi ? (question.explanationHindi || question.explanation || "") : (question.explanation || question.explanationHindi || "");
+  const correctIndexFor = (question: Question) =>
+    Number.isInteger(question.correctAnswerIndex) ? Number(question.correctAnswerIndex) : Number(question.correct || 0);
+  const correctAnswers = reviewAnswers.filter((item) => item.isCorrect).length;
+  const incorrectAnswers = reviewAnswers.length - correctAnswers;
+  const journeySeconds = gameStartedAt && completedAt ? Math.max(1, Math.round((completedAt - gameStartedAt) / 1000)) : 0;
+  const accuracyRate = reviewAnswers.length ? correctAnswers / reviewAnswers.length : 0;
+  const stepEfficiency = moves > 0 ? clamp(45 / moves, 0, 1) : 0;
+  const timeEfficiency = journeySeconds > 0 ? clamp(900 / journeySeconds, 0, 1) : 0;
+  const marsJourneyScore = Math.round(400 + 600 * (0.6 * accuracyRate + 0.25 * stepEfficiency + 0.15 * timeEfficiency));
 
   // ── Build board rows (top to bottom visually) ──────────────────────────────
   const boardRows: number[][] = [];
@@ -756,6 +929,44 @@ const GyanKiYatra: React.FC = () => {
             </div>
 
             <div className="bg-white/80 backdrop-blur-md rounded-3xl p-8 mb-8 animate-pop-in border border-orange-100 shadow-xl" style={{ animationDelay: '0.2s' }}>
+              <h2 className="font-bold text-slate-800 text-xl flex items-center gap-3 mb-4">
+                <Target className="h-6 w-6 text-blue-500" />
+                विषय चुनें
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+                {SUBJECT_OPTIONS.map((subject) => {
+                  const count = questionBank.filter((question) => question.subject === subject.id).length;
+                  const active = selectedSubject === subject.id;
+                  return (
+                    <button
+                      key={subject.id}
+                      type="button"
+                      className={`rounded-2xl border-2 p-4 text-left transition-all ${
+                        active
+                          ? "border-orange-500 bg-orange-50 shadow-md"
+                          : "border-slate-200 bg-white hover:border-orange-300 hover:bg-orange-50"
+                      }`}
+                      onClick={() => setSelectedSubject(subject.id)}
+                    >
+                      <p className="font-black text-slate-900">{isHindi ? subject.labelHindi : subject.label}</p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        {loadingQuestions ? "Loading..." : `${count} questions`}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+              {questionError && (
+                <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                  {questionError}
+                </div>
+              )}
+              {!loadingQuestions && subjectQuestions.length === 0 && !questionError && (
+                <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                  इस विषय के लिए आपकी कक्षा में प्रश्न उपलब्ध नहीं हैं।
+                </div>
+              )}
+
               <h2 className="font-bold text-slate-800 text-xl flex items-center gap-3 mb-6">
                 <BookOpen className="h-6 w-6 text-orange-500" />
                 खेल के नियम
@@ -803,10 +1014,11 @@ const GyanKiYatra: React.FC = () => {
               </Button>
               <Button
                 className="flex-[2] bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white font-bold text-xl py-6 rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
-                onClick={() => setPhase("playing")}
+                onClick={startGame}
+                disabled={loadingQuestions || subjectQuestions.length === 0}
               >
                 <Play className="h-6 w-6 mr-2" />
-                खेल शुरू करें
+                {loadingQuestions ? "प्रश्न लोड हो रहे हैं..." : "खेल शुरू करें"}
               </Button>
             </div>
           </div>
@@ -844,7 +1056,7 @@ const GyanKiYatra: React.FC = () => {
             </div>
 
             <div className="bg-white/90 backdrop-blur-md rounded-3xl p-8 mb-10 animate-pop-in border border-orange-200 shadow-xl" style={{ animationDelay: '0.2s' }}>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="bg-amber-50 rounded-2xl p-6 border border-amber-100">
                   <p className="text-5xl font-black text-amber-600 mb-2">{score}</p>
                   <p className="text-sm text-amber-800 uppercase tracking-wider font-bold">कुल अंक</p>
@@ -853,7 +1065,47 @@ const GyanKiYatra: React.FC = () => {
                   <p className="text-5xl font-black text-blue-600 mb-2">{moves}</p>
                   <p className="text-sm text-blue-800 uppercase tracking-wider font-bold">कुल चालें</p>
                 </div>
+                <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-100">
+                  <p className="text-4xl font-black text-emerald-600 mb-2">{correctAnswers}/{reviewAnswers.length}</p>
+                  <p className="text-sm text-emerald-800 uppercase tracking-wider font-bold">सही उत्तर</p>
+                </div>
+                <div className="bg-purple-50 rounded-2xl p-6 border border-purple-100">
+                  <p className="text-4xl font-black text-purple-600 mb-2">{marsJourneyScore}</p>
+                  <p className="text-sm text-purple-800 uppercase tracking-wider font-bold">MARS Score</p>
+                </div>
               </div>
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
+                <p>{isHindi ? selectedSubjectMeta.labelHindi : selectedSubjectMeta.label} • {journeySeconds}s • {incorrectAnswers} गलत</p>
+                <p className="mt-1 text-xs text-slate-500">Score combines correct answers, steps taken, and completion time.</p>
+              </div>
+              {reviewAnswers.length > 0 && (
+                <div className="mt-6 max-h-80 overflow-y-auto rounded-2xl border border-slate-200 bg-white text-left">
+                  <div className="sticky top-0 bg-white px-4 py-3 border-b border-slate-100 font-black text-slate-800">
+                    Review Questions
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {reviewAnswers.map((item, index) => {
+                      const options = questionOptions(item.question);
+                      const correctIndex = correctIndexFor(item.question);
+                      return (
+                        <div key={`${item.question.id}-${index}`} className="p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="font-bold text-slate-900">{index + 1}. {questionText(item.question)}</p>
+                            <span className={`rounded-full px-2 py-1 text-xs font-bold ${item.isCorrect ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                              {item.isCorrect ? "Correct" : "Wrong"}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm text-slate-600">Your answer: {options[item.selectedOptionIndex] || "Not answered"}</p>
+                          <p className="text-sm text-emerald-700">Correct answer: {options[correctIndex]}</p>
+                          {questionExplanation(item.question) && (
+                            <p className="mt-2 text-sm text-slate-600">{questionExplanation(item.question)}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-4 animate-slide-up" style={{ animationDelay: '0.4s' }}>
@@ -1111,17 +1363,18 @@ const GyanKiYatra: React.FC = () => {
               <div className="space-y-6">
                 {/* Question Text */}
                 <p className="font-bold text-slate-800 text-lg sm:text-xl leading-relaxed">
-                  {currentQuestion.question}
+                  {questionText(currentQuestion)}
                 </p>
 
                 {/* Options */}
                 <div className="grid grid-cols-1 gap-3">
-                  {currentQuestion.options.map((opt, idx) => {
+                  {questionOptions(currentQuestion).map((opt, idx) => {
                     let btnClass = "w-full text-left px-5 py-4 rounded-2xl border-2 text-base font-semibold transition-all flex items-center justify-between ";
+                    const correctIndex = correctIndexFor(currentQuestion);
 
                     if (selectedOption === null) {
                       btnClass += "border-slate-200 bg-white hover:border-orange-400 hover:bg-orange-50 hover:shadow-sm cursor-pointer text-slate-700";
-                    } else if (idx === currentQuestion.correct) {
+                    } else if (idx === correctIndex) {
                       btnClass += "border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm";
                     } else if (idx === selectedOption) {
                       btnClass += "border-rose-400 bg-rose-50 text-rose-800";
@@ -1148,10 +1401,10 @@ const GyanKiYatra: React.FC = () => {
                           </span>
                           {opt}
                         </div>
-                        {selectedOption !== null && idx === currentQuestion.correct && (
+                        {selectedOption !== null && idx === correctIndex && (
                           <CheckCircle2 className="h-6 w-6 text-emerald-500 animate-pop-in" />
                         )}
-                        {selectedOption === idx && idx !== currentQuestion.correct && (
+                        {selectedOption === idx && idx !== correctIndex && (
                           <XCircle className="h-6 w-6 text-rose-500 animate-pop-in" />
                         )}
                       </button>
@@ -1164,17 +1417,17 @@ const GyanKiYatra: React.FC = () => {
                   <div className="space-y-4 animate-slide-up mt-6">
                     <div
                       className={`p-5 rounded-2xl text-sm border ${
-                        selectedOption === currentQuestion.correct
+                        selectedOption === correctIndexFor(currentQuestion)
                           ? "bg-emerald-50 border-emerald-200 text-emerald-900"
                           : "bg-rose-50 border-rose-200 text-rose-900"
                       }`}
                     >
                       <p className="font-bold text-lg mb-2 flex items-center gap-2">
-                        {selectedOption === currentQuestion.correct
+                        {selectedOption === correctIndexFor(currentQuestion)
                           ? <><CheckCircle2 className="h-5 w-5 text-emerald-500"/> शाबाश! सही उत्तर</>
                           : <><XCircle className="h-5 w-5 text-rose-500"/> गलत उत्तर</>}
                       </p>
-                      <p className="text-base opacity-90">{currentQuestion.explanation}</p>
+                      <p className="text-base opacity-90">{questionExplanation(currentQuestion)}</p>
                     </div>
                     <Button
                       className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold text-lg py-6 rounded-2xl shadow-md"

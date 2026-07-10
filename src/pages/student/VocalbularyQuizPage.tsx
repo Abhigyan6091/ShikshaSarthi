@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import Header from "@/components/Header";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -104,7 +105,9 @@ const VocabularyQuizPage: React.FC = () => {
   };
 
   return (
-    <div style={styles.container}>
+    <div>
+      <Header />
+      <div style={styles.container}>
       <h1 style={styles.title}>📘 Vocabulary Practice</h1>
 
       {/* All Chapters */}
@@ -194,6 +197,7 @@ const VocabularyQuizPage: React.FC = () => {
           </button>
         </div>
       )}
+      </div>
     </div>
   );
 };

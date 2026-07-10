@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import { Building, IdCard, Phone, User, Users } from 'lucide-react';
+import Header from '@/components/Header';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -55,27 +56,35 @@ const TeacherProfileFixed: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
+      <div className="flex min-h-screen flex-col bg-gray-50">
+        <Header />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600" />
+        </div>
       </div>
     );
   }
 
   if (!teacherData) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-red-600">Teacher profile could not be loaded.</p>
-          <button onClick={() => navigate('/teacher')} className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-white">
-            Back to Dashboard
-          </button>
+      <div className="flex min-h-screen flex-col bg-gray-50">
+        <Header />
+        <div className="flex flex-1 items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-600">Teacher profile could not be loaded.</p>
+            <button onClick={() => navigate('/teacher')} className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-white">
+              Back to Dashboard
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-10">
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="px-4 py-10">
       <div className="mx-auto max-w-4xl overflow-hidden rounded-lg bg-white shadow">
         <div className="bg-blue-600 px-6 py-8">
           <div className="flex items-center gap-6">
@@ -143,6 +152,7 @@ const TeacherProfileFixed: React.FC = () => {
             Back to Dashboard
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

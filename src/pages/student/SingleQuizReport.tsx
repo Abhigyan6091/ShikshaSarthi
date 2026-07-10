@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Cookies from "js-cookie";
 import axios from "axios";
+import Header from "@/components/Header";
 const API_URL = import.meta.env.VITE_API_URL;
 interface Question {
   _id: string;
@@ -93,7 +94,9 @@ const SingleQuizReport: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div>
+      <Header />
+      <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mb-4">Quiz Report: {quiz.quizId}</h1>
       <p className="text-gray-600 mb-6">
         Attempted At: {new Date(quiz.attemptedAt).toLocaleString()}
@@ -207,6 +210,7 @@ const SingleQuizReport: React.FC = () => {
           </div>
         );
       })}
+      </div>
     </div>
   );
 };

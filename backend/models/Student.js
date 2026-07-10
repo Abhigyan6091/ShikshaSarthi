@@ -72,6 +72,8 @@ const studentSchema = new mongoose.Schema({
           isCorrect: Boolean,
           hintUsed: Boolean,
           timeSpentMs: Number,
+          hints: [String],
+          hintsHindi: [String],
           explanation: String,
           explanationHindi: String,
           ratingBefore: Number,

@@ -7,10 +7,10 @@ import { BookOpen, Award, GraduationCap, BookText } from 'lucide-react';
 const About: React.FC = () => {
   const sections = [
     {
-      title: "NMMS क्या है?",
+      title: "ShikshaSarthi क्या है?",
       icon: <BookOpen className="h-8 w-8 sm:h-10 sm:w-10 text-edu-blue mb-4" />,
       content: `
-        राष्ट्रीय साधन-सह-मेधा छात्रवृत्ति (NMMS) एक केंद्रीय क्षेत्र योजना है जो आर्थिक रूप से कमजोर वर्गों के मेधावी छात्रों को छात्रवृत्ति प्रदान करती है
+        ShikshaSarthi एक व्यापक शिक्षण मंच है जो सरकारी स्कूल के छात्रों को राष्ट्रीय साधन-सह-मेधा छात्रवृत्ति (NMMS) जैसी छात्रवृत्ति परीक्षाओं की तैयारी में मदद करता है,
         ताकि कक्षा 8 में ड्रॉपआउट दर को कम किया जा सके और उन्हें माध्यमिक स्तर पर अपनी पढ़ाई जारी रखने के लिए प्रोत्साहित किया जा सके।
       `
     },
@@ -65,10 +65,10 @@ const About: React.FC = () => {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-10 px-2">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4">
-              NMMS परीक्षा के बारे में
+              ShikshaSarthi और NMMS परीक्षा के बारे में
             </h1>
             <p className="text-base sm:text-lg text-gray-600 max-w-3xl mx-auto">
-              राष्ट्रीय साधन-सह-मेधा छात्रवृत्ति योजना के बारे में अधिक जानें और यह योजना आर्थिक रूप से कमजोर वर्गों के मेधावी छात्रों की कैसे मदद करती है।
+              ShikshaSarthi छात्रों को राष्ट्रीय साधन-सह-मेधा छात्रवृत्ति (NMMS) योजना की तैयारी में मदद करता है — यह जानें कि यह योजना आर्थिक रूप से कमजोर वर्गों के मेधावी छात्रों की कैसे मदद करती है।
             </p>
           </div>
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Wifi, WifiOff } from "lucide-react";
 import { clearAllAuth } from "@/lib/session";
+import Header from "@/components/Header";
 const API_URL = import.meta.env.VITE_API_URL;
 export default function LoginStudent() {
   const [id, setid] = useState("");
@@ -71,6 +72,7 @@ export default function LoginStudent() {
 
   return (
     <div>
+      <Header />
       <div className="fixed top-4 right-4 z-10">
         <div
           className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ${

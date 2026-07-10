@@ -4,6 +4,7 @@ import MATQuestionViewer from '@/components/MATQuestionViewer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Loader2 } from 'lucide-react';
+import Header from '@/components/Header';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -103,7 +104,9 @@ const MATAnimatedDemo: React.FC = () => {
   const currentQuestion = questions[currentQuestionIndex];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+      <Header />
+      <div className="py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6 flex items-center justify-between">
           <Button variant="outline" onClick={() => navigate('/student/dashboard')}>
@@ -130,6 +133,7 @@ const MATAnimatedDemo: React.FC = () => {
             <Button onClick={handleNext}>अगला प्रश्न</Button>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

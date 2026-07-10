@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { PlusCircle, Trash2, ArrowLeft } from 'lucide-react';
+import Header from '@/components/Header';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -180,8 +181,9 @@ const CreateFeedbackForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <Header />
+      <div className="max-w-4xl mx-auto p-6">
         <Button
           variant="ghost"
           onClick={() => navigate('/schooladmin/feedback-management')}

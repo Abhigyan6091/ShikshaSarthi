@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { Clock, Calendar, Trophy, ArrowLeft, FileText, Search, X } from 'lucide-react';
 import axios from 'axios';
+import Header from '@/components/Header';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -188,17 +189,22 @@ const AdvancedQuizPastReports: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-3 sm:p-6 max-w-6xl">
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading past reports...</p>
+      <div className="min-h-screen bg-white">
+        <Header />
+        <div className="container mx-auto p-3 sm:p-6 max-w-6xl">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading past reports...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-3 sm:p-6 max-w-6xl">
+    <div className="min-h-screen bg-white">
+      <Header />
+      <div className="container mx-auto p-3 sm:p-6 max-w-6xl">
       <div className="mb-6">
         <Button 
           variant="outline" 
@@ -318,6 +324,7 @@ const AdvancedQuizPastReports: React.FC = () => {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 };

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Lock, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import axios from "axios";
+import Header from "@/components/Header";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -94,7 +95,9 @@ const ForceChangePassword: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-10">
+        <div className="flex min-h-screen flex-col bg-gray-50">
+            <Header />
+            <div className="flex flex-1 items-center justify-center px-4 py-10">
             <Card className="w-full max-w-md shadow-lg border-edu-blue/20">
                 <CardHeader className="space-y-1 flex flex-col items-center">
                     <div className="flex items-center justify-center p-3 bg-edu-blue/10 rounded-full mb-2 text-edu-blue">
@@ -138,6 +141,7 @@ const ForceChangePassword: React.FC = () => {
                     </CardFooter>
                 </form>
             </Card>
+            </div>
         </div>
     );
 };

@@ -79,14 +79,14 @@ const MultimediaAssessment: React.FC = () => {
     {
       id: "mat",
       title: "MAT - Mental Ability Test",
-      description: "Interactive practice for NMMSE Mental Ability",
+      description: "Interactive practice for ShikshaSarthi Mental Ability",
       icon: Brain,
       color: "orange",
       bgColor: "bg-orange-50",
       borderColor: "border-orange-200",
       iconColor: "text-orange-600",
       hoverBorder: "hover:border-orange-400",
-      details: "Master all 14 NMMSE MAT topics through interactive practice with instant feedback.",
+      details: "Master all 14 ShikshaSarthi MAT topics through interactive practice with instant feedback.",
       count: "14 Modules",
       difficulty: "Mixed",
       route: "/student/mat"

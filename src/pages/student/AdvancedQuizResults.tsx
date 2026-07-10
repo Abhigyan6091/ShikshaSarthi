@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import Header from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -475,10 +476,13 @@ const AdvancedQuizResults: React.FC = () => {
 
   if (loading || !results) {
     return (
-      <div className="container mx-auto p-3 sm:p-6 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Processing results...</p>
+      <div className="flex min-h-screen flex-col">
+        <Header />
+        <div className="container mx-auto p-3 sm:p-6 flex flex-1 items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Processing results...</p>
+          </div>
         </div>
       </div>
     );
@@ -560,7 +564,9 @@ const AdvancedQuizResults: React.FC = () => {
   const hasSectionPerformanceData = sectionPerformanceData.some((item) => item.total > 0);
 
   return (
-    <div className="container mx-auto p-3 sm:p-6 max-w-6xl">
+    <div className="min-h-screen bg-white">
+      <Header />
+      <div className="container mx-auto p-3 sm:p-6 max-w-6xl">
       <Card className="mb-6">
         <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
           <CardTitle className="text-2xl sm:text-3xl flex flex-col sm:flex-row sm:items-center gap-3">
@@ -1343,6 +1349,7 @@ const AdvancedQuizResults: React.FC = () => {
         >
           Take Another Quiz
         </Button>
+      </div>
       </div>
     </div>
   );

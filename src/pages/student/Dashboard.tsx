@@ -72,6 +72,7 @@ const StudentDashboard: React.FC = () => {
       attemptedAt: string;
     }[];
     adaptiveTestAttempts?: {
+      _id: string;
       className: string;
       ratingBefore: number;
       ratingAfter: number;
@@ -291,15 +292,10 @@ const StudentDashboard: React.FC = () => {
                 </p>
               </div>
               </div>
-              <div className="rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 px-5 py-4 text-white shadow-md">
-                <p className="text-xs font-medium uppercase tracking-wide text-blue-100">{isHindi ? "Adaptive Rating" : "Adaptive Rating"}</p>
-                <p className="text-3xl font-bold">{student?.adaptiveRating?.rating || "Start"}</p>
-                <p className="text-xs text-blue-100">{isHindi ? "टेस्ट देकर rating पाएं" : "Take a test to calibrate"}</p>
-              </div>
             </div>
 
             {/* Quick Info Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
               <Card className="border-l-4 border-l-edu-blue">
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between">
@@ -340,12 +336,24 @@ const StudentDashboard: React.FC = () => {
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600">Member Since</p>
+                      <p className="text-sm text-gray-600">{isHindi ? "सदस्य बने" : "Member Since"}</p>
                       <p className="text-lg font-bold text-gray-900">
                         {student.createdAt ? new Date(student.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }) : 'N/A'}
                       </p>
                     </div>
                     <Calendar className="h-8 w-8 text-edu-yellow/30" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-l-4 border-l-cyan-500 bg-gradient-to-br from-cyan-50 to-white">
+                <CardContent className="pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-600">{isHindi ? "Adaptive Rating" : "Adaptive Rating"}</p>
+                      <p className="text-lg font-bold text-cyan-700">{student?.adaptiveRating?.rating || (isHindi ? "शुरू करें" : "Start")}</p>
+                    </div>
+                    <BrainCircuit className="h-8 w-8 text-cyan-500/40" />
                   </div>
                 </CardContent>
               </Card>
@@ -372,36 +380,12 @@ const StudentDashboard: React.FC = () => {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-500">
-                  {isHindi ? "विषय चुनें और NMMS तैयारी के लिए MCQ अभ्यास करें।" : "Select a subject and practice MCQ questions to improve your NMMS skills."}
+                  {isHindi ? "विषय चुनें और ShikshaSarthi तैयारी के लिए MCQ अभ्यास करें।" : "Select a subject and practice MCQ questions to improve your ShikshaSarthi skills."}
                 </p>
               </CardContent>
               <CardFooter>
                 <Link to="/student/practice" className="w-full">
                   <Button className="w-full">{isHindi ? "Practice शुरू करें" : "Start Practice"}</Button>
-                </Link>
-              </CardFooter>
-            </Card>
-
-            <Card className="group border-0 bg-white shadow-sm ring-1 ring-emerald-100 transition hover:-translate-y-1 hover:shadow-lg">
-              <CardHeader>
-                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white">
-                  <School className="h-6 w-6" />
-                </div>
-                <CardTitle>{isHindi ? "My Classes" : "My Classes"}</CardTitle>
-                <CardDescription>
-                  {isHindi ? "कक्षा announcements, documents और quizzes देखें" : "See class announcements, documents, and quizzes"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-500">
-                  {isHindi ? "आप जिन classes में enrolled हैं, उनका पूरा class work एक जगह देखें।" : "Open the classroom feed for the classes you are enrolled in."}
-                </p>
-              </CardContent>
-              <CardFooter>
-                <Link to="/student/my-classes" className="w-full">
-                  <Button variant="outline" className="w-full border-emerald-600 text-emerald-700 hover:bg-emerald-50">
-                    {isHindi ? "Classes खोलें" : "Open Classes"}
-                  </Button>
                 </Link>
               </CardFooter>
             </Card>
@@ -425,6 +409,30 @@ const StudentDashboard: React.FC = () => {
                 <Link to="/student/adaptive-test" className="w-full">
                   <Button className="w-full bg-white text-blue-700 hover:bg-cyan-50">
                     {isHindi ? "Adaptive Test शुरू करें" : "Start Adaptive Test"}
+                  </Button>
+                </Link>
+              </CardFooter>
+            </Card>
+
+            <Card className="group border-0 bg-white shadow-sm ring-1 ring-emerald-100 transition hover:-translate-y-1 hover:shadow-lg">
+              <CardHeader>
+                <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white">
+                  <School className="h-6 w-6" />
+                </div>
+                <CardTitle>{isHindi ? "My Classes" : "My Classes"}</CardTitle>
+                <CardDescription>
+                  {isHindi ? "कक्षा announcements, documents और quizzes देखें" : "See class announcements, documents, and quizzes"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-gray-500">
+                  {isHindi ? "आप जिन classes में enrolled हैं, उनका पूरा class work एक जगह देखें।" : "Open the classroom feed for the classes you are enrolled in."}
+                </p>
+              </CardContent>
+              <CardFooter>
+                <Link to="/student/my-classes" className="w-full">
+                  <Button variant="outline" className="w-full border-emerald-600 text-emerald-700 hover:bg-emerald-50">
+                    {isHindi ? "Classes खोलें" : "Open Classes"}
                   </Button>
                 </Link>
               </CardFooter>
@@ -694,7 +702,11 @@ const StudentDashboard: React.FC = () => {
                     const ratingDown = attempt.ratingChange < 0;
                     const accuracy = attempt.total > 0 ? Math.round((attempt.correct / attempt.total) * 100) : 0;
                     return (
-                      <div key={index} className="p-4 border rounded-lg hover:shadow-md transition-all hover:border-blue-300 bg-gradient-to-r from-white to-blue-50/30">
+                      <Link
+                        key={attempt._id || index}
+                        to={attempt._id ? `/student/adaptive-test/history/${attempt._id}` : '#'}
+                        className="block p-4 border rounded-lg hover:shadow-md transition-all hover:border-blue-300 bg-gradient-to-r from-white to-blue-50/30 cursor-pointer"
+                      >
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
                           <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-full ${
@@ -770,7 +782,7 @@ const StudentDashboard: React.FC = () => {
                         )}
 
                         <Progress value={accuracy} className="mt-3 h-2" />
-                      </div>
+                      </Link>
                     );
                   })}
                 </div>

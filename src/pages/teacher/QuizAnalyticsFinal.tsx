@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
+import Header from "@/components/Header";
 import { 
   BarChart3, Users, Trophy, Clock, Target, Medal, Crown, 
   BookOpen, Volume2, Video, Puzzle, AlertCircle, CheckCircle2, XCircle, Layers,
@@ -374,7 +375,9 @@ export default function QuizAnalyticsFinal() {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-6 max-w-7xl">
+    <div className="min-h-screen bg-white">
+      <Header />
+      <div className="container mx-auto p-4 md:p-6 max-w-7xl">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
@@ -1049,6 +1052,7 @@ export default function QuizAnalyticsFinal() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }

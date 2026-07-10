@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Video, Volume2, BookOpen, Puzzle, FileText } from 'lucide-react';
 import axios from 'axios';
+import Header from '@/components/Header';
 import { useAppDispatch } from '@/store/hooks';
 import { clearAdvancedQuizDraft } from '@/store/slices/advancedQuizDraftSlice';
 
@@ -339,7 +340,9 @@ const TakeAdvancedQuiz: React.FC = () => {
   };
 
   return (
-    <div className="container mx-auto p-3 sm:p-6 max-w-4xl">
+    <div className="min-h-screen bg-white">
+      <Header />
+      <div className="container mx-auto p-3 sm:p-6 max-w-4xl">
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
@@ -459,6 +462,7 @@ const TakeAdvancedQuiz: React.FC = () => {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 };

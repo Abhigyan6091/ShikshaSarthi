@@ -5,8 +5,6 @@ import {
   ArrowRight,
   BookmarkCheck,
   BrainCircuit,
-  CheckCircle,
-  ChevronLeft,
   ChevronRight,
   Clock,
   Flag,
@@ -20,7 +18,6 @@ import {
   SkipForward,
   Target,
   Trophy,
-  XCircle,
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -31,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { getCurrentUser } from "@/lib/session";
+import AdaptiveReviewList from "@/components/AdaptiveReviewList";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const QUESTION_COUNT_OPTIONS = [10, 20, 30, 40, "unlimited"] as const;
@@ -93,6 +91,8 @@ type ReviewItem = {
   correctAnswerIndex: number;
   isCorrect: boolean;
   hintUsed: boolean;
+  hints?: string[];
+  hintsHindi?: string[];
   explanation?: string;
   explanationHindi?: string;
   ratingBefore: number;
@@ -188,7 +188,11 @@ const updateLocalState = (
   const varianceRatio = state.variance / (state.variance + 100);
   const beta = 0.0687 + (0.1237 - 0.0687) * (1 - varianceRatio);
   const velocity = beta * state.velocity + (1 - beta) * rawUpdate;
-  const rating = clamp(Math.round(state.rating + clamp(velocity, -17.2544, 17.2544)), band.min, band.max);
+  const boundedMagnitude = Math.max(1, Math.round(Math.abs(velocity)));
+  const ratingChange = isCorrect
+    ? clamp(boundedMagnitude, 1, 10)
+    : -clamp(boundedMagnitude, 1, 5);
+  const rating = clamp(Math.round(state.rating + ratingChange), band.min, band.max);
 
   return {
     rating,
@@ -286,6 +290,10 @@ const AdaptiveTest: React.FC = () => {
   const [showPalette, setShowPalette] = useState(true);
   const [wronglyAnsweredIds, setWronglyAnsweredIds] = useState<Set<string>>(new Set());
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // Per-question stopwatch (counts up from 0 each time a new question loads),
+  // shown alongside the overall countdown so a student can see time spent on
+  // just the current question.
+  const [questionElapsedSeconds, setQuestionElapsedSeconds] = useState(0);
 
   useEffect(() => {
     const handleLanguageChange = (event: Event) => {
@@ -432,6 +440,17 @@ const AdaptiveTest: React.FC = () => {
     return () => window.clearInterval(timer);
   }, [result, submitting, testStarted, timeRemaining]);
 
+  // Per-question stopwatch: resets whenever questionStartedAt changes (new
+  // question, or navigating), ticks every second while the test is active.
+  useEffect(() => {
+    setQuestionElapsedSeconds(0);
+    if (!testStarted || result || submitting) return;
+    const timer = window.setInterval(() => {
+      setQuestionElapsedSeconds(Math.floor((Date.now() - questionStartedAt) / 1000));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [questionStartedAt, testStarted, result, submitting]);
+
   // ── Finish Test ────────────────────────────────────────────────────────
   const finishTest = async (finalAnswers: AttemptAnswer[]) => {
     try {
@@ -470,6 +489,8 @@ const AdaptiveTest: React.FC = () => {
           correctAnswerIndex: answer.question.correctAnswerIndex,
           isCorrect: answer.selectedOptionIndex === answer.question.correctAnswerIndex,
           hintUsed: answer.hintUsed,
+          hints: answer.question.hints || [],
+          hintsHindi: answer.question.hintsHindi || [],
           explanation: answer.question.explanation,
           explanationHindi: answer.question.explanationHindi,
           ratingBefore: adaptiveState.rating,
@@ -650,20 +671,13 @@ const AdaptiveTest: React.FC = () => {
     }
   };
 
-  const goToPreviousQuestion = () => {
-    if (currentHistoryIndex > 0) {
-      const prevEntry = questionHistory[currentHistoryIndex - 1];
-      setCurrentHistoryIndex(currentHistoryIndex - 1);
-      setSelectedOptionIndex(prevEntry?.selectedOptionIndex ?? null);
-      setShowHint(false);
-      setHintUsed(prevEntry?.hintUsed || false);
-      setQuestionStartedAt(Date.now());
-    }
-  };
-
   const goToQuestion = (index: number) => {
     if (index < 0 || index >= questionHistory.length) return;
     const entry = questionHistory[index];
+    // Already-answered questions are locked (no backward navigation to change a
+    // committed answer); skipped / marked-for-review / the current question can
+    // still be revisited before finishing the test.
+    if (entry.status === "answered" && index !== currentHistoryIndex) return;
     setCurrentHistoryIndex(index);
     setSelectedOptionIndex(entry?.selectedOptionIndex ?? null);
     setShowHint(false);
@@ -759,11 +773,16 @@ const AdaptiveTest: React.FC = () => {
   }
 
   // ── Main Render ────────────────────────────────────────────────────────
+  // While a test is in progress the content area uses the full viewport width
+  // (and skips the footer) so the question fits the complete screen instead of
+  // being boxed into the same reading-width container as the setup/result
+  // screens.
+  const inTestScreen = testStarted && !result;
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <Header />
-      <main className="flex-1 py-6 md:py-8">
-        <div className="mx-auto max-w-7xl px-4">
+      <main className={`flex-1 ${inTestScreen ? "flex flex-col py-4" : "py-6 md:py-8"}`}>
+        <div className={`mx-auto w-full px-4 ${inTestScreen ? "max-w-[1800px] flex-1 flex flex-col" : "max-w-7xl"}`}>
           {/* Top bar */}
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -793,8 +812,15 @@ const AdaptiveTest: React.FC = () => {
               <div className="grid grid-cols-2 gap-3 sm:min-w-72">
                 <Card>
                   <CardContent className="pt-4">
-                    <p className="text-xs text-slate-500">Current rating</p>
-                    <p className="text-2xl font-bold text-blue-700">{result?.ratingAfter ?? adaptiveState.rating}</p>
+                    <p className="text-xs text-slate-500">{isHindi ? "रेटिंग" : "Rating"}</p>
+                    {testStarted && !result ? (
+                      // Live rating is hidden during the test itself — per-question
+                      // rating swings would tell the student whether they just
+                      // answered correctly, defeating the point of the test.
+                      <p className="text-2xl font-bold text-slate-400" title={isHindi ? "टेस्ट पूरा होने पर दिखेगा" : "Revealed after you finish"}>•••</p>
+                    ) : (
+                      <p className="text-2xl font-bold text-blue-700">{result?.ratingAfter ?? adaptiveState.rating}</p>
+                    )}
                   </CardContent>
                 </Card>
                 <Card>
@@ -1079,9 +1105,14 @@ const AdaptiveTest: React.FC = () => {
                           {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
                           {isFullscreen ? (isHindi ? "बाहर" : "Exit") : (isHindi ? "पूर्ण" : "Full")}
                         </Button>
-                        <span className="inline-flex items-center gap-1 text-sm text-slate-500">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold ${
+                            questionElapsedSeconds >= 90 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"
+                          }`}
+                          title={isHindi ? "इस प्रश्न पर बिताया गया समय" : "Time spent on this question"}
+                        >
                           <Clock className="h-4 w-4" />
-                          Ref {currentQuestion ? Math.round(estimateReferenceTime(currentQuestion)) : 0}s
+                          {formatTime(questionElapsedSeconds)}
                         </span>
                       </div>
                     </div>
@@ -1090,13 +1121,6 @@ const AdaptiveTest: React.FC = () => {
                         ? currentQuestion?.questionHindi || currentQuestion?.question
                         : currentQuestion?.question || currentQuestion?.questionHindi}
                     </CardTitle>
-                    {currentQuestion && (
-                      <CardDescription className="text-base">
-                        {isHindi
-                          ? currentQuestion.questionHindi && currentQuestion.question
-                          : currentQuestion.questionHindi || ""}
-                      </CardDescription>
-                    )}
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid gap-3">
@@ -1105,12 +1129,6 @@ const AdaptiveTest: React.FC = () => {
                           isHindi
                             ? currentQuestion?.optionsHindi?.[index] || option
                             : option || currentQuestion?.optionsHindi?.[index];
-                        const secondaryLabel =
-                          isHindi && currentQuestion?.optionsHindi?.[index]
-                            ? option
-                            : !isHindi
-                              ? currentQuestion?.optionsHindi?.[index] || ""
-                              : "";
                         const selected = selectedOptionIndex === index;
                         return (
                           <button
@@ -1125,9 +1143,6 @@ const AdaptiveTest: React.FC = () => {
                           >
                             <span className="mr-3 font-semibold">{String.fromCharCode(65 + index)}.</span>
                             <span>{label}</span>
-                            {secondaryLabel && secondaryLabel !== label && (
-                              <span className="mt-1 block pl-7 text-sm text-slate-500">{secondaryLabel}</span>
-                            )}
                           </button>
                         );
                       })}
@@ -1160,18 +1175,8 @@ const AdaptiveTest: React.FC = () => {
 
                     {/* Action buttons */}
                     <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
-                      {/* Left: Previous & Skip */}
+                      {/* Left: Skip & Mark for review (no Previous — adaptive tests are forward-only) */}
                       <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={currentHistoryIndex === 0}
-                          onClick={goToPreviousQuestion}
-                          className="flex items-center gap-1"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                          Previous
-                        </Button>
                         <Button
                           type="button"
                           variant="outline"
@@ -1271,21 +1276,27 @@ const AdaptiveTest: React.FC = () => {
 
                       {/* Bubble grid */}
                       <div className="flex flex-wrap gap-2">
-                        {questionHistory.map((entry, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => goToQuestion(idx)}
-                            className={`h-9 w-9 rounded-md border-2 text-xs font-bold transition hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-400 ${
-                              idx === currentHistoryIndex
-                                ? "ring-2 ring-blue-500 ring-offset-1 " + statusColors[entry.status]
-                                : statusColors[entry.status]
-                            }`}
-                            title={`Question ${idx + 1} — ${entry.status}`}
-                          >
-                            {idx + 1}
-                          </button>
-                        ))}
+                        {questionHistory.map((entry, idx) => {
+                          const locked = entry.status === "answered" && idx !== currentHistoryIndex;
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => goToQuestion(idx)}
+                              disabled={locked}
+                              className={`h-9 w-9 rounded-md border-2 text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-blue-400 ${
+                                locked ? "cursor-not-allowed opacity-70" : "hover:scale-110"
+                              } ${
+                                idx === currentHistoryIndex
+                                  ? "ring-2 ring-blue-500 ring-offset-1 " + statusColors[entry.status]
+                                  : statusColors[entry.status]
+                              }`}
+                              title={locked ? `${isHindi ? "उत्तर दर्ज हो चुका" : "Already answered"} — ${idx + 1}` : `Question ${idx + 1} — ${entry.status}`}
+                            >
+                              {idx + 1}
+                            </button>
+                          );
+                        })}
                       </div>
 
                       {/* Summary counts */}
@@ -1357,76 +1368,18 @@ const AdaptiveTest: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Review answers */}
+              {/* Review answers — hints and explanations are now visible for
+                  every question (not just ones where the hint was opened
+                  during the test), and only the current language is shown. */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Review Answers</CardTitle>
-                  <CardDescription>Check the correct answers, explanations, hints used, and rating movement.</CardDescription>
+                  <CardTitle>{isHindi ? "उत्तर समीक्षा" : "Review Answers"}</CardTitle>
+                  <CardDescription>
+                    {isHindi ? "सही उत्तर, हिंट, व्याख्या और रेटिंग बदलाव देखें।" : "Check the correct answers, hints, explanations, and rating movement."}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {result.review.map((item, index) => (
-                    <div key={`${item.questionId}-${index}`} className="rounded-lg border bg-white p-4">
-                      <div className="mb-3 flex items-start gap-2">
-                        {item.isCorrect ? (
-                          <CheckCircle className="mt-1 h-5 w-5 text-green-600 flex-shrink-0" />
-                        ) : (
-                          <XCircle className="mt-1 h-5 w-5 text-red-600 flex-shrink-0" />
-                        )}
-                        <div>
-                          <p className="font-semibold text-slate-900">
-                            <span className="mr-1 text-blue-600">Q{index + 1}.</span>
-                            {isHindi ? item.questionHindi || item.question : item.question || item.questionHindi}
-                          </p>
-                          {isHindi && item.questionHindi && item.question && (
-                            <p className="mt-1 text-sm text-slate-600">{item.question}</p>
-                          )}
-                          {!isHindi && item.questionHindi && (
-                            <p className="mt-1 text-sm text-slate-600">{item.questionHindi}</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="grid gap-2 md:grid-cols-2">
-                        {item.options.map((option, optionIndex) => {
-                          const label = isHindi ? item.optionsHindi?.[optionIndex] || option : option || item.optionsHindi?.[optionIndex];
-                          const secondaryLabel =
-                            isHindi && item.optionsHindi?.[optionIndex]
-                              ? option
-                              : !isHindi
-                                ? item.optionsHindi?.[optionIndex] || ""
-                                : "";
-                          const isSelected = item.selectedOptionIndex === optionIndex;
-                          const isCorrect = item.correctAnswerIndex === optionIndex;
-                          return (
-                            <div
-                              key={`${item.questionId}-${optionIndex}`}
-                              className={`rounded-md border px-3 py-2 text-sm ${
-                                isCorrect
-                                  ? "border-green-300 bg-green-50 text-green-800"
-                                  : isSelected
-                                    ? "border-red-300 bg-red-50 text-red-800"
-                                    : "border-slate-200 bg-slate-50 text-slate-700"
-                              }`}
-                            >
-                              {String.fromCharCode(65 + optionIndex)}. {label}
-                              {secondaryLabel && secondaryLabel !== label && (
-                                <span className="mt-1 block text-xs opacity-80">{secondaryLabel}</span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {(item.explanationHindi || item.explanation) && (
-                        <p className="mt-3 rounded-md bg-slate-50 p-3 text-sm text-slate-700">
-                          {isHindi ? item.explanationHindi || item.explanation : item.explanation || item.explanationHindi}
-                        </p>
-                      )}
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
-                        <Badge variant="outline">Rating {item.ratingBefore} → {item.ratingAfter}</Badge>
-                        {item.hintUsed && <Badge variant="outline">Hint used</Badge>}
-                        {item.selectedOptionIndex === null && <Badge variant="outline" className="border-orange-300 text-orange-600">Skipped</Badge>}
-                      </div>
-                    </div>
-                  ))}
+                <CardContent>
+                  <AdaptiveReviewList items={result.review} isHindi={isHindi} />
                 </CardContent>
               </Card>
 
@@ -1446,7 +1399,7 @@ const AdaptiveTest: React.FC = () => {
           )}
         </div>
       </main>
-      <Footer />
+      {!inTestScreen && <Footer />}
     </div>
   );
 };
