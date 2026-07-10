@@ -11,6 +11,7 @@ import Footer from '@/components/Footer';
 import { School, Users, GraduationCap, UserCog, PlusCircle, User, Phone, IdCard, Building, BookOpen, Key, Copy, Check, ArrowLeft, Mail, Shield, UserCheck, Trash2 } from 'lucide-react';
 import axios from 'axios';
 import CloudUpdateControl from './CloudUpdateControl';
+import SyncStatusControl from './SyncStatusControl';
 import { clearAllAuth } from '@/lib/session';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -608,7 +609,10 @@ const SuperAdminDashboard: React.FC = () => {
             <p className="text-gray-600">Manage all schools, admins, teachers, and students</p>
           </div>
 
-          <CloudUpdateControl />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <CloudUpdateControl />
+            <SyncStatusControl />
+          </div>
 
           {/* Master Hub Status Section */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

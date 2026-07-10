@@ -113,6 +113,26 @@ mongoose
     // One-time data fixes: backfill student batches from class, and clean up
     // profiles orphaned by already-deleted schools.
     require("./utils/dataMigrations").runStartupMigrations();
+
+    // Loud diagnostics: cross-instance sync (question bank + credentials +
+    // deletions) rides the AWS cloud path. It silently no-ops if the school's
+    // env is missing AWS_SYNC_ENABLED / AWS_CONTROL_API_URL / AWS_CONTROL_API_KEY,
+    // which is the most common reason "nothing syncs". Surface it clearly.
+    const aws = appConfig.aws || {};
+    const missing = [];
+    if (!aws.controlApiUrl) missing.push("AWS_CONTROL_API_URL");
+    if (!aws.controlApiKey) missing.push("AWS_CONTROL_API_KEY");
+    if (!aws.syncEnabled) {
+      console.warn(
+        `⚠️  Cloud sync DISABLED (AWS_SYNC_ENABLED not true). Question-bank and credential changes/deletions will NOT sync across schools until it is enabled.`
+      );
+    } else if (missing.length) {
+      console.warn(
+        `⚠️  Cloud sync ENABLED but NOT configured — missing ${missing.join(", ")}. Sync will fail silently until these are set in the school env.`
+      );
+    } else {
+      console.log(`☁️  Cloud sync configured: scope=${aws.syncScope} schoolId=${aws.schoolId} control=${aws.controlApiUrl}`);
+    }
     startAwsAutoSync();
   })
   .catch((err) => {

@@ -1,4 +1,6 @@
-const { GetObjectCommand, PutObjectCommand, s3 } = require("./aws");
+// NB: the AWS SDK is lazy-required inside read/writeCollectionState only, so the
+// pure merge helpers (mergeRecords, filterDelta, deltaTimestamp) can be imported
+// and unit-verified without the SDK or a live S3 (see scripts/verifyCloudSync.js).
 const { sanitizeSchoolId } = require("./response");
 
 const DEFAULT_COLLECTIONS = [
@@ -47,6 +49,7 @@ async function streamToString(stream) {
 }
 
 async function readCollectionState({ bucket, scope, collectionName }) {
+  const { GetObjectCommand, s3 } = require("./aws");
   const key = collectionKey(scope, collectionName);
 
   try {
@@ -70,6 +73,7 @@ async function readCollectionState({ bucket, scope, collectionName }) {
 }
 
 async function writeCollectionState({ bucket, scope, collectionName, records }) {
+  const { PutObjectCommand, s3 } = require("./aws");
   const key = collectionKey(scope, collectionName);
   const now = new Date().toISOString();
   const body = JSON.stringify({
@@ -171,7 +175,12 @@ function mergeRecords(existingRecords, incomingRecords, context) {
       continue;
     }
 
-    if (parseTimestamp(incoming.updatedAt).getTime() > parseTimestamp(existing.updatedAt).getTime()) {
+    const incomingTime = parseTimestamp(incoming.updatedAt).getTime();
+    const existingTime = parseTimestamp(existing.updatedAt).getTime();
+    // Tombstones win a timestamp tie so a delete is never dropped in favour of a
+    // still-active copy (mirrors applySingleRecord on the school server).
+    const tombstoneWinsTie = incoming.isDeleted && !existing.isDeleted && incomingTime === existingTime;
+    if (incomingTime > existingTime || tombstoneWinsTie) {
       byId.set(incoming._id, incoming);
       updated += 1;
       results.push({ id: incoming._id, status: "updated", updatedAt: incoming.updatedAt });

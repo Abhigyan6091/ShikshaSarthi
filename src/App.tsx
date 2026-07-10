@@ -93,7 +93,6 @@ import Settings from "./pages/SettingsFixed";
 
 //Quiz
 
-import Authorization from "./pages/Authorization";
 import MemoryMatchGrid from "./components/puzzles/memoryMatchGrid/MemoryMatchGrid";
 import MatchPieces from "./components/puzzles/matchPieces/MatchPieces";
 
@@ -106,7 +105,6 @@ const AppRoutes = () => {
       <Route path="/" element={<Index />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/authorization" element={<Authorization />} />
       <Route path="/about" element={<About />} />
       <Route path="/not-authorized" element={<NotAuthorized />} />
       <Route path="/uploadquestion" element={<Upload_question />} />

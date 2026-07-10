@@ -251,12 +251,6 @@ const Login: React.FC = () => {
                 required
               />
             </div>
-
-            <div className="text-xs text-gray-500 space-y-0.5">
-              <p>Demo credentials:</p>
-              <p>ID: 1234</p>
-              <p>Password: 1234</p>
-            </div>
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-2">

@@ -154,7 +154,16 @@ async function applySingleRecord(model, collectionName, record, { markSynced }) 
   }
 
   const existingUpdatedAt = parseDate(existingRecord.updatedAt) || new Date(0);
-  if (incomingUpdatedAt.getTime() <= existingUpdatedAt.getTime()) {
+  const strictlyNewer = incomingUpdatedAt.getTime() > existingUpdatedAt.getTime();
+  // A deletion (tombstone) must win a timestamp tie against a still-active local
+  // record. Without this, a delete whose updatedAt equals the local record's
+  // (common at 1s resolution, or under mild clock skew) is dropped and the
+  // deleted school/user/question keeps reappearing on other instances.
+  const tombstoneWinsTie =
+    Boolean(normalizedRecord.isDeleted) &&
+    !existingRecord.isDeleted &&
+    incomingUpdatedAt.getTime() === existingUpdatedAt.getTime();
+  if (!strictlyNewer && !tombstoneWinsTie) {
     return {
       collection: collectionName,
       id: String(normalizedRecord._id),

@@ -14,6 +14,8 @@ const {
 } = require("../sync/syncService");
 const { SYNC_MODELS } = require("../sync/modelRegistry");
 const { runAutoSyncCycle, getAutoSyncState } = require("../sync/autoSyncService");
+const { getAwsAutoSyncState, runAwsAutoSyncCycle } = require("../aws/awsAutoSyncService");
+const { appConfig } = require("../config/appConfig");
 
 router.get("/collections", (_req, res) => {
   res.json({ collections: SYNC_COLLECTIONS });
@@ -21,6 +23,50 @@ router.get("/collections", (_req, res) => {
 
 router.get("/status", (_req, res) => {
   res.json(getAutoSyncState());
+});
+
+// Combined cloud-sync status for the superadmin Sync panel: whether AWS sync is
+// enabled + configured, last run/success/error, and the count of records still
+// pending upload (a non-zero-and-stuck count means sync isn't reaching cloud).
+router.get("/aws-status", async (_req, res) => {
+  try {
+    const aws = appConfig.aws || {};
+    const configured = Boolean(aws.controlApiUrl && aws.controlApiKey);
+    const missing = [];
+    if (!aws.controlApiUrl) missing.push("AWS_CONTROL_API_URL");
+    if (!aws.controlApiKey) missing.push("AWS_CONTROL_API_KEY");
+    if (!aws.syncEnabled) missing.push("AWS_SYNC_ENABLED");
+
+    let pendingRecords = null;
+    try {
+      const pending = await fetchPendingChanges({ limit: 100000 });
+      pendingRecords = pending.totalRecords || 0;
+    } catch (_error) {
+      pendingRecords = null;
+    }
+
+    res.json({
+      ...getAwsAutoSyncState(),
+      configured,
+      missingEnv: missing,
+      scope: aws.syncScope,
+      controlApiUrl: aws.controlApiUrl || null,
+      pendingRecords,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Manual "Sync now" trigger for the superadmin panel. Runs one AWS cloud
+// push+pull cycle and returns the result so the UI can show what happened.
+router.post("/aws-run", async (req, res) => {
+  try {
+    const result = await runAwsAutoSyncCycle({ trigger: req.body?.trigger || "manual" });
+    return res.status(result.ok ? 200 : 202).json(result);
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message });
+  }
 });
 
 // Upload delta changes to this node (used by local -> cloud and cloud -> local replication).
@@ -297,8 +343,13 @@ router.post("/upload-reports", async (req, res) => {
       return res.status(400).json({ message: "Invalid reports payload" });
     }
 
-    const StudentReport = SYNC_MODELS.studentreports;
-    
+    // Registry key is camelCase ("studentReports"); the old lowercase lookup
+    // resolved to undefined and threw on the first report.
+    const StudentReport = SYNC_MODELS.studentReports;
+    if (!StudentReport) {
+      return res.status(500).json({ message: "studentReports model not registered for sync" });
+    }
+
     let imported = 0;
     for (const report of reports) {
       await StudentReport.updateOne(

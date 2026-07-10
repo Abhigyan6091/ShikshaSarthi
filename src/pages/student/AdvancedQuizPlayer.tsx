@@ -126,8 +126,13 @@ const AdvancedQuizPlayer: React.FC = () => {
   const lastServerDraftSaveRef = useRef<number>(0);
   const initialPersistedDraftRef = useRef(persistedDraft);
   const nextServerDraftSyncAtRef = useRef<number>(0);
-  const SERVER_DRAFT_SYNC_INTERVAL_SECONDS = 10 * 60;
-  const INITIAL_SERVER_DRAFT_SYNC_DELAY_SECONDS = 20;
+  // Autosave the quiz to the SCHOOL SERVER frequently (was 10 min) so a power
+  // cut mid-quiz loses at most ~20s of progress, not the whole attempt. The
+  // periodic-save effect re-evaluates every second (timeRemaining is a dep), so
+  // this interval is the real save cadence. Kept off the per-keystroke path to
+  // avoid hammering the LAN server.
+  const SERVER_DRAFT_SYNC_INTERVAL_SECONDS = 20;
+  const INITIAL_SERVER_DRAFT_SYNC_DELAY_SECONDS = 8;
   const LOCAL_DRAFT_TIME_CHECKPOINT_SECONDS = 30;
 
   const isHindi = language === 'hi';
@@ -232,6 +237,44 @@ const AdvancedQuizPlayer: React.FC = () => {
       console.error('Failed to sync advanced quiz draft to database:', error);
     }
   };
+
+  // Best-effort flush when the page is being hidden/closed (tab switch, app
+  // close, navigation). Uses sendBeacon so the save is dispatched even as the
+  // page unloads — it survives cases the async axios save can't. Power cuts are
+  // still covered by the ~20s periodic save above; this handles graceful exits.
+  const flushDraftBeacon = () => {
+    const snapshot = createDraftSnapshot();
+    if (!snapshot || !snapshot.quizStarted || snapshot.quizEnded) {
+      return;
+    }
+    try {
+      const blob = new Blob([JSON.stringify(snapshot)], { type: 'application/json' });
+      if (navigator.sendBeacon && navigator.sendBeacon(`${API_URL}/quizzes/advanced-draft`, blob)) {
+        return;
+      }
+    } catch (_error) {
+      // fall through to axios keepalive
+    }
+    // Fallback for browsers where sendBeacon is unavailable/blocked.
+    axios.post(`${API_URL}/quizzes/advanced-draft`, snapshot).catch(() => {});
+  };
+
+  useEffect(() => {
+    const handleHide = () => {
+      if (document.visibilityState === 'hidden') {
+        flushDraftBeacon();
+      }
+    };
+    window.addEventListener('visibilitychange', handleHide);
+    window.addEventListener('pagehide', flushDraftBeacon);
+    window.addEventListener('beforeunload', flushDraftBeacon);
+    return () => {
+      window.removeEventListener('visibilitychange', handleHide);
+      window.removeEventListener('pagehide', flushDraftBeacon);
+      window.removeEventListener('beforeunload', flushDraftBeacon);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quizInfo, studentId, currentIndex, answers, puzzleResults, videoAnalytics, timeRemaining, quizStarted, quizEnded]);
 
   useEffect(() => {
     const userAgent = navigator.userAgent.toLowerCase();

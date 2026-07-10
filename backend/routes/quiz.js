@@ -623,59 +623,83 @@ router.get("/advanced-draft/:quizId/:studentId", async (req, res) => {
   }
 });
 
+// Shared save logic for the advanced-quiz autosave draft. Persisting to the
+// school server's DB (StudentReport, submissionStatus:"draft") frequently means
+// a power cut mid-quiz doesn't lose progress: the draft survives on the server
+// and, because the plugin marks it synced:false, later syncs to AWS. Returns a
+// small result object so both the PUT (interactive) and POST/beacon (page-hide,
+// power-cut best effort) paths can share it.
+async function saveAdvancedDraft(body) {
+  const quizId = String(body.quizId || "").trim();
+  const studentId = String(body.studentId || "").trim();
+
+  if (!quizId || !studentId) {
+    return { status: 400, payload: { error: "quizId and studentId are required" } };
+  }
+
+  const submittedReport = await StudentReport.findOne(submittedReportFilter(quizId, studentId)).lean();
+  if (submittedReport) {
+    return {
+      status: 409,
+      payload: { message: "Quiz already submitted. Draft updates are disabled.", submitted: true },
+    };
+  }
+
+  const updatePayload = {
+    quizId,
+    studentId,
+    correct: Number(body.correct || 0),
+    incorrect: Number(body.incorrect || 0),
+    unattempted: Number(body.unattempted || 0),
+    timeTaken: Number(body.timeTaken || 0),
+    answers: Array.isArray(body.answers) ? body.answers : [],
+    submissionStatus: "draft",
+    draftState: {
+      quizInfo: body.quizInfo || {},
+      currentIndex: Number(body.currentIndex || 0),
+      timeRemaining: Number(body.timeRemaining || 0),
+      initialTimeLimit: Number(body.initialTimeLimit || 0),
+      quizStarted: Boolean(body.quizStarted),
+      quizEnded: Boolean(body.quizEnded),
+      startedAt: body.startedAt ? new Date(body.startedAt) : new Date(),
+      puzzleResults: body.puzzleResults || {},
+      videoAnalytics: body.videoAnalytics || {},
+      lastSyncedAt: new Date(),
+    },
+  };
+
+  const savedDraft = await StudentReport.findOneAndUpdate(
+    draftReportFilter(quizId, studentId),
+    { $set: updatePayload },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  return {
+    status: 200,
+    payload: { message: "Draft saved successfully", draft: serializeDraftFromStudentReport(savedDraft) },
+  };
+}
+
 router.put("/advanced-draft", async (req, res) => {
   try {
-    const quizId = String(req.body.quizId || "").trim();
-    const studentId = String(req.body.studentId || "").trim();
-
-    if (!quizId || !studentId) {
-      return res.status(400).json({ error: "quizId and studentId are required" });
-    }
-
-    const submittedReport = await StudentReport.findOne(submittedReportFilter(quizId, studentId)).lean();
-    if (submittedReport) {
-      return res.status(409).json({
-        message: "Quiz already submitted. Draft updates are disabled.",
-        submitted: true,
-      });
-    }
-
-    const updatePayload = {
-      quizId,
-      studentId,
-      correct: Number(req.body.correct || 0),
-      incorrect: Number(req.body.incorrect || 0),
-      unattempted: Number(req.body.unattempted || 0),
-      timeTaken: Number(req.body.timeTaken || 0),
-      answers: Array.isArray(req.body.answers) ? req.body.answers : [],
-      submissionStatus: "draft",
-      draftState: {
-        quizInfo: req.body.quizInfo || {},
-        currentIndex: Number(req.body.currentIndex || 0),
-        timeRemaining: Number(req.body.timeRemaining || 0),
-        initialTimeLimit: Number(req.body.initialTimeLimit || 0),
-        quizStarted: Boolean(req.body.quizStarted),
-        quizEnded: Boolean(req.body.quizEnded),
-        startedAt: req.body.startedAt ? new Date(req.body.startedAt) : new Date(),
-        puzzleResults: req.body.puzzleResults || {},
-        videoAnalytics: req.body.videoAnalytics || {},
-        lastSyncedAt: new Date(),
-      },
-    };
-
-    const savedDraft = await StudentReport.findOneAndUpdate(
-      draftReportFilter(quizId, studentId),
-      { $set: updatePayload },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
-    return res.status(200).json({
-      message: "Draft saved successfully",
-      draft: serializeDraftFromStudentReport(savedDraft),
-    });
+    const result = await saveAdvancedDraft(req.body || {});
+    return res.status(result.status).json(result.payload);
   } catch (err) {
     console.error("Error saving advanced quiz draft:", err);
     return res.status(500).json({ error: err.message });
+  }
+});
+
+// navigator.sendBeacon can only POST, so this mirrors the PUT for the
+// page-hide / unload autosave path. Always returns 200 quickly so the beacon
+// isn't retried; failures are logged but not surfaced (best-effort).
+router.post("/advanced-draft", async (req, res) => {
+  try {
+    const result = await saveAdvancedDraft(req.body || {});
+    return res.status(result.status === 409 ? 200 : result.status).json(result.payload);
+  } catch (err) {
+    console.error("Error saving advanced quiz draft (beacon):", err);
+    return res.status(200).json({ message: "Draft save failed", error: err.message });
   }
 });
 
