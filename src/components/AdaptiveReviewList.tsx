@@ -1,11 +1,13 @@
 import React from 'react';
 import { CheckCircle, Lightbulb, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { MathText, QuestionMedia } from '@/components/MathText';
 
 export type AdaptiveReviewItem = {
   questionId: string;
   question: string;
   questionHindi?: string;
+  questionImage?: string;
   options: string[];
   optionsHindi?: string[];
   selectedOptionIndex: number | null;
@@ -45,9 +47,10 @@ const AdaptiveReviewList: React.FC<{ items: AdaptiveReviewItem[]; isHindi: boole
               )}
               <p className="font-semibold text-slate-900">
                 <span className="mr-1 text-blue-600">Q{index + 1}.</span>
-                {questionText}
+                <MathText text={questionText} />
               </p>
             </div>
+            <QuestionMedia imageUrl={item.questionImage} />
             <div className="grid gap-2 md:grid-cols-2">
               {item.options.map((option, optionIndex) => {
                 const label = isHindi
@@ -66,7 +69,7 @@ const AdaptiveReviewList: React.FC<{ items: AdaptiveReviewItem[]; isHindi: boole
                           : 'border-slate-200 bg-slate-50 text-slate-700'
                     }`}
                   >
-                    {String.fromCharCode(65 + optionIndex)}. {label}
+                    {String.fromCharCode(65 + optionIndex)}. <MathText text={label} />
                   </div>
                 );
               })}
@@ -75,13 +78,13 @@ const AdaptiveReviewList: React.FC<{ items: AdaptiveReviewItem[]; isHindi: boole
             {hintText && (
               <div className="mt-3 flex gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                 <Lightbulb className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                <p>{hintText}</p>
+                <p><MathText text={hintText} /></p>
               </div>
             )}
 
             {(item.explanationHindi || item.explanation) && (
               <p className="mt-3 rounded-md bg-slate-50 p-3 text-sm text-slate-700">
-                {isHindi ? (item.explanationHindi || item.explanation) : (item.explanation || item.explanationHindi)}
+                <MathText text={isHindi ? (item.explanationHindi || item.explanation) : (item.explanation || item.explanationHindi)} />
               </p>
             )}
 

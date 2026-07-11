@@ -1,3 +1,83 @@
+const makeQuestion = ({
+  id,
+  topicId,
+  tags,
+  question,
+  questionHindi,
+  options,
+  optionsHindi,
+  correctAnswer,
+  hints,
+  hintsHindi,
+  explanation,
+  explanationHindi,
+  difficulty = "medium",
+  eloRating = 1125,
+  interval = 10,
+  marks = 1,
+  negativeMarks = 0,
+  questionImage = "",
+}) => ({
+  id,
+  subjectId: "8-maths",
+  class: 8,
+  topicId,
+  tags,
+  question,
+  questionHindi,
+  questionImage,
+  options,
+  optionsHindi,
+  correctAnswer,
+  hints,
+  hintsHindi,
+  type: "mcq",
+  explanation,
+  explanationHindi,
+  difficulty,
+  eloRating: Math.max(1000, Math.min(1250, eloRating)),
+  interval,
+  marks,
+  negativeMarks,
+});
+
+const makeQuestionSet = (topicId, rows) =>
+  rows.map(
+    ([
+      id,
+      tags,
+      question,
+      questionHindi,
+      options,
+      optionsHindi,
+      correctAnswer,
+      hints,
+      hintsHindi,
+      explanation,
+      explanationHindi,
+      difficulty,
+      eloRating,
+      questionImage,
+    ]) =>
+      makeQuestion({
+        id,
+        topicId,
+        tags,
+        question,
+        questionHindi,
+        options,
+        optionsHindi,
+        correctAnswer,
+        hints,
+        hintsHindi,
+        explanation,
+        explanationHindi,
+        difficulty,
+        eloRating,
+        questionImage,
+      })
+  );
+
 const class8MathsQuestionBank = [];
 
-export { class8MathsQuestionBank };
+export { class8MathsQuestionBank, makeQuestion, makeQuestionSet };

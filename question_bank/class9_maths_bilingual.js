@@ -74,6 +74,1318 @@ const makeQuestionSet = (topicId, rows) =>
       })
   );
 
+const makeAutoQuestionSet = (topicId, prefix, specs) =>
+  specs.map((spec, index) => {
+    const correctAnswer = index % 4;
+    const options = [...spec.distractors];
+    const optionsHindi = [...spec.distractorsHindi];
+    options.splice(correctAnswer, 0, spec.answer);
+    optionsHindi.splice(correctAnswer, 0, spec.answerHindi);
+    return makeQuestion({
+      id: `${prefix}-${String(index + 1).padStart(2, "0")}`,
+      topicId,
+      tags: spec.tags,
+      question: spec.question,
+      questionHindi: spec.questionHindi,
+      options: options.slice(0, 4),
+      optionsHindi: optionsHindi.slice(0, 4),
+      correctAnswer,
+      hints: [spec.hint],
+      hintsHindi: [spec.hintHindi],
+      explanation: spec.explanation,
+      explanationHindi: spec.explanationHindi,
+      difficulty: spec.difficulty || "medium",
+      eloRating: spec.eloRating || 1325,
+    });
+  });
+
+const spec = ({
+  tags,
+  question,
+  questionHindi,
+  answer,
+  answerHindi = answer,
+  distractors,
+  distractorsHindi = distractors,
+  hint,
+  hintHindi,
+  explanation,
+  explanationHindi,
+  difficulty = "medium",
+  eloRating = 1325,
+}) => ({
+  tags,
+  question,
+  questionHindi,
+  answer: String(answer),
+  answerHindi: String(answerHindi),
+  distractors: distractors.map(String),
+  distractorsHindi: distractorsHindi.map(String),
+  hint,
+  hintHindi,
+  explanation,
+  explanationHindi,
+  difficulty,
+  eloRating,
+});
+
+const degree = (value) => `${value}°`;
+const cm = (value) => `${value} cm`;
+const cmHi = (value) => `${value} सेमी`;
+const sqcm = (value) => `${value} cm²`;
+const sqcmHi = (value) => `${value} सेमी²`;
+const cubecm = (value) => `${value} cm³`;
+const cubecmHi = (value) => `${value} सेमी³`;
+
+const makeLinesAndAnglesSpecs = () => [
+  ...[[35, 145], [48, 132], [62, 118], [77, 103], [91, 89]].map(([a, ans]) =>
+    spec({
+      tags: ["linear-pair", "supplementary-angles"],
+      question: `Two adjacent angles form a straight line. If one angle is ${degree(a)}, what is the other angle?`,
+      questionHindi: `दो आसन्न कोण एक सरल रेखा बनाते हैं। यदि एक कोण ${degree(a)} है, तो दूसरा कोण कितना होगा?`,
+      answer: degree(ans),
+      distractors: [degree(a), degree(Math.abs(90 - a)), degree(180 + a)],
+      hint: "Angles on a straight line add up to 180°.",
+      hintHindi: "सरल रेखा पर बने कोणों का योग 180° होता है।",
+      explanation: `The angles form a linear pair, so the other angle is 180° - ${degree(a)} = ${degree(ans)}.`,
+      explanationHindi: `कोण रेखीय युग्म बनाते हैं, इसलिए दूसरा कोण 180° - ${degree(a)} = ${degree(ans)} है।`,
+      difficulty: "easy",
+      eloRating: 1210,
+    })
+  ),
+  ...[42, 67, 89, 116, 134].map((a) =>
+    spec({
+      tags: ["vertically-opposite-angles"],
+      question: `Two lines intersect and one angle is ${degree(a)}. What is its vertically opposite angle?`,
+      questionHindi: `दो रेखाएँ प्रतिच्छेद करती हैं और एक कोण ${degree(a)} है। उसका शीर्षाभिमुख कोण कितना होगा?`,
+      answer: degree(a),
+      distractors: [degree(180 - a), degree(90), degree(a + 10)],
+      hint: "Vertically opposite angles are equal.",
+      hintHindi: "शीर्षाभिमुख कोण बराबर होते हैं।",
+      explanation: `Vertically opposite angles made by two intersecting lines are equal, so the required angle is ${degree(a)}.`,
+      explanationHindi: `प्रतिच्छेदी रेखाओं से बने शीर्षाभिमुख कोण बराबर होते हैं, अतः कोण ${degree(a)} है।`,
+      difficulty: "easy",
+      eloRating: 1225,
+    })
+  ),
+  ...[[52, 128], [73, 107], [81, 99], [119, 61], [146, 34]].map(([a, ans]) =>
+    spec({
+      tags: ["parallel-lines", "co-interior-angles"],
+      question: `A transversal cuts two parallel lines. If one co-interior angle is ${degree(a)}, find the other co-interior angle on the same side.`,
+      questionHindi: `एक तिर्यक रेखा दो समांतर रेखाओं को काटती है। यदि एक अंतः कोण ${degree(a)} है, तो उसी ओर का दूसरा अंतः कोण ज्ञात कीजिए।`,
+      answer: degree(ans),
+      distractors: [degree(a), degree(ans + 10), degree(90)],
+      hint: "Co-interior angles between parallel lines are supplementary.",
+      hintHindi: "समांतर रेखाओं के बीच एक ही ओर बने अंतः कोण पूरक होते हैं।",
+      explanation: `Co-interior angles add to 180°, so the required angle is 180° - ${degree(a)} = ${degree(ans)}.`,
+      explanationHindi: `एक ही ओर के अंतः कोणों का योग 180° होता है। अतः कोण 180° - ${degree(a)} = ${degree(ans)} है।`,
+      difficulty: "medium",
+      eloRating: 1280,
+    })
+  ),
+  ...[[38, "corresponding"], [64, "alternate interior"], [75, "corresponding"], [112, "alternate exterior"], [127, "alternate interior"]].map(([a, relation]) =>
+    spec({
+      tags: ["parallel-lines", "angle-relations"],
+      question: `Two parallel lines are cut by a transversal. An angle is ${degree(a)}. What is the angle equal to it by the ${relation} angle property?`,
+      questionHindi: `दो समांतर रेखाओं को तिर्यक रेखा काटती है। एक कोण ${degree(a)} है। ${relation} कोण गुण से उसके बराबर कोण कितना होगा?`,
+      answer: degree(a),
+      distractors: [degree(180 - a), degree(a + 20), degree(90)],
+      hint: "Corresponding and alternate angles are equal when the two lines are parallel.",
+      hintHindi: "दो रेखाएँ समांतर हों तो संगत और वैकल्पिक कोण बराबर होते हैं।",
+      explanation: `Because the lines are parallel, the ${relation} angle is equal to the given angle: ${degree(a)}.`,
+      explanationHindi: `रेखाएँ समांतर हैं, इसलिए ${relation} कोण दिए गए कोण के बराबर होगा: ${degree(a)}।`,
+      difficulty: "medium",
+      eloRating: 1300,
+    })
+  ),
+  ...[[2, 30, 75], [3, 15, 55], [4, 20, 40], [5, 10, 34], [6, 48, 22]].map(([coef, constant, ans]) =>
+    spec({
+      tags: ["algebraic-angles", "linear-pair"],
+      question: `Angles ${coef}x° and ${constant}° form a linear pair. What is x?`,
+      questionHindi: `${coef}x° और ${constant}° कोण एक रेखीय युग्म बनाते हैं। x का मान क्या है?`,
+      answer: ans,
+      distractors: [ans + 5, ans - 5, 180 - constant],
+      hint: "Write the equation: coefficient × x + constant = 180.",
+      hintHindi: "समीकरण लिखिए: गुणांक × x + स्थिरांक = 180।",
+      explanation: `${coef}x + ${constant} = 180, so x = ${ans}.`,
+      explanationHindi: `${coef}x + ${constant} = 180, इसलिए x = ${ans}।`,
+      difficulty: "medium",
+      eloRating: 1320,
+    })
+  ),
+  ...[[40, 65, 75], [55, 50, 75], [72, 48, 60], [36, 84, 60], [29, 71, 80]].map(([a, b, ans]) =>
+    spec({
+      tags: ["triangle-angle-sum", "lines-and-angles-application"],
+      question: `In a triangle, two angles are ${degree(a)} and ${degree(b)}. Find the third angle.`,
+      questionHindi: `एक त्रिभुज में दो कोण ${degree(a)} और ${degree(b)} हैं। तीसरा कोण ज्ञात कीजिए।`,
+      answer: degree(ans),
+      distractors: [degree(a + b), degree(180 - a), degree(180 - b)],
+      hint: "The sum of the three angles of a triangle is 180°.",
+      hintHindi: "त्रिभुज के तीनों कोणों का योग 180° होता है।",
+      explanation: `Third angle = 180° - (${degree(a)} + ${degree(b)}) = ${degree(ans)}.`,
+      explanationHindi: `तीसरा कोण = 180° - (${degree(a)} + ${degree(b)}) = ${degree(ans)}।`,
+      difficulty: "easy",
+      eloRating: 1240,
+    })
+  ),
+  ...[
+    ["If two lines are both perpendicular to the same line, they are parallel.", "यदि दो रेखाएँ एक ही रेखा पर लंब हों, तो वे समांतर होती हैं।", "True", "सत्य"],
+    ["A pair of vertically opposite angles is always supplementary.", "शीर्षाभिमुख कोणों का प्रत्येक युग्म हमेशा पूरक होता है।", "False", "असत्य"],
+    ["A linear pair always contains adjacent angles.", "रेखीय युग्म में कोण हमेशा आसन्न होते हैं।", "True", "सत्य"],
+    ["Corresponding angles are equal only because the transversal is long.", "संगत कोण केवल इसलिए बराबर होते हैं क्योंकि तिर्यक रेखा लंबी है।", "False", "असत्य"],
+    ["If alternate interior angles are equal, then the two lines are parallel.", "यदि वैकल्पिक अंतः कोण बराबर हों, तो दोनों रेखाएँ समांतर होती हैं।", "True", "सत्य"],
+  ].map(([statement, statementHindi, answer, answerHindi]) =>
+    spec({
+      tags: ["reasoning", "converse-properties"],
+      question: `Judge the statement: ${statement}`,
+      questionHindi: `कथन का निर्णय कीजिए: ${statementHindi}`,
+      answer,
+      answerHindi,
+      distractors: answer === "True" ? ["False", "Sometimes false", "Cannot be decided"] : ["True", "Always true", "Cannot be decided"],
+      distractorsHindi: answerHindi === "सत्य" ? ["असत्य", "कभी-कभी असत्य", "निर्धारित नहीं"] : ["सत्य", "हमेशा सत्य", "निर्धारित नहीं"],
+      hint: "Use the standard angle properties, not the appearance of a diagram.",
+      hintHindi: "चित्र के रूप पर नहीं, मानक कोण गुणों पर भरोसा करें।",
+      explanation: `The statement is ${answer} according to standard line and angle properties.`,
+      explanationHindi: `रेखा और कोण के मानक गुणों के अनुसार कथन ${answerHindi} है।`,
+      difficulty: "hard",
+      eloRating: 1380,
+    })
+  ),
+  ...[
+    ["A ray has", "एक किरण में", "one fixed endpoint and extends endlessly in one direction", "एक निश्चित प्रारंभिक बिंदु होता है और वह एक दिशा में अनंत तक बढ़ती है"],
+    ["An angle of 90° is called", "90° का कोण कहलाता है", "a right angle", "समकोण"],
+    ["Two angles whose sum is 90° are", "दो कोण जिनका योग 90° हो, कहलाते हैं", "complementary angles", "पूरक कोण"],
+    ["Two distinct points determine", "दो भिन्न बिंदु निर्धारित करते हैं", "exactly one line", "ठीक एक रेखा"],
+    ["A full rotation measures", "एक पूर्ण घूर्णन का माप होता है", "360°", "360°"],
+  ].map(([stem, stemHindi, answer, answerHindi]) =>
+    spec({
+      tags: ["basic-terms", "geometry-vocabulary"],
+      question: `${stem}:`,
+      questionHindi: `${stemHindi}:`,
+      answer,
+      answerHindi,
+      distractors: ["two unrelated lines", "no fixed measure", "only an obtuse angle"],
+      distractorsHindi: ["दो असंबंधित रेखाएँ", "कोई निश्चित माप नहीं", "केवल अधिक कोण"],
+      hint: "Recall the exact definitions of basic geometrical terms.",
+      hintHindi: "मूल ज्यामितीय पदों की सटीक परिभाषाएँ याद करें।",
+      explanation: "The answer follows directly from the definitions of ray, angle, and rotation.",
+      explanationHindi: "उत्तर किरण, कोण और घूर्णन की परिभाषाओं से सीधे प्राप्त होता है।",
+      difficulty: "easy",
+      eloRating: 1205,
+    })
+  ),
+];
+
+const makeTriangleCongruenceSpecs = () => [
+  ...[
+    ["AB = PQ, BC = QR, AC = PR", "SSS"],
+    ["AB = DE, ∠B = ∠E, BC = EF", "SAS"],
+    ["∠A = ∠P, AB = PQ, ∠B = ∠Q", "ASA"],
+    ["right angle, hypotenuse and one side equal", "RHS"],
+    ["two sides and the included angle equal", "SAS"],
+  ].map(([given, criterion]) =>
+    spec({
+      tags: ["congruence-criteria", criterion.toLowerCase()],
+      question: `Which congruence criterion applies when ${given}?`,
+      questionHindi: `जब ${given} हों, तब कौन-सी सर्वांगसमता कसौटी लागू होगी?`,
+      answer: criterion,
+      distractors: ["AAA", "SSA", "Only perimeter equality"],
+      hint: "Match the given equal parts with SSS, SAS, ASA, or RHS.",
+      hintHindi: "दिए गए बराबर भागों को SSS, SAS, ASA या RHS से मिलाइए।",
+      explanation: `${criterion} is valid because the stated equal parts match that criterion exactly.`,
+      explanationHindi: `${criterion} सही है क्योंकि दिए गए बराबर भाग उसी कसौटी से मेल खाते हैं।`,
+      difficulty: "medium",
+      eloRating: 1280,
+    })
+  ),
+  ...[[6, 8, 10], [5, 12, 13], [7, 24, 25], [9, 12, 15], [8, 15, 17]].map(([a, b, c]) =>
+    spec({
+      tags: ["sss", "triangle-sides"],
+      question: `Triangle ABC has sides ${cm(a)}, ${cm(b)} and ${cm(c)}. Triangle PQR has the same three side lengths. What can be concluded?`,
+      questionHindi: `त्रिभुज ABC की भुजाएँ ${cmHi(a)}, ${cmHi(b)} और ${cmHi(c)} हैं। त्रिभुज PQR की भी यही तीन भुजाएँ हैं। क्या निष्कर्ष निकलेगा?`,
+      answer: "The triangles are congruent by SSS",
+      answerHindi: "त्रिभुज SSS से सर्वांगसम हैं",
+      distractors: ["The triangles are not comparable", "Only their areas may be equal", "They are congruent by AAA only"],
+      distractorsHindi: ["त्रिभुजों की तुलना नहीं हो सकती", "केवल उनके क्षेत्रफल बराबर हो सकते हैं", "वे केवल AAA से सर्वांगसम हैं"],
+      hint: "Three pairs of equal sides are enough for congruence.",
+      hintHindi: "तीन जोड़ी बराबर भुजाएँ सर्वांगसमता के लिए पर्याप्त होती हैं।",
+      explanation: "If all three corresponding sides of two triangles are equal, the triangles are congruent by SSS.",
+      explanationHindi: "यदि दो त्रिभुजों की तीनों संगत भुजाएँ बराबर हों, तो वे SSS से सर्वांगसम होते हैं।",
+      difficulty: "easy",
+      eloRating: 1230,
+    })
+  ),
+  ...[["AB", "PQ", 7], ["BC", "QR", 9], ["AC", "PR", 11], ["AD", "PS", 6], ["BD", "QS", 13]].map(([side1, side2, value]) =>
+    spec({
+      tags: ["cpct", "corresponding-parts"],
+      question: `If △ABC ≅ △PQR and ${side1} corresponds to ${side2}, with ${side1} = ${cm(value)}, what is ${side2}?`,
+      questionHindi: `यदि △ABC ≅ △PQR और ${side1}, ${side2} के संगत है, तथा ${side1} = ${cmHi(value)} है, तो ${side2} कितना होगा?`,
+      answer: cm(value),
+      answerHindi: cmHi(value),
+      distractors: [cm(value + 2), cm(value - 1), "Cannot be found"],
+      distractorsHindi: [cmHi(value + 2), cmHi(value - 1), "ज्ञात नहीं किया जा सकता"],
+      hint: "CPCT means corresponding parts of congruent triangles are equal.",
+      hintHindi: "CPCT का अर्थ है सर्वांगसम त्रिभुजों के संगत भाग बराबर होते हैं।",
+      explanation: `Since the triangles are congruent, ${side2} = ${side1} = ${cm(value)}.`,
+      explanationHindi: `त्रिभुज सर्वांगसम हैं, इसलिए ${side2} = ${side1} = ${cmHi(value)}।`,
+      difficulty: "easy",
+      eloRating: 1245,
+    })
+  ),
+  ...[
+    ["AB = PQ, BC = QR, AC = PR", "SSS"],
+    ["AB = PQ, AC = PR, ∠A = ∠P", "SAS"],
+    ["∠A = ∠P, ∠B = ∠Q, AB = PQ", "ASA"],
+    ["right ∠B = right ∠Q, hypotenuse AC = PR, AB = PQ", "RHS"],
+    ["BC = QR, ∠C = ∠R, AC = PR", "SAS"],
+  ].map(([given, answer]) =>
+    spec({
+      tags: ["proof-reasoning", "valid-congruence"],
+      question: `A proof states: ${given}. Which reason should be written for triangle congruence?`,
+      questionHindi: `एक प्रमाण में लिखा है: ${given}. त्रिभुज सर्वांगसमता का कौन-सा कारण लिखा जाएगा?`,
+      answer,
+      distractors: ["AAA", "Equal medians", "Same perimeter"],
+      hint: "A congruence proof must name the exact valid criterion.",
+      hintHindi: "सर्वांगसमता प्रमाण में सटीक वैध कसौटी लिखनी चाहिए।",
+      explanation: `The listed equalities match the ${answer} congruence criterion.`,
+      explanationHindi: `दी गई बराबरियाँ ${answer} सर्वांगसमता कसौटी से मेल खाती हैं।`,
+      difficulty: "medium",
+      eloRating: 1310,
+    })
+  ),
+  ...[
+    ["AAA", "only shape, not size", "केवल आकार देता है, माप नहीं"],
+    ["SSA", "can form two different triangles", "दो अलग त्रिभुज बना सकता है"],
+    ["equal areas", "shape may differ", "आकार अलग हो सकता है"],
+    ["equal perimeters", "side distribution may differ", "भुजाओं का वितरण अलग हो सकता है"],
+    ["one side and one angle", "insufficient information", "अपर्याप्त जानकारी देता है"],
+  ].map(([claim, reason, reasonHindi]) =>
+    spec({
+      tags: ["non-criteria", "misconceptions"],
+      question: `Why is ${claim} not a sufficient test for triangle congruence?`,
+      questionHindi: `${claim} त्रिभुज सर्वांगसमता की पर्याप्त कसौटी क्यों नहीं है?`,
+      answer: `Because it gives ${reason}`,
+      answerHindi: `क्योंकि यह ${reasonHindi}`,
+      distractors: ["Because it is stronger than SSS", "Because it proves all sides equal", "Because it applies only to circles"],
+      distractorsHindi: ["क्योंकि यह SSS से अधिक मजबूत है", "क्योंकि यह सभी भुजाएँ बराबर सिद्ध करता है", "क्योंकि यह केवल वृत्तों पर लागू होता है"],
+      hint: "A congruence test must fix both shape and size of the triangle.",
+      hintHindi: "सर्वांगसमता कसौटी को त्रिभुज का आकार और माप दोनों निश्चित करने चाहिए।",
+      explanation: `${claim} does not uniquely determine the exact triangle, so it cannot guarantee congruence.`,
+      explanationHindi: `${claim} त्रिभुज को अद्वितीय रूप से निश्चित नहीं करता, इसलिए यह सर्वांगसमता की गारंटी नहीं देता।`,
+      difficulty: "hard",
+      eloRating: 1380,
+    })
+  ),
+  ...[[50, 60], [45, 45], [40, 65], [55, 55], [30, 60]].map(([a, b]) =>
+    spec({
+      tags: ["asa", "angle-side-angle"],
+      question: `Two triangles have two corresponding angles ${degree(a)} and ${degree(b)} equal, and the included side equal. Which criterion proves congruence?`,
+      questionHindi: `दो त्रिभुजों में दो संगत कोण ${degree(a)} और ${degree(b)} बराबर हैं, और बीच की भुजा भी बराबर है। कौन-सी कसौटी सर्वांगसमता सिद्ध करेगी?`,
+      answer: "ASA",
+      distractors: ["SSS", "RHS", "Equal area"],
+      hint: "Two angles and the included side correspond to ASA.",
+      hintHindi: "दो कोण और बीच की भुजा ASA से संबंधित हैं।",
+      explanation: "Two corresponding angles and the included corresponding side determine congruence by ASA.",
+      explanationHindi: "दो संगत कोण और बीच की संगत भुजा ASA से सर्वांगसमता निर्धारित करते हैं।",
+      difficulty: "medium",
+      eloRating: 1300,
+    })
+  ),
+  ...[
+    ["Hypotenuse and one leg are equal in two right triangles", "RHS"],
+    ["All three sides are equal", "SSS"],
+    ["Two sides and included angle are equal", "SAS"],
+    ["Two angles and included side are equal", "ASA"],
+    ["All corresponding parts are equal after congruence", "CPCT"],
+  ].map(([condition, answer]) =>
+    spec({
+      tags: ["summary", "criterion-selection"],
+      question: `Select the correct mathematical term for: ${condition}.`,
+      questionHindi: `इसके लिए सही गणितीय पद चुनिए: ${condition}.`,
+      answer,
+      distractors: ["AAA", "SSA", "Similarity only"],
+      hint: "Recall the names of the main congruence criteria.",
+      hintHindi: "मुख्य सर्वांगसमता कसौटियों के नाम याद करें।",
+      explanation: `${answer} is the standard term used for this condition in triangle congruence.`,
+      explanationHindi: `त्रिभुज सर्वांगसमता में इस स्थिति के लिए ${answer} मानक पद है।`,
+      difficulty: "easy",
+      eloRating: 1225,
+    })
+  ),
+  ...[["AB", 8, "DE"], ["BC", 10, "EF"], ["AC", 12, "DF"], ["∠A", 40, "∠D"], ["∠C", 65, "∠F"]].map(([part, value, other]) => {
+    const unit = String(part).includes("∠") ? "°" : " cm";
+    const unitHindi = String(part).includes("∠") ? "°" : " सेमी";
+    return spec({
+      tags: ["cpct-application"],
+      question: `If △ABC ≅ △DEF, ${part} corresponds to ${other}, and ${part} = ${value}${unit}. Find ${other}.`,
+      questionHindi: `यदि △ABC ≅ △DEF, ${part}, ${other} के संगत है, और ${part} = ${value}${unitHindi} है। ${other} ज्ञात कीजिए।`,
+      answer: `${value}${unit}`,
+      answerHindi: `${value}${unitHindi}`,
+      distractors: [`${value + 5}${unit}`, `${value - 2}${unit}`, "Not necessarily equal"],
+      distractorsHindi: [`${value + 5}${unitHindi}`, `${value - 2}${unitHindi}`, "आवश्यक नहीं कि बराबर हो"],
+      hint: "After proving congruence, use equality of corresponding parts.",
+      hintHindi: "सर्वांगसमता सिद्ध होने के बाद संगत भागों की बराबरी का प्रयोग करें।",
+      explanation: `By CPCT, ${other} = ${part} = ${value}${unit}.`,
+      explanationHindi: `CPCT से, ${other} = ${part} = ${value}${unitHindi}।`,
+      difficulty: "medium",
+      eloRating: 1290,
+    });
+  }),
+];
+
+const makeQuadrilateralSpecs = () => [
+  ...[[[70, 80, 100], 110], [[90, 75, 85], 110], [[60, 100, 120], 80], [[95, 85, 80], 100], [[110, 65, 75], 110]].map(([angles, ans]) =>
+    spec({
+      tags: ["angle-sum", "quadrilateral"],
+      question: `Three angles of a quadrilateral are ${degree(angles[0])}, ${degree(angles[1])} and ${degree(angles[2])}. Find the fourth angle.`,
+      questionHindi: `एक चतुर्भुज के तीन कोण ${degree(angles[0])}, ${degree(angles[1])} और ${degree(angles[2])} हैं। चौथा कोण ज्ञात कीजिए।`,
+      answer: degree(ans),
+      distractors: [degree(180 - ans), degree(ans + 20), degree(360 - ans)],
+      hint: "The sum of all interior angles of a quadrilateral is 360°.",
+      hintHindi: "चतुर्भुज के सभी अंतः कोणों का योग 360° होता है।",
+      explanation: `Fourth angle = 360° - (${angles.map(degree).join(" + ")}) = ${degree(ans)}.`,
+      explanationHindi: `चौथा कोण = 360° - (${angles.map(degree).join(" + ")}) = ${degree(ans)}।`,
+      difficulty: "easy",
+      eloRating: 1220,
+    })
+  ),
+  ...[
+    ["opposite sides are equal", "a parallelogram", "समांतर चतुर्भुज"],
+    ["opposite angles are equal", "a parallelogram", "समांतर चतुर्भुज"],
+    ["diagonals bisect each other", "a parallelogram", "समांतर चतुर्भुज"],
+    ["all angles are right angles", "a rectangle", "आयत"],
+    ["all sides are equal", "a rhombus", "समचतुर्भुज"],
+  ].map(([property, answer, answerHindi]) =>
+    spec({
+      tags: ["properties", "classification"],
+      question: `A quadrilateral has ${property}. Which figure is most directly identified by this property?`,
+      questionHindi: `एक चतुर्भुज में ${property} है। इस गुण से कौन-सी आकृति सबसे सीधे पहचानी जाती है?`,
+      answer,
+      answerHindi,
+      distractors: ["a circle", "a scalene triangle", "an open curve"],
+      distractorsHindi: ["वृत्त", "विषमबाहु त्रिभुज", "खुला वक्र"],
+      hint: "Use defining properties of special quadrilaterals.",
+      hintHindi: "विशेष चतुर्भुजों के परिभाषात्मक गुणों का उपयोग करें।",
+      explanation: `The property '${property}' is a standard identifying property of ${answer}.`,
+      explanationHindi: `यह गुण '${property}' ${answerHindi} का मानक पहचान गुण है।`,
+      difficulty: "medium",
+      eloRating: 1270,
+    })
+  ),
+  ...[[8, 5], [10, 7], [12, 9], [15, 6], [11, 11]].map(([a, b]) =>
+    spec({
+      tags: ["parallelogram", "perimeter"],
+      question: `Adjacent sides of a parallelogram are ${cm(a)} and ${cm(b)}. What is its perimeter?`,
+      questionHindi: `एक समांतर चतुर्भुज की आसन्न भुजाएँ ${cmHi(a)} और ${cmHi(b)} हैं। उसका परिमाप कितना होगा?`,
+      answer: cm(2 * (a + b)),
+      answerHindi: cmHi(2 * (a + b)),
+      distractors: [cm(a + b), cm(a * b), cm(2 * a + b)],
+      distractorsHindi: [cmHi(a + b), cmHi(a * b), cmHi(2 * a + b)],
+      hint: "Opposite sides of a parallelogram are equal.",
+      hintHindi: "समांतर चतुर्भुज की विपरीत भुजाएँ बराबर होती हैं।",
+      explanation: `Perimeter = 2(${a}+${b}) = ${cm(2 * (a + b))}.`,
+      explanationHindi: `परिमाप = 2(${a}+${b}) = ${cmHi(2 * (a + b))}।`,
+      difficulty: "easy",
+      eloRating: 1230,
+    })
+  ),
+  ...[
+    ["rectangle", "diagonals are equal and bisect each other"],
+    ["rhombus", "diagonals bisect each other at right angles"],
+    ["square", "diagonals are equal, perpendicular, and bisect each other"],
+    ["kite", "one diagonal bisects the other"],
+    ["parallelogram", "diagonals bisect each other"],
+  ].map(([shape, property]) =>
+    spec({
+      tags: ["diagonals", "special-quadrilaterals"],
+      question: `Which diagonal property is correct for a ${shape}?`,
+      questionHindi: `${shape} के लिए विकर्णों का कौन-सा गुण सही है?`,
+      answer: property,
+      distractors: ["diagonals never meet", "diagonals are always arcs", "diagonals are outside the figure"],
+      distractorsHindi: ["विकर्ण कभी नहीं मिलते", "विकर्ण हमेशा चाप होते हैं", "विकर्ण आकृति के बाहर होते हैं"],
+      hint: "Recall how diagonals behave in each special quadrilateral.",
+      hintHindi: "प्रत्येक विशेष चतुर्भुज में विकर्णों का व्यवहार याद करें।",
+      explanation: `For a ${shape}, the correct diagonal property is: ${property}.`,
+      explanationHindi: `${shape} के लिए सही विकर्ण गुण है: ${property}।`,
+      difficulty: "medium",
+      eloRating: 1310,
+    })
+  ),
+  ...[[60, 120], [75, 105], [82, 98], [100, 80], [115, 65]].map(([a, ans]) =>
+    spec({
+      tags: ["parallelogram-angles", "supplementary"],
+      question: `One angle of a parallelogram is ${degree(a)}. What is its adjacent angle?`,
+      questionHindi: `एक समांतर चतुर्भुज का एक कोण ${degree(a)} है। उसका आसन्न कोण कितना होगा?`,
+      answer: degree(ans),
+      distractors: [degree(a), degree(90), degree(360 - a)],
+      hint: "Adjacent angles of a parallelogram are supplementary.",
+      hintHindi: "समांतर चतुर्भुज के आसन्न कोण पूरक होते हैं।",
+      explanation: `Adjacent angle = 180° - ${degree(a)} = ${degree(ans)}.`,
+      explanationHindi: `आसन्न कोण = 180° - ${degree(a)} = ${degree(ans)}।`,
+      difficulty: "medium",
+      eloRating: 1290,
+    })
+  ),
+  ...[
+    ["A square is both a rectangle and a rhombus.", "वर्ग आयत और समचतुर्भुज दोनों होता है।", "True", "सत्य"],
+    ["Every rectangle is a square.", "हर आयत वर्ग होती है।", "False", "असत्य"],
+    ["A rhombus always has four equal sides.", "समचतुर्भुज की चारों भुजाएँ हमेशा बराबर होती हैं।", "True", "सत्य"],
+    ["A parallelogram has exactly one pair of parallel sides.", "समांतर चतुर्भुज में ठीक एक जोड़ी समांतर भुजाएँ होती हैं।", "False", "असत्य"],
+    ["A trapezium has at least one pair of parallel sides.", "समलंब में कम से कम एक जोड़ी समांतर भुजाएँ होती हैं।", "True", "सत्य"],
+  ].map(([statement, statementHindi, answer, answerHindi]) =>
+    spec({
+      tags: ["true-false", "classification"],
+      question: `Judge the statement: ${statement}`,
+      questionHindi: `कथन का निर्णय कीजिए: ${statementHindi}`,
+      answer,
+      answerHindi,
+      distractors: answer === "True" ? ["False", "Only for triangles", "Cannot say"] : ["True", "Always true", "Cannot say"],
+      distractorsHindi: answerHindi === "सत्य" ? ["असत्य", "केवल त्रिभुजों के लिए", "कह नहीं सकते"] : ["सत्य", "हमेशा सत्य", "कह नहीं सकते"],
+      hint: "Use inclusion relations among square, rectangle, rhombus, and parallelogram.",
+      hintHindi: "वर्ग, आयत, समचतुर्भुज और समांतर चतुर्भुज के संबंधों का उपयोग करें।",
+      explanation: `The correct judgment is ${answer} based on standard definitions of quadrilaterals.`,
+      explanationHindi: `चतुर्भुजों की मानक परिभाषाओं के आधार पर सही निर्णय ${answerHindi} है।`,
+      difficulty: "hard",
+      eloRating: 1370,
+    })
+  ),
+  ...[
+    ["A closed four-sided polygon", "quadrilateral", "चतुर्भुज"],
+    ["Both pairs of opposite sides parallel", "parallelogram", "समांतर चतुर्भुज"],
+    ["A parallelogram with four right angles", "rectangle", "आयत"],
+    ["A parallelogram with four equal sides", "rhombus", "समचतुर्भुज"],
+    ["A rectangle with all sides equal", "square", "वर्ग"],
+  ].map(([definition, answer, answerHindi]) =>
+    spec({
+      tags: ["definitions", "vocabulary"],
+      question: `Which figure matches this definition: ${definition}?`,
+      questionHindi: `इस परिभाषा से कौन-सी आकृति मेल खाती है: ${definition}?`,
+      answer,
+      answerHindi,
+      distractors: ["circle", "triangle", "open line"],
+      distractorsHindi: ["वृत्त", "त्रिभुज", "खुली रेखा"],
+      hint: "Identify the figure from its defining sides and angles.",
+      hintHindi: "भुजाओं और कोणों के परिभाषात्मक गुणों से आकृति पहचानें।",
+      explanation: `${answerHindi} is the figure described by the given definition.`,
+      explanationHindi: `दी गई परिभाषा ${answerHindi} को दर्शाती है।`,
+      difficulty: "easy",
+      eloRating: 1210,
+    })
+  ),
+  ...[[6, 8], [7, 10], [9, 12], [5, 13], [11, 14]].map(([d1, d2]) =>
+    spec({
+      tags: ["rhombus", "area-diagonals"],
+      question: `A rhombus has diagonals ${cm(d1)} and ${cm(d2)}. What is its area?`,
+      questionHindi: `एक समचतुर्भुज के विकर्ण ${cmHi(d1)} और ${cmHi(d2)} हैं। उसका क्षेत्रफल कितना होगा?`,
+      answer: sqcm((d1 * d2) / 2),
+      answerHindi: sqcmHi((d1 * d2) / 2),
+      distractors: [sqcm(d1 * d2), sqcm(d1 + d2), sqcm(2 * (d1 + d2))],
+      distractorsHindi: [sqcmHi(d1 * d2), sqcmHi(d1 + d2), sqcmHi(2 * (d1 + d2))],
+      hint: "Area of a rhombus = half the product of its diagonals.",
+      hintHindi: "समचतुर्भुज का क्षेत्रफल = विकर्णों के गुणनफल का आधा।",
+      explanation: `Area = 1/2 × ${d1} × ${d2} = ${sqcm((d1 * d2) / 2)}.`,
+      explanationHindi: `क्षेत्रफल = 1/2 × ${d1} × ${d2} = ${sqcmHi((d1 * d2) / 2)}।`,
+      difficulty: "medium",
+      eloRating: 1330,
+    })
+  ),
+];
+
+const makeTransformationSymmetrySpecs = () => [
+  ...[
+    [[2, 3], [-2, 3], "y-axis", "y-अक्ष"],
+    [[4, -1], [4, 1], "x-axis", "x-अक्ष"],
+    [[-5, 2], [5, 2], "y-axis", "y-अक्ष"],
+    [[3, 6], [3, -6], "x-axis", "x-अक्ष"],
+    [[-7, -4], [7, -4], "y-axis", "y-अक्ष"],
+  ].map(([p, ans, axis, axisHindi]) =>
+    spec({
+      tags: ["reflection", "coordinates"],
+      question: `Point (${p[0]}, ${p[1]}) is reflected in the ${axis}. What is its image?`,
+      questionHindi: `बिंदु (${p[0]}, ${p[1]}) का ${axisHindi} में परावर्तन किया गया। उसका प्रतिबिंब क्या होगा?`,
+      answer: `(${ans[0]}, ${ans[1]})`,
+      distractors: [`(${p[0]}, ${p[1]})`, `(${-p[0]}, ${-p[1]})`, `(${p[1]}, ${p[0]})`],
+      hint: "Reflection in x-axis changes y; reflection in y-axis changes x.",
+      hintHindi: "x-अक्ष में परावर्तन y बदलता है; y-अक्ष में परावर्तन x बदलता है।",
+      explanation: `Under reflection in the ${axis}, the appropriate coordinate changes sign, giving (${ans[0]}, ${ans[1]}).`,
+      explanationHindi: `${axisHindi} में परावर्तन पर उपयुक्त निर्देशांक का चिह्न बदलता है, इसलिए प्रतिबिंब (${ans[0]}, ${ans[1]}) है।`,
+      difficulty: "medium",
+      eloRating: 1300,
+    })
+  ),
+  ...[
+    [[2, 3], [5, 1], [7, 4]],
+    [[-1, 4], [3, -2], [2, 2]],
+    [[6, -3], [-2, 5], [4, 2]],
+    [[0, 7], [4, 1], [4, 8]],
+    [[-5, -2], [6, 3], [1, 1]],
+  ].map(([p, shift, ans]) =>
+    spec({
+      tags: ["translation", "coordinates"],
+      question: `Point (${p[0]}, ${p[1]}) is translated by (${shift[0]}, ${shift[1]}). What is the new point?`,
+      questionHindi: `बिंदु (${p[0]}, ${p[1]}) का स्थानांतरण (${shift[0]}, ${shift[1]}) से किया गया। नया बिंदु क्या होगा?`,
+      answer: `(${ans[0]}, ${ans[1]})`,
+      distractors: [`(${p[0] - shift[0]}, ${p[1] - shift[1]})`, `(${shift[0]}, ${shift[1]})`, `(${p[1] + shift[0]}, ${p[0] + shift[1]})`],
+      hint: "In translation, add the shift to each coordinate.",
+      hintHindi: "स्थानांतरण में प्रत्येक निर्देशांक में दी गई चाल जोड़ें।",
+      explanation: `(${p[0]}+${shift[0]}, ${p[1]}+${shift[1]}) = (${ans[0]}, ${ans[1]}).`,
+      explanationHindi: `(${p[0]}+${shift[0]}, ${p[1]}+${shift[1]}) = (${ans[0]}, ${ans[1]})।`,
+      difficulty: "easy",
+      eloRating: 1240,
+    })
+  ),
+  ...[
+    ["square", "वर्ग", 4, 4],
+    ["rectangle", "आयत", 2, 2],
+    ["equilateral triangle", "समबाहु त्रिभुज", 3, 3],
+    ["regular pentagon", "सम पंचभुज", 5, 5],
+    ["circle", "वृत्त", "infinitely many", "infinitely many"],
+  ].map(([shape, shapeHindi, lines, order]) =>
+    spec({
+      tags: ["line-symmetry", "rotational-symmetry"],
+      question: `Which pair correctly gives the number of lines of symmetry and rotational order of a ${shape}?`,
+      questionHindi: `${shapeHindi} की सममिति रेखाओं की संख्या और घूर्णन सममिति क्रम का सही युग्म कौन-सा है?`,
+      answer: `${lines}, ${order}`,
+      distractors: [`${order}, ${lines === order ? 1 : lines}`, "0, 0", "1, 1"],
+      hint: "Regular figures often have related symmetry lines and rotational order.",
+      hintHindi: "नियमित आकृतियों में सममिति रेखाओं और घूर्णन क्रम का स्पष्ट संबंध होता है।",
+      explanation: `A ${shape} has ${lines} line(s) of symmetry and rotational symmetry of order ${order}.`,
+      explanationHindi: `${shapeHindi} में ${lines} सममिति रेखाएँ और ${order} क्रम की घूर्णन सममिति होती है।`,
+      difficulty: "medium",
+      eloRating: 1320,
+    })
+  ),
+  ...[
+    ["90° anticlockwise about origin", [3, 2], [-2, 3]],
+    ["180° about origin", [4, -5], [-4, 5]],
+    ["90° anticlockwise about origin", [-1, 6], [-6, -1]],
+    ["180° about origin", [-3, -7], [3, 7]],
+    ["90° anticlockwise about origin", [5, -2], [2, 5]],
+  ].map(([rule, p, ans]) =>
+    spec({
+      tags: ["rotation", "coordinates"],
+      question: `Under rotation ${rule}, point (${p[0]}, ${p[1]}) becomes:`,
+      questionHindi: `${rule} घूर्णन के अंतर्गत बिंदु (${p[0]}, ${p[1]}) बनेगा:`,
+      answer: `(${ans[0]}, ${ans[1]})`,
+      distractors: [`(${p[0]}, ${p[1]})`, `(${-p[0]}, ${p[1]})`, `(${p[1]}, ${p[0]})`],
+      hint: "For 180°, both signs change. For 90° anticlockwise, (x,y) becomes (-y,x).",
+      hintHindi: "180° पर दोनों चिह्न बदलते हैं। 90° वामावर्त पर (x,y), (-y,x) बनता है।",
+      explanation: `Applying the rotation rule gives the image point (${ans[0]}, ${ans[1]}).`,
+      explanationHindi: `घूर्णन नियम लगाने पर प्रतिबिंब बिंदु (${ans[0]}, ${ans[1]}) मिलता है।`,
+      difficulty: "hard",
+      eloRating: 1390,
+    })
+  ),
+  ...[
+    ["translation", "shape and size remain unchanged", "आकार और माप नहीं बदलते"],
+    ["reflection", "orientation reverses but size stays same", "दिशा पलटती है पर माप समान रहता है"],
+    ["rotation", "figure turns around a fixed point", "आकृति एक निश्चित बिंदु के चारों ओर घूमती है"],
+    ["enlargement", "size changes by a scale factor", "माप पैमाना गुणक से बदलता है"],
+    ["symmetry", "one part matches another exactly", "एक भाग दूसरे से ठीक-ठीक मेल खाता है"],
+  ].map(([term, meaning, meaningHindi]) =>
+    spec({
+      tags: ["transformation-vocabulary"],
+      question: `Which meaning best matches ${term}?`,
+      questionHindi: `${term} से कौन-सा अर्थ सबसे अच्छा मेल खाता है?`,
+      answer: meaning,
+      answerHindi: meaningHindi,
+      distractors: ["area always becomes zero", "only color changes", "the figure stops being geometric"],
+      distractorsHindi: ["क्षेत्रफल हमेशा शून्य हो जाता है", "केवल रंग बदलता है", "आकृति ज्यामितीय नहीं रहती"],
+      hint: "Think of the visual action done to the whole figure.",
+      hintHindi: "पूरी आकृति पर की गई दृश्य क्रिया के बारे में सोचें।",
+      explanation: `${term} is defined by the idea that ${meaning}.`,
+      explanationHindi: `${term} का अर्थ है कि ${meaningHindi}।`,
+      difficulty: "easy",
+      eloRating: 1215,
+    })
+  ),
+  ...[
+    ["letter A", "अक्षर A", "one vertical line", "एक ऊर्ध्वाधर रेखा"],
+    ["letter H", "अक्षर H", "two lines", "दो रेखाएँ"],
+    ["letter N", "अक्षर N", "no line symmetry", "कोई रेखीय सममिति नहीं"],
+    ["letter O", "अक्षर O", "two lines in block form", "ब्लॉक रूप में दो रेखाएँ"],
+    ["letter S", "अक्षर S", "rotational symmetry of order 2", "क्रम 2 की घूर्णन सममिति"],
+  ].map(([figure, figureHindi, answer, answerHindi]) =>
+    spec({
+      tags: ["symmetry-in-letters", "visual-reasoning"],
+      question: `For a standard block ${figure}, what symmetry statement is most accurate?`,
+      questionHindi: `मानक ब्लॉक ${figureHindi} के लिए कौन-सा सममिति कथन सबसे सटीक है?`,
+      answer,
+      answerHindi,
+      distractors: ["infinitely many lines", "only a diagonal line", "no rotation or reflection possible for any letter"],
+      distractorsHindi: ["अनंत सममिति रेखाएँ", "केवल विकर्ण रेखा", "किसी भी अक्षर में घूर्णन या परावर्तन संभव नहीं"],
+      hint: "Imagine folding or rotating the block letter.",
+      hintHindi: "ब्लॉक अक्षर को मोड़ने या घुमाने की कल्पना करें।",
+      explanation: `The block ${figure} has the stated symmetry: ${answer}.`,
+      explanationHindi: `ब्लॉक ${figureHindi} में यह सममिति है: ${answerHindi}।`,
+      difficulty: "medium",
+      eloRating: 1290,
+    })
+  ),
+  ...[
+    ["preserves distance", "translation", "स्थानांतरण"],
+    ["uses a mirror line", "reflection", "परावर्तन"],
+    ["uses a centre and angle", "rotation", "घूर्णन"],
+    ["maps every point to an equal opposite point across a line", "reflection", "परावर्तन"],
+    ["slides without turning", "translation", "स्थानांतरण"],
+  ].map(([clue, answer, answerHindi]) =>
+    spec({
+      tags: ["identify-transformation"],
+      question: `Which transformation best fits this clue: ${clue}?`,
+      questionHindi: `इस संकेत से कौन-सा रूपांतरण सबसे अच्छा मेल खाता है: ${clue}?`,
+      answer,
+      answerHindi,
+      distractors: ["factorisation", "division", "percentage change"],
+      distractorsHindi: ["गुणनखंडन", "भाग", "प्रतिशत परिवर्तन"],
+      hint: "Match the clue to slide, flip, or turn.",
+      hintHindi: "संकेत को सरकाना, पलटना या घुमाना से मिलाइए।",
+      explanation: `${answer} is the transformation described by '${clue}'.`,
+      explanationHindi: `'${clue}' से ${answerHindi} रूपांतरण का वर्णन होता है।`,
+      difficulty: "medium",
+      eloRating: 1310,
+    })
+  ),
+  ...[
+    ["The image of a figure under reflection is congruent to the original.", "परावर्तन में आकृति का प्रतिबिंब मूल आकृति के सर्वांगसम होता है।", "True", "सत्य"],
+    ["Translation changes the size of a figure.", "स्थानांतरण आकृति का आकार बदल देता है।", "False", "असत्य"],
+    ["A rotation needs a centre of rotation.", "घूर्णन के लिए घूर्णन-केंद्र चाहिए।", "True", "सत्य"],
+    ["A figure with no line symmetry cannot have rotational symmetry.", "जिस आकृति में रेखीय सममिति नहीं है, उसमें घूर्णन सममिति भी नहीं हो सकती।", "False", "असत्य"],
+    ["Reflection across the same line twice gives the original figure.", "उसी रेखा में दो बार परावर्तन करने पर मूल आकृति मिलती है।", "True", "सत्य"],
+  ].map(([statement, statementHindi, answer, answerHindi]) =>
+    spec({
+      tags: ["true-false", "transformation-properties"],
+      question: `Judge the statement: ${statement}`,
+      questionHindi: `कथन का निर्णय कीजिए: ${statementHindi}`,
+      answer,
+      answerHindi,
+      distractors: answer === "True" ? ["False", "Only for circles", "Cannot decide"] : ["True", "Always true", "Cannot decide"],
+      distractorsHindi: answerHindi === "सत्य" ? ["असत्य", "केवल वृत्तों के लिए", "निर्धारित नहीं"] : ["सत्य", "हमेशा सत्य", "निर्धारित नहीं"],
+      hint: "Rigid transformations preserve size and shape.",
+      hintHindi: "दृढ़ रूपांतरण आकार और माप को सुरक्षित रखते हैं।",
+      explanation: `The statement is ${answer} according to transformation and symmetry properties.`,
+      explanationHindi: `रूपांतरण और सममिति गुणों के अनुसार यह कथन ${answerHindi} है।`,
+      difficulty: "hard",
+      eloRating: 1385,
+    })
+  ),
+];
+
+const makeConstructionSpecs = () => [
+  ...[
+    ["perpendicular bisector of a segment", "draw equal arcs from both endpoints above and below the segment, then join arc intersections"],
+    ["angle bisector", "draw an arc cutting both arms, then draw equal arcs from those cuts and join the vertex to their intersection"],
+    ["copy an angle", "draw equal-radius arcs at the original and new vertex, then transfer the chord length"],
+    ["parallel line through a point", "copy the corresponding angle at the given point"],
+    ["60° angle", "construct an equilateral triangle or use equal-radius arcs"],
+  ].map(([task, answer]) =>
+    spec({
+      tags: ["construction-steps", "compass-straightedge"],
+      question: `Which step describes the construction of a ${task}?`,
+      questionHindi: `${task} की रचना के लिए कौन-सा चरण सही है?`,
+      answer,
+      distractors: ["measure it roughly by eye", "fold the page randomly", "choose any point and erase the base"],
+      distractorsHindi: ["आँख से लगभग माप लें", "पन्ने को अनियमित मोड़ दें", "कोई भी बिंदु चुनकर आधार मिटा दें"],
+      hint: "Classical construction uses compass and straightedge steps.",
+      hintHindi: "शास्त्रीय रचना में परकार और सीधी पट्टी के चरण होते हैं।",
+      explanation: `The construction of ${task} uses the described exact method.`,
+      explanationHindi: `${task} की सही रचना दिए गए सटीक तरीके से होती है।`,
+      difficulty: "medium",
+      eloRating: 1280,
+    })
+  ),
+  ...[
+    ["SSS", "draw one side, then arcs with radii equal to the other two sides from its endpoints"],
+    ["SAS", "draw the included angle, mark the two given sides on its arms, then join endpoints"],
+    ["ASA", "draw the given side, construct the two endpoint angles, and locate their intersection"],
+    ["RHS", "draw the given leg and right angle, then use hypotenuse radius to locate the third vertex"],
+    ["equilateral triangle", "draw a side and two equal arcs from its endpoints"],
+  ].map(([type, answer]) =>
+    spec({
+      tags: ["triangle-construction", type.toLowerCase()],
+      question: `For constructing a triangle by ${type}, which plan is correct?`,
+      questionHindi: `${type} से त्रिभुज की रचना के लिए कौन-सी योजना सही है?`,
+      answer,
+      distractors: ["draw any triangle and label it", "only draw the longest side", "construct a circle and stop"],
+      distractorsHindi: ["कोई भी त्रिभुज बनाकर नाम दे दें", "केवल सबसे लंबी भुजा बनाएं", "वृत्त बनाकर रुक जाएँ"],
+      hint: "Use the given measurements in the same order as the criterion.",
+      hintHindi: "दी गई मापों को कसौटी के क्रम के अनुसार प्रयोग करें।",
+      explanation: `${type} construction is valid when the given sides and angles are used exactly as specified.`,
+      explanationHindi: `${type} रचना तब वैध है जब दी गई भुजाएँ और कोण ठीक उसी प्रकार प्रयोग किए जाएँ।`,
+      difficulty: "medium",
+      eloRating: 1300,
+    })
+  ),
+  ...[[5, 6, 7], [4, 5, 8], [6, 6, 6], [7, 8, 10], [5, 5, 11]].map(([a, b, c]) => {
+    const possible = a + b > c && a + c > b && b + c > a;
+    return spec({
+      tags: ["sss-construction", "triangle-inequality"],
+      question: `Can a triangle with sides ${cm(a)}, ${cm(b)} and ${cm(c)} be constructed?`,
+      questionHindi: `क्या ${cmHi(a)}, ${cmHi(b)} और ${cmHi(c)} भुजाओं वाला त्रिभुज बनाया जा सकता है?`,
+      answer: possible ? "Yes, because the sum of any two sides is greater than the third" : "No, because the triangle inequality fails",
+      answerHindi: possible ? "हाँ, क्योंकि किसी भी दो भुजाओं का योग तीसरी से अधिक है" : "नहीं, क्योंकि त्रिभुज असमिका असफल है",
+      distractors: ["Yes, every three lengths form a triangle", "No, only equal sides form a triangle", "It depends only on the longest side being even"],
+      distractorsHindi: ["हाँ, कोई भी तीन लंबाइयाँ त्रिभुज बनाती हैं", "नहीं, केवल बराबर भुजाएँ त्रिभुज बनाती हैं", "यह केवल सबसे लंबी भुजा के सम होने पर निर्भर है"],
+      hint: "Check whether the sum of the two smaller sides is greater than the largest side.",
+      hintHindi: "जाँचें कि दो छोटी भुजाओं का योग सबसे बड़ी भुजा से अधिक है या नहीं।",
+      explanation: `Triangle inequality decides constructibility for sides ${a}, ${b}, ${c}.`,
+      explanationHindi: `${a}, ${b}, ${c} भुजाओं के लिए रचनायोग्यता त्रिभुज असमिका से तय होती है।`,
+      difficulty: "medium",
+      eloRating: 1320,
+    });
+  }),
+  ...[
+    ["perpendicular to a line at a point", "use equal arcs on both sides of the point, then construct the perpendicular bisector of that small segment"],
+    ["perpendicular from an external point", "draw an arc cutting the line at two points, then bisect that chord"],
+    ["midpoint of a segment", "construct its perpendicular bisector; the crossing point is the midpoint"],
+    ["bisect a 70° angle", "construct equal arcs and join the vertex to the second arc intersection"],
+    ["construct 30°", "first construct 60°, then bisect it"],
+  ].map(([task, answer]) =>
+    spec({
+      tags: ["perpendicular", "bisector", "angle-construction"],
+      question: `What is the reliable construction method to ${task}?`,
+      questionHindi: `${task} के लिए विश्वसनीय रचना विधि क्या है?`,
+      answer,
+      distractors: ["guess the position by sight", "use a curved freehand line", "mark any unequal arcs"],
+      distractorsHindi: ["आँख से स्थिति का अनुमान लगाएँ", "मुक्तहस्त वक्र रेखा बनाएं", "कोई भी असमान चाप चिह्नित करें"],
+      hint: "Equal arcs create equal distances, which is the base of exact construction.",
+      hintHindi: "बराबर चाप बराबर दूरियाँ बनाते हैं, यही सटीक रचना का आधार है।",
+      explanation: `The described method gives an exact compass-straightedge construction to ${task}.`,
+      explanationHindi: `दी गई विधि ${task} के लिए सटीक परकार-सीधी पट्टी रचना देती है।`,
+      difficulty: "hard",
+      eloRating: 1380,
+    })
+  ),
+  ...[
+    ["compass", "to draw arcs and transfer equal lengths", "चाप बनाने और बराबर लंबाई स्थानांतरित करने के लिए"],
+    ["straightedge", "to draw straight lines through constructed points", "निर्मित बिंदुओं से सीधी रेखाएँ खींचने के लिए"],
+    ["sharp pencil", "to mark precise intersections", "सटीक प्रतिच्छेद चिह्नित करने के लिए"],
+    ["scale", "to mark a given length when measurement is allowed", "जब मापन की अनुमति हो तो दी गई लंबाई चिह्नित करने के लिए"],
+    ["protractor", "to measure or draw a given angle when allowed", "जब अनुमति हो तो कोण मापने या बनाने के लिए"],
+  ].map(([tool, answer, answerHindi]) =>
+    spec({
+      tags: ["tools", "construction-accuracy"],
+      question: `Why is a ${tool} used in geometrical construction?`,
+      questionHindi: `ज्यामितीय रचना में ${tool} का उपयोग क्यों किया जाता है?`,
+      answer,
+      answerHindi,
+      distractors: ["to color the diagram", "to replace logical steps", "to make the figure approximate only"],
+      distractorsHindi: ["चित्र में रंग भरने के लिए", "तार्किक चरणों को बदलने के लिए", "आकृति को केवल लगभग बनाने के लिए"],
+      hint: "Each tool has a precise role in construction.",
+      hintHindi: "प्रत्येक उपकरण की रचना में एक सटीक भूमिका होती है।",
+      explanation: `The ${tool} is used ${answer}.`,
+      explanationHindi: `${tool} का उपयोग ${answerHindi} होता है।`,
+      difficulty: "easy",
+      eloRating: 1210,
+    })
+  ),
+  ...[
+    ["Draw base AB = 6 cm before locating C", "SSS triangle construction"],
+    ["Keep compass radius unchanged while transferring a length", "copying a segment"],
+    ["Use intersecting arcs to locate the third vertex", "triangle construction"],
+    ["Join the new point to the vertex after equal arcs meet", "angle bisector"],
+    ["Verify final figure satisfies all given measurements", "checking construction"],
+  ].map(([step, answer]) =>
+    spec({
+      tags: ["construction-sequence", "verification"],
+      question: `The step '${step}' belongs most naturally to which construction idea?`,
+      questionHindi: `'${step}' चरण सबसे स्वाभाविक रूप से किस रचना विचार से संबंधित है?`,
+      answer,
+      distractors: ["statistics table", "profit calculation", "polynomial division"],
+      distractorsHindi: ["सांख्यिकी तालिका", "लाभ गणना", "बहुपद भाग"],
+      hint: "Connect the action to the object being constructed.",
+      hintHindi: "क्रिया को उस वस्तु से जोड़ें जिसकी रचना की जा रही है।",
+      explanation: `The step is a standard part of ${answer}.`,
+      explanationHindi: `यह चरण ${answer} का मानक भाग है।`,
+      difficulty: "medium",
+      eloRating: 1290,
+    })
+  ),
+  ...[
+    ["A rough sketch is useful before construction.", "रचना से पहले कच्चा चित्र उपयोगी होता है।", "True", "सत्य"],
+    ["Changing compass radius accidentally does not affect construction.", "परकार की त्रिज्या गलती से बदलने पर रचना प्रभावित नहीं होती।", "False", "असत्य"],
+    ["The triangle inequality must be checked before SSS construction.", "SSS रचना से पहले त्रिभुज असमिका जाँचनी चाहिए।", "True", "सत्य"],
+    ["An angle bisector divides an angle into two equal angles.", "कोण समद्विभाजक कोण को दो बराबर कोणों में बाँटता है।", "True", "सत्य"],
+    ["A perpendicular bisector need not pass through the midpoint.", "लंब समद्विभाजक का मध्यबिंदु से गुजरना आवश्यक नहीं है।", "False", "असत्य"],
+  ].map(([statement, statementHindi, answer, answerHindi]) =>
+    spec({
+      tags: ["true-false", "construction-concepts"],
+      question: `Judge the statement: ${statement}`,
+      questionHindi: `कथन का निर्णय कीजिए: ${statementHindi}`,
+      answer,
+      answerHindi,
+      distractors: answer === "True" ? ["False", "Only sometimes", "Cannot decide"] : ["True", "Always true", "Cannot decide"],
+      distractorsHindi: answerHindi === "सत्य" ? ["असत्य", "केवल कभी-कभी", "निर्धारित नहीं"] : ["सत्य", "हमेशा सत्य", "निर्धारित नहीं"],
+      hint: "Use exact meanings of construction terms.",
+      hintHindi: "रचना पदों के सटीक अर्थ का प्रयोग करें।",
+      explanation: `The statement is ${answer} according to exact geometrical construction rules.`,
+      explanationHindi: `सटीक ज्यामितीय रचना नियमों के अनुसार यह कथन ${answerHindi} है।`,
+      difficulty: "hard",
+      eloRating: 1375,
+    })
+  ),
+  ...[
+    ["Construct a line segment of 8 cm", "draw a line and mark endpoints 8 cm apart"],
+    ["Construct a circle of radius 4 cm", "fix compass opening at 4 cm and rotate around the centre"],
+    ["Copy a segment AB to a new ray", "use compass radius AB and cut the new ray"],
+    ["Construct 90° at a point", "construct a perpendicular at that point"],
+    ["Construct 45°", "construct 90° and bisect it"],
+  ].map(([task, answer]) =>
+    spec({
+      tags: ["basic-constructions", "steps"],
+      question: `Choose the correct first plan: ${task}.`,
+      questionHindi: `सही प्रारंभिक योजना चुनिए: ${task}.`,
+      answer,
+      distractors: ["draw without measurements", "start with a random curve", "ignore the given data"],
+      distractorsHindi: ["बिना माप के बनाएं", "एक अनियमित वक्र से शुरू करें", "दी गई जानकारी अनदेखी करें"],
+      hint: "Start from the given length, point, angle, or radius.",
+      hintHindi: "दी गई लंबाई, बिंदु, कोण या त्रिज्या से शुरू करें।",
+      explanation: `The construction begins by using the given data exactly: ${answer}.`,
+      explanationHindi: `रचना दी गई जानकारी को ठीक-ठीक प्रयोग करके शुरू होती है: ${answer}.`,
+      difficulty: "easy",
+      eloRating: 1220,
+    })
+  ),
+];
+
+const makeSectorArcSpecs = () => [
+  ...[[7, 90, 11], [14, 90, 22], [21, 60, 22], [14, 180, 44], [7, 180, 22]].map(([r, theta, ans]) =>
+    spec({
+      tags: ["arc-length", "circle"],
+      question: `Find the arc length of a sector with radius ${cm(r)} and central angle ${degree(theta)} (use π = 22/7).`,
+      questionHindi: `त्रिज्या ${cmHi(r)} और केंद्रीय कोण ${degree(theta)} वाले त्रिज्याखंड की चाप लंबाई ज्ञात कीजिए (π = 22/7 लें)।`,
+      answer: cm(ans),
+      answerHindi: cmHi(ans),
+      distractors: [cm(ans * 2), cm(ans + r), cm(r * theta)],
+      distractorsHindi: [cmHi(ans * 2), cmHi(ans + r), cmHi(r * theta)],
+      hint: "Arc length = (θ/360) × 2πr.",
+      hintHindi: "चाप लंबाई = (θ/360) × 2πr।",
+      explanation: `Arc length = (${theta}/360) × 2 × 22/7 × ${r} = ${cm(ans)}.`,
+      explanationHindi: `चाप लंबाई = (${theta}/360) × 2 × 22/7 × ${r} = ${cmHi(ans)}।`,
+      difficulty: "medium",
+      eloRating: 1300,
+    })
+  ),
+  ...[[7, 90, 38.5], [14, 90, 154], [21, 60, 231], [14, 180, 308], [7, 180, 77]].map(([r, theta, ans]) =>
+    spec({
+      tags: ["sector-area", "circle"],
+      question: `Find the area of a sector with radius ${cm(r)} and angle ${degree(theta)} (use π = 22/7).`,
+      questionHindi: `त्रिज्या ${cmHi(r)} और कोण ${degree(theta)} वाले त्रिज्याखंड का क्षेत्रफल ज्ञात कीजिए (π = 22/7 लें)।`,
+      answer: sqcm(ans),
+      answerHindi: sqcmHi(ans),
+      distractors: [sqcm(ans * 2), sqcm(ans + r), sqcm(2 * r)],
+      distractorsHindi: [sqcmHi(ans * 2), sqcmHi(ans + r), sqcmHi(2 * r)],
+      hint: "Sector area = (θ/360) × πr².",
+      hintHindi: "त्रिज्याखंड क्षेत्रफल = (θ/360) × πr²।",
+      explanation: `Area = (${theta}/360) × 22/7 × ${r}² = ${sqcm(ans)}.`,
+      explanationHindi: `क्षेत्रफल = (${theta}/360) × 22/7 × ${r}² = ${sqcmHi(ans)}।`,
+      difficulty: "medium",
+      eloRating: 1320,
+    })
+  ),
+  ...[[44, 7], [88, 14], [132, 21], [176, 28], [220, 35]].map(([circ, r]) =>
+    spec({
+      tags: ["circumference", "radius"],
+      question: `The circumference of a circle is ${cm(circ)}. Find its radius (use π = 22/7).`,
+      questionHindi: `एक वृत्त की परिधि ${cmHi(circ)} है। उसकी त्रिज्या ज्ञात कीजिए (π = 22/7 लें)।`,
+      answer: cm(r),
+      answerHindi: cmHi(r),
+      distractors: [cm(2 * r), cm(r + 7), cm(circ / 7)],
+      distractorsHindi: [cmHi(2 * r), cmHi(r + 7), cmHi(circ / 7)],
+      hint: "Circumference = 2πr.",
+      hintHindi: "परिधि = 2πr।",
+      explanation: `${circ} = 2 × 22/7 × r, so r = ${cm(r)}.`,
+      explanationHindi: `${circ} = 2 × 22/7 × r, अतः r = ${cmHi(r)}।`,
+      difficulty: "easy",
+      eloRating: 1240,
+    })
+  ),
+  ...[[11, 7, 90], [22, 14, 90], [22, 21, 60], [44, 14, 180], [22, 7, 180]].map(([arc, r, ans]) =>
+    spec({
+      tags: ["central-angle", "arc-length"],
+      question: `An arc of length ${cm(arc)} belongs to a circle of radius ${cm(r)}. Find the central angle (use π = 22/7).`,
+      questionHindi: `${cmHi(arc)} लंबी चाप ${cmHi(r)} त्रिज्या वाले वृत्त की है। केंद्रीय कोण ज्ञात कीजिए (π = 22/7 लें)।`,
+      answer: degree(ans),
+      distractors: [degree(ans / 2), degree(ans + 30), degree(360 - ans)],
+      hint: "Use l = (θ/360) × 2πr and solve for θ.",
+      hintHindi: "l = (θ/360) × 2πr का उपयोग करें और θ निकालें।",
+      explanation: `Solving ${arc} = (θ/360) × 2 × 22/7 × ${r} gives θ = ${degree(ans)}.`,
+      explanationHindi: `${arc} = (θ/360) × 2 × 22/7 × ${r} हल करने पर θ = ${degree(ans)} मिलता है।`,
+      difficulty: "hard",
+      eloRating: 1390,
+    })
+  ),
+  ...[[7, 154], [14, 616], [21, 1386], [28, 2464], [35, 3850]].map(([r, area]) =>
+    spec({
+      tags: ["circle-area", "formula"],
+      question: `Find the area of a circle of radius ${cm(r)} (use π = 22/7).`,
+      questionHindi: `${cmHi(r)} त्रिज्या वाले वृत्त का क्षेत्रफल ज्ञात कीजिए (π = 22/7 लें)।`,
+      answer: sqcm(area),
+      answerHindi: sqcmHi(area),
+      distractors: [sqcm(2 * area), sqcm(2 * r), sqcm(22 * r)],
+      distractorsHindi: [sqcmHi(2 * area), sqcmHi(2 * r), sqcmHi(22 * r)],
+      hint: "Area of a circle = πr².",
+      hintHindi: "वृत्त का क्षेत्रफल = πr²।",
+      explanation: `Area = 22/7 × ${r} × ${r} = ${sqcm(area)}.`,
+      explanationHindi: `क्षेत्रफल = 22/7 × ${r} × ${r} = ${sqcmHi(area)}।`,
+      difficulty: "easy",
+      eloRating: 1230,
+    })
+  ),
+  ...[
+    ["A sector is bounded by two radii and an arc.", "त्रिज्याखंड दो त्रिज्याओं और एक चाप से घिरा होता है।", "True", "सत्य"],
+    ["Arc length is independent of the central angle.", "चाप लंबाई केंद्रीय कोण से स्वतंत्र होती है।", "False", "असत्य"],
+    ["A semicircle has central angle 180°.", "अर्धवृत्त का केंद्रीय कोण 180° होता है।", "True", "सत्य"],
+    ["A quarter circle has sector angle 60°.", "चतुर्थांश वृत्त का त्रिज्याखंड कोण 60° होता है।", "False", "असत्य"],
+    ["Larger radius with same angle gives larger arc length.", "समान कोण पर बड़ी त्रिज्या बड़ी चाप लंबाई देती है।", "True", "सत्य"],
+  ].map(([statement, statementHindi, answer, answerHindi]) =>
+    spec({
+      tags: ["concepts", "true-false"],
+      question: `Judge the statement: ${statement}`,
+      questionHindi: `कथन का निर्णय कीजिए: ${statementHindi}`,
+      answer,
+      answerHindi,
+      distractors: answer === "True" ? ["False", "Only for squares", "Cannot decide"] : ["True", "Always true", "Cannot decide"],
+      distractorsHindi: answerHindi === "सत्य" ? ["असत्य", "केवल वर्गों के लिए", "निर्धारित नहीं"] : ["सत्य", "हमेशा सत्य", "निर्धारित नहीं"],
+      hint: "Relate arc and sector to radius and central angle.",
+      hintHindi: "चाप और त्रिज्याखंड को त्रिज्या और केंद्रीय कोण से जोड़ें।",
+      explanation: `The statement is ${answer} from the definitions and formulae of arcs and sectors.`,
+      explanationHindi: `चाप और त्रिज्याखंड की परिभाषाओं और सूत्रों से कथन ${answerHindi} है।`,
+      difficulty: "medium",
+      eloRating: 1300,
+    })
+  ),
+  ...[[90, "one-fourth of the full circle", "पूरे वृत्त का एक-चौथाई"], [180, "one-half of the full circle", "पूरे वृत्त का आधा"], [120, "one-third of the full circle", "पूरे वृत्त का एक-तिहाई"], [60, "one-sixth of the full circle", "पूरे वृत्त का एक-छठा"], [270, "three-fourths of the full circle", "पूरे वृत्त का तीन-चौथाई"]].map(([theta, answer, answerHindi]) =>
+    spec({
+      tags: ["fraction-of-circle", "central-angle"],
+      question: `A sector has central angle ${degree(theta)}. What fraction of the full circle is it?`,
+      questionHindi: `एक त्रिज्याखंड का केंद्रीय कोण ${degree(theta)} है। यह पूरे वृत्त का कौन-सा भाग है?`,
+      answer,
+      answerHindi,
+      distractors: ["the whole circle", "one-tenth of the circle", "not related to 360°"],
+      distractorsHindi: ["पूरा वृत्त", "वृत्त का दसवाँ भाग", "360° से संबंधित नहीं"],
+      hint: "Fraction = θ/360.",
+      hintHindi: "भाग = θ/360।",
+      explanation: `${theta}/360 simplifies to ${answer}.`,
+      explanationHindi: `${theta}/360 सरल होकर ${answerHindi} होता है।`,
+      difficulty: "easy",
+      eloRating: 1220,
+    })
+  ),
+  ...[[7, 90, 25], [14, 90, 50], [21, 60, 64], [14, 180, 72], [7, 180, 36]].map(([r, theta, perimeter]) =>
+    spec({
+      tags: ["sector-perimeter", "combined-formula"],
+      question: `Find the perimeter of a sector with radius ${cm(r)} and angle ${degree(theta)} (use π = 22/7).`,
+      questionHindi: `त्रिज्या ${cmHi(r)} और कोण ${degree(theta)} वाले त्रिज्याखंड का परिमाप ज्ञात कीजिए (π = 22/7 लें)।`,
+      answer: cm(perimeter),
+      answerHindi: cmHi(perimeter),
+      distractors: [cm(perimeter - 2 * r), cm(perimeter + r), cm(2 * r)],
+      distractorsHindi: [cmHi(perimeter - 2 * r), cmHi(perimeter + r), cmHi(2 * r)],
+      hint: "Sector perimeter = arc length + 2r.",
+      hintHindi: "त्रिज्याखंड परिमाप = चाप लंबाई + 2r।",
+      explanation: `Add the arc length to two radii: perimeter = ${cm(perimeter)}.`,
+      explanationHindi: `चाप लंबाई में दो त्रिज्याएँ जोड़ें: परिमाप = ${cmHi(perimeter)}।`,
+      difficulty: "hard",
+      eloRating: 1410,
+    })
+  ),
+];
+
+const makeCubeCuboidSpecs = () => [
+  ...[[4, 64], [5, 125], [6, 216], [8, 512], [10, 1000]].map(([a, volume]) =>
+    spec({
+      tags: ["cube", "volume"],
+      question: `Find the volume of a cube with edge ${cm(a)}.`,
+      questionHindi: `${cmHi(a)} भुजा वाले घन का आयतन ज्ञात कीजिए।`,
+      answer: cubecm(volume),
+      answerHindi: cubecmHi(volume),
+      distractors: [cubecm(a * a), cubecm(6 * a * a), cubecm(12 * a)],
+      distractorsHindi: [cubecmHi(a * a), cubecmHi(6 * a * a), cubecmHi(12 * a)],
+      hint: "Volume of a cube = edge³.",
+      hintHindi: "घन का आयतन = भुजा³।",
+      explanation: `Volume = ${a}³ = ${cubecm(volume)}.`,
+      explanationHindi: `आयतन = ${a}³ = ${cubecmHi(volume)}।`,
+      difficulty: "easy",
+      eloRating: 1215,
+    })
+  ),
+  ...[[4, 96], [5, 150], [6, 216], [8, 384], [10, 600]].map(([a, area]) =>
+    spec({
+      tags: ["cube", "surface-area"],
+      question: `Find the total surface area of a cube with edge ${cm(a)}.`,
+      questionHindi: `${cmHi(a)} भुजा वाले घन का कुल पृष्ठीय क्षेत्रफल ज्ञात कीजिए।`,
+      answer: sqcm(area),
+      answerHindi: sqcmHi(area),
+      distractors: [sqcm(a * a), sqcm(4 * a * a), sqcm(a ** 3)],
+      distractorsHindi: [sqcmHi(a * a), sqcmHi(4 * a * a), sqcmHi(a ** 3)],
+      hint: "A cube has 6 equal square faces.",
+      hintHindi: "घन में 6 समान वर्गाकार फलक होते हैं।",
+      explanation: `TSA = 6a² = 6 × ${a}² = ${sqcm(area)}.`,
+      explanationHindi: `कुल पृष्ठीय क्षेत्रफल = 6a² = 6 × ${a}² = ${sqcmHi(area)}।`,
+      difficulty: "easy",
+      eloRating: 1230,
+    })
+  ),
+  ...[[6, 4, 3, 72], [8, 5, 2, 80], [10, 6, 4, 240], [12, 5, 3, 180], [7, 6, 5, 210]].map(([l, b, h, volume]) =>
+    spec({
+      tags: ["cuboid", "volume"],
+      question: `Find the volume of a cuboid of length ${cm(l)}, breadth ${cm(b)} and height ${cm(h)}.`,
+      questionHindi: `${cmHi(l)} लंबाई, ${cmHi(b)} चौड़ाई और ${cmHi(h)} ऊँचाई वाले घनाभ का आयतन ज्ञात कीजिए।`,
+      answer: cubecm(volume),
+      answerHindi: cubecmHi(volume),
+      distractors: [cubecm(l + b + h), cubecm(2 * (l * b + b * h + h * l)), cubecm(l * b)],
+      distractorsHindi: [cubecmHi(l + b + h), cubecmHi(2 * (l * b + b * h + h * l)), cubecmHi(l * b)],
+      hint: "Volume of cuboid = length × breadth × height.",
+      hintHindi: "घनाभ का आयतन = लंबाई × चौड़ाई × ऊँचाई।",
+      explanation: `Volume = ${l} × ${b} × ${h} = ${cubecm(volume)}.`,
+      explanationHindi: `आयतन = ${l} × ${b} × ${h} = ${cubecmHi(volume)}।`,
+      difficulty: "easy",
+      eloRating: 1240,
+    })
+  ),
+  ...[[6, 4, 3, 108], [8, 5, 2, 132], [10, 6, 4, 248], [12, 5, 3, 222], [7, 6, 5, 214]].map(([l, b, h, area]) =>
+    spec({
+      tags: ["cuboid", "surface-area"],
+      question: `Find the total surface area of a cuboid with l=${cm(l)}, b=${cm(b)}, h=${cm(h)}.`,
+      questionHindi: `l=${cmHi(l)}, b=${cmHi(b)}, h=${cmHi(h)} वाले घनाभ का कुल पृष्ठीय क्षेत्रफल ज्ञात कीजिए।`,
+      answer: sqcm(area),
+      answerHindi: sqcmHi(area),
+      distractors: [sqcm(l * b * h), sqcm(2 * (l + b + h)), sqcm(l * b + b * h + h * l)],
+      distractorsHindi: [sqcmHi(l * b * h), sqcmHi(2 * (l + b + h)), sqcmHi(l * b + b * h + h * l)],
+      hint: "TSA of cuboid = 2(lb + bh + hl).",
+      hintHindi: "घनाभ का कुल पृष्ठीय क्षेत्रफल = 2(lb + bh + hl)।",
+      explanation: `TSA = 2(${l * b} + ${b * h} + ${h * l}) = ${sqcm(area)}.`,
+      explanationHindi: `कुल पृष्ठीय क्षेत्रफल = 2(${l * b} + ${b * h} + ${h * l}) = ${sqcmHi(area)}।`,
+      difficulty: "medium",
+      eloRating: 1300,
+    })
+  ),
+  ...[[6, 4, 3, 60], [8, 5, 2, 52], [10, 6, 4, 128], [12, 5, 3, 102], [7, 6, 5, 130]].map(([l, b, h, area]) =>
+    spec({
+      tags: ["cuboid", "lateral-surface-area"],
+      question: `Find the lateral surface area of a cuboid with l=${cm(l)}, b=${cm(b)}, h=${cm(h)}.`,
+      questionHindi: `l=${cmHi(l)}, b=${cmHi(b)}, h=${cmHi(h)} वाले घनाभ का पार्श्व पृष्ठीय क्षेत्रफल ज्ञात कीजिए।`,
+      answer: sqcm(area),
+      answerHindi: sqcmHi(area),
+      distractors: [sqcm(l * b * h), sqcm(2 * (l * b + b * h + h * l)), sqcm(l * b)],
+      distractorsHindi: [sqcmHi(l * b * h), sqcmHi(2 * (l * b + b * h + h * l)), sqcmHi(l * b)],
+      hint: "LSA of cuboid = 2h(l+b).",
+      hintHindi: "घनाभ का पार्श्व पृष्ठीय क्षेत्रफल = 2h(l+b)।",
+      explanation: `LSA = 2 × ${h} × (${l}+${b}) = ${sqcm(area)}.`,
+      explanationHindi: `पार्श्व पृष्ठीय क्षेत्रफल = 2 × ${h} × (${l}+${b}) = ${sqcmHi(area)}।`,
+      difficulty: "medium",
+      eloRating: 1320,
+    })
+  ),
+  ...[[64, 4], [125, 5], [216, 6], [343, 7], [512, 8]].map(([volume, side]) =>
+    spec({
+      tags: ["cube", "edge-from-volume"],
+      question: `The volume of a cube is ${cubecm(volume)}. What is its edge length?`,
+      questionHindi: `एक घन का आयतन ${cubecmHi(volume)} है। उसकी भुजा कितनी होगी?`,
+      answer: cm(side),
+      answerHindi: cmHi(side),
+      distractors: [cm(side * side), cm(6 * side), cm(side + 2)],
+      distractorsHindi: [cmHi(side * side), cmHi(6 * side), cmHi(side + 2)],
+      hint: "If volume = a³, then edge a is the cube root of volume.",
+      hintHindi: "यदि आयतन = a³ है, तो भुजा a आयतन का घनमूल है।",
+      explanation: `${side}³ = ${volume}, so the edge length is ${cm(side)}.`,
+      explanationHindi: `${side}³ = ${volume}, इसलिए भुजा ${cmHi(side)} है।`,
+      difficulty: "medium",
+      eloRating: 1290,
+    })
+  ),
+  ...[
+    ["cube", "all edges are equal", "सभी भुजाएँ बराबर होती हैं"],
+    ["cuboid", "opposite rectangular faces are equal", "विपरीत आयताकार फलक बराबर होते हैं"],
+    ["face diagonal of cube", "a√2", "a√2"],
+    ["space diagonal of cube", "a√3", "a√3"],
+    ["volume unit", "cubic unit", "घन इकाई"],
+  ].map(([term, answer, answerHindi]) =>
+    spec({
+      tags: ["solid-geometry", "definitions"],
+      question: `Which statement correctly matches ${term}?`,
+      questionHindi: `${term} से कौन-सा कथन सही मेल खाता है?`,
+      answer,
+      answerHindi,
+      distractors: ["it has no faces", "it is a two-dimensional line", "it always has zero volume"],
+      distractorsHindi: ["इसके कोई फलक नहीं होते", "यह द्विविमीय रेखा है", "इसका आयतन हमेशा शून्य होता है"],
+      hint: "Recall definitions of cube, cuboid, and volume.",
+      hintHindi: "घन, घनाभ और आयतन की परिभाषाएँ याद करें।",
+      explanation: `${term} is correctly described by: ${answer}.`,
+      explanationHindi: `${term} का सही वर्णन है: ${answerHindi}।`,
+      difficulty: "easy",
+      eloRating: 1225,
+    })
+  ),
+  ...[[3, 27], [4, 64], [5, 125], [6, 216], [10, 1000]].map(([edge, cubes]) =>
+    spec({
+      tags: ["unit-cubes", "volume-model"],
+      question: `A cube of edge ${cm(edge)} is made using 1 cm cubes. How many unit cubes are needed?`,
+      questionHindi: `${cmHi(edge)} भुजा वाला घन 1 सेमी घनों से बनाया गया है। कितने इकाई घन चाहिए?`,
+      answer: cubes,
+      distractors: [edge * edge, 6 * edge * edge, 12 * edge],
+      hint: "Number of 1 cm cubes equals the volume in cm³.",
+      hintHindi: "1 सेमी घनों की संख्या सेमी³ में आयतन के बराबर होती है।",
+      explanation: `The volume is ${edge}³ = ${cubes} cm³, so ${cubes} unit cubes are required.`,
+      explanationHindi: `आयतन ${edge}³ = ${cubes} सेमी³ है, इसलिए ${cubes} इकाई घन चाहिए।`,
+      difficulty: "medium",
+      eloRating: 1310,
+    })
+  ),
+];
+
+const makeStatisticsSpecs = () => [
+  ...[[[4, 6, 8, 10, 12], 8], [[5, 7, 9, 11, 13], 9], [[2, 4, 6, 8, 10], 6], [[10, 20, 30, 40, 50], 30], [[3, 6, 9, 12, 15], 9]].map(([data, mean]) =>
+    spec({
+      tags: ["mean", "central-tendency"],
+      question: `Find the mean of ${data.join(", ")}.`,
+      questionHindi: `${data.join(", ")} का माध्य ज्ञात कीजिए।`,
+      answer: mean,
+      distractors: [mean + 2, mean - 2, data.length],
+      hint: "Mean = sum of observations / number of observations.",
+      hintHindi: "माध्य = प्रेक्षणों का योग / प्रेक्षणों की संख्या।",
+      explanation: `Sum = ${data.reduce((a, b) => a + b, 0)} and number of values = ${data.length}; mean = ${mean}.`,
+      explanationHindi: `योग = ${data.reduce((a, b) => a + b, 0)} और मानों की संख्या = ${data.length}; माध्य = ${mean}।`,
+      difficulty: "easy",
+      eloRating: 1215,
+    })
+  ),
+  ...[[[3, 5, 7, 9, 11], 7], [[2, 4, 8, 10, 12], 8], [[15, 18, 20, 22, 25], 20], [[1, 2, 3, 4, 5, 6], 3.5], [[10, 12, 14, 16, 18, 20], 15]].map(([data, median]) =>
+    spec({
+      tags: ["median", "ordered-data"],
+      question: `Find the median of the ordered data: ${data.join(", ")}.`,
+      questionHindi: `क्रमित आँकड़ों ${data.join(", ")} का माध्यिका ज्ञात कीजिए।`,
+      answer: median,
+      distractors: [data[0], data[data.length - 1], (data[0] + data[data.length - 1]) / 2],
+      hint: "Median is the middle value; for even count, average the two middle values.",
+      hintHindi: "माध्यिका बीच का मान है; सम संख्या में दो बीच के मानों का औसत लें।",
+      explanation: `The middle value rule gives median = ${median}.`,
+      explanationHindi: `बीच के मान के नियम से माध्यिका = ${median} मिलती है।`,
+      difficulty: "medium",
+      eloRating: 1280,
+    })
+  ),
+  ...[[[2, 3, 3, 4, 5], 3], [[7, 8, 8, 8, 10], 8], [[1, 1, 2, 3, 4], 1], [[5, 6, 7, 7, 9], 7], [[10, 12, 12, 14, 15], 12]].map(([data, mode]) =>
+    spec({
+      tags: ["mode", "frequency"],
+      question: `Find the mode of ${data.join(", ")}.`,
+      questionHindi: `${data.join(", ")} का बहुलक ज्ञात कीजिए।`,
+      answer: mode,
+      distractors: [data[0], data[data.length - 1], "No mode"],
+      distractorsHindi: [data[0], data[data.length - 1], "कोई बहुलक नहीं"],
+      hint: "Mode is the value that occurs most often.",
+      hintHindi: "बहुलक वह मान है जो सबसे अधिक बार आता है।",
+      explanation: `${mode} occurs most frequently, so it is the mode.`,
+      explanationHindi: `${mode} सबसे अधिक बार आता है, इसलिए वही बहुलक है।`,
+      difficulty: "easy",
+      eloRating: 1230,
+    })
+  ),
+  ...[[[4, 8, 12, 16, 20], 16], [[11, 13, 17, 19, 23], 12], [[2, 9, 14, 18, 30], 28], [[5, 5, 10, 15, 25], 20], [[100, 120, 150, 160, 180], 80]].map(([data, range]) =>
+    spec({
+      tags: ["range", "spread"],
+      question: `Find the range of ${data.join(", ")}.`,
+      questionHindi: `${data.join(", ")} का परिसर ज्ञात कीजिए।`,
+      answer: range,
+      distractors: [data[0] + data[data.length - 1], data.length, range / 2],
+      hint: "Range = highest value - lowest value.",
+      hintHindi: "परिसर = उच्चतम मान - न्यूनतम मान।",
+      explanation: `Range = ${Math.max(...data)} - ${Math.min(...data)} = ${range}.`,
+      explanationHindi: `परिसर = ${Math.max(...data)} - ${Math.min(...data)} = ${range}।`,
+      difficulty: "easy",
+      eloRating: 1220,
+    })
+  ),
+  ...[
+    ["A", 5, "B", 8, "B"],
+    ["red", 12, "blue", 9, "red"],
+    ["boys", 18, "girls", 20, "girls"],
+    ["Monday", 14, "Tuesday", 11, "Monday"],
+    ["bus", 25, "cycle", 30, "cycle"],
+  ].map(([label1, f1, label2, f2, answer]) =>
+    spec({
+      tags: ["frequency-table", "comparison"],
+      question: `In a frequency table, ${label1} has frequency ${f1} and ${label2} has frequency ${f2}. Which has higher frequency?`,
+      questionHindi: `एक आवृत्ति सारणी में ${label1} की आवृत्ति ${f1} और ${label2} की आवृत्ति ${f2} है। किसकी आवृत्ति अधिक है?`,
+      answer,
+      distractors: [answer === label1 ? label2 : label1, "Both are equal", "Cannot compare"],
+      distractorsHindi: [answer === label1 ? label2 : label1, "दोनों बराबर हैं", "तुलना नहीं हो सकती"],
+      hint: "Higher frequency means larger count.",
+      hintHindi: "अधिक आवृत्ति का अर्थ बड़ी संख्या है।",
+      explanation: `${Math.max(f1, f2)} is greater, so ${answer} has higher frequency.`,
+      explanationHindi: `${Math.max(f1, f2)} बड़ा है, इसलिए ${answer} की आवृत्ति अधिक है।`,
+      difficulty: "easy",
+      eloRating: 1210,
+    })
+  ),
+  ...[
+    [[10, 20, 30], 60, [60, 120, 180]],
+    [[5, 10, 15], 30, [60, 120, 180]],
+    [[2, 3, 5], 10, [72, 108, 180]],
+    [[4, 6, 10], 20, [72, 108, 180]],
+    [[8, 12, 20], 40, [72, 108, 180]],
+  ].map(([values, total, angles]) =>
+    spec({
+      tags: ["pie-chart", "central-angle"],
+      question: `For data values ${values.join(", ")} with total ${total}, what are their pie-chart angles?`,
+      questionHindi: `कुल ${total} वाले आँकड़े ${values.join(", ")} के लिए पाई-चार्ट कोण क्या होंगे?`,
+      answer: `${angles.join("°, ")}°`,
+      distractors: [`${values.join("°, ")}°`, `${angles.map((a) => a / 2).join("°, ")}°`, "90°, 90°, 90°"],
+      hint: "Pie-chart angle = value/total × 360°.",
+      hintHindi: "पाई-चार्ट कोण = मान/कुल × 360°।",
+      explanation: `Each angle is value/total × 360°, giving ${angles.join("°, ")}°.`,
+      explanationHindi: `प्रत्येक कोण मान/कुल × 360° है, अतः ${angles.join("°, ")}° मिलते हैं।`,
+      difficulty: "hard",
+      eloRating: 1400,
+    })
+  ),
+  ...[
+    ["bar graph", "compares categories using bars of proportional height", "अनुपाती ऊँचाई वाले दंडों से श्रेणियों की तुलना करता है"],
+    ["pie chart", "shows parts of a whole circle", "पूरे वृत्त के भागों को दिखाता है"],
+    ["frequency", "number of times a value occurs", "किसी मान के आने की संख्या"],
+    ["raw data", "data before grouping or processing", "समूहीकरण या प्रक्रिया से पहले का आँकड़ा"],
+    ["class interval", "a range used for grouped data", "समूहित आँकड़ों के लिए प्रयुक्त अंतराल"],
+  ].map(([term, answer, answerHindi]) =>
+    spec({
+      tags: ["statistics-vocabulary"],
+      question: `Which meaning matches ${term}?`,
+      questionHindi: `${term} से कौन-सा अर्थ मेल खाता है?`,
+      answer,
+      answerHindi,
+      distractors: ["a geometric construction only", "a type of triangle", "a trigonometric ratio"],
+      distractorsHindi: ["केवल ज्यामितीय रचना", "एक प्रकार का त्रिभुज", "त्रिकोणमितीय अनुपात"],
+      hint: "Recall the language used in data handling.",
+      hintHindi: "आँकड़ा प्रबंधन में प्रयुक्त भाषा याद करें।",
+      explanation: `${term} means: ${answer}.`,
+      explanationHindi: `${term} का अर्थ है: ${answerHindi}।`,
+      difficulty: "easy",
+      eloRating: 1220,
+    })
+  ),
+  ...[
+    ["Mean is affected by very large or very small extreme values.", "माध्य बहुत बड़े या बहुत छोटे चरम मानों से प्रभावित होता है।", "True", "सत्य"],
+    ["Median must be the most frequent value.", "माध्यिका हमेशा सबसे अधिक बार आने वाला मान होती है।", "False", "असत्य"],
+    ["A bar graph should have a consistent scale.", "दंड आलेख में समान पैमाना होना चाहिए।", "True", "सत्य"],
+    ["Mode is always unique for every data set.", "हर आँकड़ा समूह का बहुलक हमेशा अद्वितीय होता है।", "False", "असत्य"],
+    ["Data analysis helps summarize large information clearly.", "आँकड़ा विश्लेषण बड़ी जानकारी को स्पष्ट रूप से सारांशित करने में मदद करता है।", "True", "सत्य"],
+  ].map(([statement, statementHindi, answer, answerHindi]) =>
+    spec({
+      tags: ["true-false", "data-analysis"],
+      question: `Judge the statement: ${statement}`,
+      questionHindi: `कथन का निर्णय कीजिए: ${statementHindi}`,
+      answer,
+      answerHindi,
+      distractors: answer === "True" ? ["False", "Only in geometry", "Cannot decide"] : ["True", "Always true", "Cannot decide"],
+      distractorsHindi: answerHindi === "सत्य" ? ["असत्य", "केवल ज्यामिति में", "निर्धारित नहीं"] : ["सत्य", "हमेशा सत्य", "निर्धारित नहीं"],
+      hint: "Use the definitions of mean, median, mode, and graphs.",
+      hintHindi: "माध्य, माध्यिका, बहुलक और आलेखों की परिभाषाओं का प्रयोग करें।",
+      explanation: `The statement is ${answer} according to data handling concepts.`,
+      explanationHindi: `आँकड़ा प्रबंधन की अवधारणाओं के अनुसार यह कथन ${answerHindi} है।`,
+      difficulty: "medium",
+      eloRating: 1320,
+    })
+  ),
+];
+
 const class9MathsQuestionBank = [
   {
     chapterNumber: 1,
@@ -4313,6 +5625,70 @@ const class9MathsQuestionBank = [
       ],
 
     ]),
+  },
+
+  {
+    chapterNumber: 9,
+    topicId: "maths-lines-and-angles",
+    chapterTitle: "Straight Lines and Angles",
+    chapterTitleHindi: "सरल रेखा और कोण",
+    questions: makeAutoQuestionSet("maths-lines-and-angles", "9-ma-la", makeLinesAndAnglesSpecs()),
+  },
+
+  {
+    chapterNumber: 10,
+    topicId: "maths-triangle-congruence",
+    chapterTitle: "Congruence of Triangles",
+    chapterTitleHindi: "त्रिभुजों की सर्वांगसमता",
+    questions: makeAutoQuestionSet("maths-triangle-congruence", "9-ma-tc", makeTriangleCongruenceSpecs()),
+  },
+
+  {
+    chapterNumber: 11,
+    topicId: "maths-quadrilaterals",
+    chapterTitle: "Quadrilaterals",
+    chapterTitleHindi: "चतुर्भुज",
+    questions: makeAutoQuestionSet("maths-quadrilaterals", "9-ma-quad", makeQuadrilateralSpecs()),
+  },
+
+  {
+    chapterNumber: 12,
+    topicId: "maths-transformations-symmetry",
+    chapterTitle: "Transformations and Symmetry in Geometrical Figures",
+    chapterTitleHindi: "ज्यामितीय आकृतियों में परिवर्तन एवं सममिति",
+    questions: makeAutoQuestionSet("maths-transformations-symmetry", "9-ma-ts", makeTransformationSymmetrySpecs()),
+  },
+
+  {
+    chapterNumber: 13,
+    topicId: "maths-geometrical-constructions",
+    chapterTitle: "Geometrical Constructions",
+    chapterTitleHindi: "ज्यामितीय रचनाएँ",
+    questions: makeAutoQuestionSet("maths-geometrical-constructions", "9-ma-gc", makeConstructionSpecs()),
+  },
+
+  {
+    chapterNumber: 14,
+    topicId: "maths-sector-arc-length",
+    chapterTitle: "Sector of a Circle and Arc Length",
+    chapterTitleHindi: "वृत्त का त्रिज्याखण्ड और चाप की लंबाई",
+    questions: makeAutoQuestionSet("maths-sector-arc-length", "9-ma-sa", makeSectorArcSpecs()),
+  },
+
+  {
+    chapterNumber: 15,
+    topicId: "maths-cube-cuboid",
+    chapterTitle: "Cube and Cuboid",
+    chapterTitleHindi: "घन और घनाभ",
+    questions: makeAutoQuestionSet("maths-cube-cuboid", "9-ma-cc", makeCubeCuboidSpecs()),
+  },
+
+  {
+    chapterNumber: 16,
+    topicId: "maths-statistics-data-analysis",
+    chapterTitle: "Data Management and Analysis",
+    chapterTitleHindi: "आँकड़ा प्रबंधन एवं विश्लेषण",
+    questions: makeAutoQuestionSet("maths-statistics-data-analysis", "9-ma-st", makeStatisticsSpecs()),
   },
 
 

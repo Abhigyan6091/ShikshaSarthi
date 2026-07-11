@@ -29,6 +29,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { getCurrentUser } from "@/lib/session";
 import AdaptiveReviewList from "@/components/AdaptiveReviewList";
+import { MathText, QuestionMedia } from "@/components/MathText";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const QUESTION_COUNT_OPTIONS = [10, 20, 30, 40, "unlimited"] as const;
@@ -59,6 +60,7 @@ type AdaptiveQuestion = {
   tags: string[];
   question: string;
   questionHindi?: string;
+  questionImage?: string;
   options: string[];
   optionsHindi?: string[];
   correctAnswerIndex: number;
@@ -1117,10 +1119,15 @@ const AdaptiveTest: React.FC = () => {
                       </div>
                     </div>
                     <CardTitle className="text-xl leading-relaxed">
-                      {isHindi
-                        ? currentQuestion?.questionHindi || currentQuestion?.question
-                        : currentQuestion?.question || currentQuestion?.questionHindi}
+                      <MathText
+                        text={
+                          isHindi
+                            ? currentQuestion?.questionHindi || currentQuestion?.question
+                            : currentQuestion?.question || currentQuestion?.questionHindi
+                        }
+                      />
                     </CardTitle>
+                    <QuestionMedia imageUrl={currentQuestion?.questionImage} />
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid gap-3">
@@ -1142,7 +1149,7 @@ const AdaptiveTest: React.FC = () => {
                             }`}
                           >
                             <span className="mr-3 font-semibold">{String.fromCharCode(65 + index)}.</span>
-                            <span>{label}</span>
+                            <MathText text={label} />
                           </button>
                         );
                       })}
@@ -1167,7 +1174,7 @@ const AdaptiveTest: React.FC = () => {
                         ) : (
                           <div className="flex gap-3 text-amber-900">
                             <Lightbulb className="mt-0.5 h-5 w-5 flex-shrink-0" />
-                            <p>{visibleHint}</p>
+                            <p><MathText text={visibleHint} /></p>
                           </div>
                         )}
                       </div>

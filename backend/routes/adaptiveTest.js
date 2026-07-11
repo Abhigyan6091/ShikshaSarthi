@@ -197,6 +197,7 @@ router.post("/submit", async (req, res) => {
         questionId: question.id,
         question: question.question,
         questionHindi: question.questionHindi,
+        questionImage: question.questionImage,
         options: question.options,
         optionsHindi: question.optionsHindi,
         selectedOptionIndex: answer.selectedOptionIndex,

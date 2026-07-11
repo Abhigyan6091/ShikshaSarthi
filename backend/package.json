@@ -1,6 +1,6 @@
 {
   "name": "siksha_sarthi",
-  "version": "1.2.3",
+  "version": "1.2.5",
   "description": "For the development of school project",
   "main": "index.js",
   "scripts": {

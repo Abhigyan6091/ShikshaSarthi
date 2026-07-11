@@ -22,15 +22,24 @@ function normalizeOptions(options) {
   return Array.isArray(options) ? options.map(normalizeText).join("~") : "";
 }
 
-function loadBankFile(filePath) {
-  let code = fs.readFileSync(filePath, "utf8");
-  const exportMatch = code.match(/export\s+\{\s*([A-Za-z0-9_$]+)\s*\}/);
+function parseNamedExports(code, filePath) {
+  const exportMatch = code.match(/export\s+\{\s*([^}]+?)\s*\}\s*;?/);
   if (!exportMatch) {
     throw new Error(`No named export found in ${filePath}`);
   }
 
+  return exportMatch[1]
+    .split(",")
+    .map((name) => name.trim().split(/\s+as\s+/i)[0].trim())
+    .filter(Boolean);
+}
+
+function loadBankFile(filePath) {
+  let code = fs.readFileSync(filePath, "utf8");
+  const exportedNames = parseNamedExports(code, filePath);
+
   code = code.replace(
-    /^\s*export\s+\{\s*([A-Za-z0-9_$]+)\s*\};?\s*$/gm,
+    /^\s*export\s+\{\s*([^}]+?)\s*\};?\s*$/gm,
     "module.exports = { $1 };"
   );
 
@@ -41,12 +50,15 @@ function loadBankFile(filePath) {
   };
   vm.runInNewContext(code, sandbox, { filename: filePath, timeout: 5000 });
 
-  const bank = sandbox.module.exports[exportMatch[1]];
+  const exportName =
+    exportedNames.find((name) => /QuestionBank$/.test(name) && Array.isArray(sandbox.module.exports[name])) ||
+    exportedNames.find((name) => Array.isArray(sandbox.module.exports[name]));
+  const bank = exportName ? sandbox.module.exports[exportName] : null;
   if (!Array.isArray(bank)) {
-    throw new Error(`Export ${exportMatch[1]} in ${filePath} is not a question bank array`);
+    throw new Error(`No question bank array export found in ${filePath}; exports: ${exportedNames.join(", ")}`);
   }
 
-  return { exportName: exportMatch[1], bank };
+  return { exportName, bank };
 }
 
 function subjectFromSubjectId(subjectId) {
@@ -77,7 +89,7 @@ function toQuestionDocument(question, chapter, sourceFile, occurrence) {
     topic: chapter.chapterTitleHindi || chapter.chapterTitle || question.topicId || "General",
     question: question.question || question.questionHindi || "",
     questionHindi: question.questionHindi || "NA",
-    questionImage: "",
+    questionImage: question.questionImage || "",
     localPath: null,
     cloudUrl: null,
     options,

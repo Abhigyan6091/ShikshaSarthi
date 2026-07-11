@@ -4,15 +4,24 @@ const vm = require("vm");
 
 let cachedBank = null;
 
-function loadBankFile(filePath) {
-  let code = fs.readFileSync(filePath, "utf8");
-  const exportMatch = code.match(/export\s+\{\s*([A-Za-z0-9_$]+)\s*\}/);
+function parseNamedExports(code, filePath) {
+  const exportMatch = code.match(/export\s+\{\s*([^}]+?)\s*\}\s*;?/);
   if (!exportMatch) {
     throw new Error(`No named export found in ${filePath}`);
   }
 
+  return exportMatch[1]
+    .split(",")
+    .map((name) => name.trim().split(/\s+as\s+/i)[0].trim())
+    .filter(Boolean);
+}
+
+function loadBankFile(filePath, expectedExportName) {
+  let code = fs.readFileSync(filePath, "utf8");
+  const exportedNames = parseNamedExports(code, filePath);
+
   code = code.replace(
-    /^\s*export\s+\{\s*([A-Za-z0-9_$]+)\s*\};?\s*$/gm,
+    /^\s*export\s+\{\s*([^}]+?)\s*\};?\s*$/gm,
     "module.exports = { $1 };"
   );
 
@@ -23,10 +32,10 @@ function loadBankFile(filePath) {
   };
   vm.runInNewContext(code, sandbox, { filename: filePath, timeout: 5000 });
 
-  const exportName = exportMatch[1];
+  const exportName = expectedExportName || exportedNames.find((name) => /QuestionBank$/.test(name)) || exportedNames[0];
   const bank = sandbox.module.exports[exportName];
   if (!Array.isArray(bank)) {
-    throw new Error(`Export ${exportName} in ${filePath} is not a question bank array`);
+    throw new Error(`Export ${exportName} in ${filePath} is not a question bank array; exports: ${exportedNames.join(", ")}`);
   }
 
   return bank;
@@ -63,7 +72,7 @@ function loadLocalQuestionBank({ forceReload = false } = {}) {
     if (!filePath.startsWith(bankDir + path.sep)) {
       throw new Error(`Question bank export escapes directory: ${relativeFile}`);
     }
-    bankModule[exportName] = loadBankFile(filePath);
+    bankModule[exportName] = loadBankFile(filePath, exportName);
   }
 
   cachedBank = bankModule;
@@ -71,6 +80,8 @@ function loadLocalQuestionBank({ forceReload = false } = {}) {
 }
 
 module.exports = {
+  loadBankFile,
   loadLocalQuestionBank,
   parseIndexExports,
+  parseNamedExports,
 };

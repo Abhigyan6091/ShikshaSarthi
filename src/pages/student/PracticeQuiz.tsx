@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { useLanguage } from '@/hooks/useLanguage';
+import { MathText } from '@/components/MathText';
 const API_URL = import.meta.env.VITE_API_URL;
 interface Question {
   _id: string;
@@ -179,7 +180,7 @@ const getResult = () => {
             {/* Text Hint */}
             {hint.text && hint.text.trim() && (
               <div className="mb-3">
-                <p className="text-amber-700">{hint.text}</p>
+                <p className="text-amber-700"><MathText text={hint.text} /></p>
               </div>
             )}
             
@@ -372,7 +373,7 @@ const getResult = () => {
               )}
 
               <h2 className="text-xl font-semibold text-gray-800 mb-6 leading-relaxed">
-                {String(displayQuestion(questions[current]))}
+                <MathText text={String(displayQuestion(questions[current]))} />
               </h2>
 
               {/* Question Image with Fixed Size */}
@@ -406,7 +407,7 @@ const getResult = () => {
                       onClick={() => handleAnswer(opt)}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-medium">{String(displayOption(questions[current], i))}</span>
+                        <span className="font-medium"><MathText text={String(displayOption(questions[current], i))} /></span>
                         {selectedAnswer !== null && (
                           <>
                             {isSelected && isCorrect && <CheckCircle className="text-green-600" size={20} />}
@@ -434,7 +435,7 @@ const getResult = () => {
                   </div>
                   {selectedAnswer !== questions[current].correctAnswer && (
                     <p className="text-sm text-gray-600">
-                      The correct answer is: <strong>{String(displayCorrect(questions[current]))}</strong>
+                      The correct answer is: <strong><MathText text={String(displayCorrect(questions[current]))} /></strong>
                     </p>
                   )}
                 </div>

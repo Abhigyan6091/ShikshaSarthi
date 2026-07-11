@@ -171,6 +171,7 @@ function normalizeQuestion(raw, subject) {
     tags: raw.tags || [],
     question: raw.question,
     questionHindi: raw.questionHindi,
+    questionImage: raw.questionImage || "",
     options,
     optionsHindi: raw.optionsHindi || [],
     correctAnswerIndex: Math.max(0, correctIndex),
