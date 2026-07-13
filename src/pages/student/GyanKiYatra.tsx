@@ -184,12 +184,12 @@ const SUBJECT_OPTIONS = [
 const batchToClass = (batch?: string) => {
   const n = Number.parseInt(String(batch || "").replace(/\D/g, ""), 10);
   const derived = Number.isFinite(n) && n >= 2026 && n <= 2037 ? 2038 - n : 0;
-  return derived >= 6 && derived <= 10 ? derived : 0;
+  return derived >= 6 && derived <= 12 ? derived : 0;
 };
 
 const resolveClassNumber = (student?: { class?: string; batch?: string }) => {
   const parsed = Number.parseInt(String(student?.class || "").replace(/\D/g, ""), 10);
-  if (Number.isFinite(parsed) && parsed >= 6 && parsed <= 10) return parsed;
+  if (Number.isFinite(parsed) && parsed >= 6 && parsed <= 12) return parsed;
   return batchToClass(student?.batch) || 10;
 };
 
@@ -581,6 +581,16 @@ const GyanKiYatra: React.FC = () => {
     .filter((question) => question.subject === selectedSubject)
     .sort((a, b) => (a.eloRating || 0) - (b.eloRating || 0));
 
+  useEffect(() => {
+    if (loadingQuestions || questionBank.length === 0 || subjectQuestions.length > 0) return;
+    const firstAvailableSubject = SUBJECT_OPTIONS.find((subject) =>
+      questionBank.some((question) => question.subject === subject.id)
+    );
+    if (firstAvailableSubject && firstAvailableSubject.id !== selectedSubject) {
+      setSelectedSubject(firstAvailableSubject.id);
+    }
+  }, [loadingQuestions, questionBank, selectedSubject, subjectQuestions.length]);
+
   const pickQuestion = useCallback((square: number): Question | null => {
     const subjectPool = questionBank
       .filter((question) => question.subject === selectedSubject)
@@ -596,7 +606,7 @@ const GyanKiYatra: React.FC = () => {
     const end = Math.min(pool.length, targetIndex + windowSize + 1);
     const difficultyWindow = pool.slice(start, end);
     const q = difficultyWindow[Math.floor(Math.random() * difficultyWindow.length)];
-    setUsedQIds((prev) => new Set([...prev, q.id]));
+    setUsedQIds((prev) => new Set([...prev, String(q.id)]));
     return q;
   }, [questionBank, selectedSubject, usedQIds]);
 

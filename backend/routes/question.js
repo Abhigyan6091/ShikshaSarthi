@@ -5,6 +5,7 @@ const { appConfig } = require("../config/appConfig");
 const { requireAuth } = require("../middleware/auth");
 const { flattenQuestionBank } = require("../services/marsAdaptiveEngine");
 const { loadLocalQuestionBank } = require("../utils/localQuestionBank");
+const { buildQuestionBankDocuments } = require("../scripts/importQuestionBank");
 require("dotenv").config();
 
 const OFFLINE_HINT_MESSAGE = "AI hints are unavailable in offline mode.";
@@ -22,6 +23,7 @@ const SUBJECT_ALIASES = {
 
 const QUESTION_SORT = { class: 1, subject: 1, topic: 1, question: 1 };
 const NUMERIC_COLLATION = { locale: "en", numericOrdering: true, strength: 2 };
+let questionBankSelfHealPromise = null;
 
 function naturalSort(values) {
   return values
@@ -31,6 +33,70 @@ function naturalSort(values) {
 
 function normalizeSubject(subject = "") {
   return SUBJECT_ALIASES[decodeURIComponent(String(subject)).trim().toLowerCase()] || decodeURIComponent(String(subject)).trim();
+}
+
+function normalizeText(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function normalizeOptions(options) {
+  return Array.isArray(options) ? options.map(normalizeText).join("~") : "";
+}
+
+function questionTextKey(question) {
+  return [
+    normalizeText(question.class),
+    normalizeText(question.subject),
+    normalizeText(question.topic),
+    normalizeText(question.question),
+    normalizeOptions(question.options),
+    normalizeText(question.correctAnswer),
+  ].join("|");
+}
+
+async function ensureLocalQuestionBankClassesImported() {
+  if (questionBankSelfHealPromise) return questionBankSelfHealPromise;
+
+  questionBankSelfHealPromise = (async () => {
+    try {
+      const { documents } = buildQuestionBankDocuments();
+      const localClasses = [...new Set(documents.map((doc) => String(doc.class || "").trim()).filter(Boolean))];
+      if (localClasses.length === 0) return;
+
+      const existingClasses = await Question.distinct("class", { class: { $in: localClasses } });
+      const missingClasses = localClasses.filter((className) => !existingClasses.includes(className));
+      if (missingClasses.length === 0) return;
+
+      const existingKeys = new Set(
+        (await Question.find(
+          {},
+          { class: 1, subject: 1, topic: 1, question: 1, options: 1, correctAnswer: 1 }
+        ).lean()).map(questionTextKey)
+      );
+
+      const docsToInsert = documents
+        .filter((doc) => missingClasses.includes(String(doc.class || "").trim()))
+        .filter((doc) => {
+          const key = questionTextKey(doc);
+          if (existingKeys.has(key)) return false;
+          existingKeys.add(key);
+          return true;
+        });
+
+      if (docsToInsert.length > 0) {
+        await Question.collection.insertMany(docsToInsert, { ordered: false });
+        console.log(
+          `Question bank self-heal imported ${docsToInsert.length} questions for classes: ${missingClasses.join(", ")}`
+        );
+      }
+    } catch (error) {
+      console.error("Question bank self-heal failed:", error);
+    } finally {
+      questionBankSelfHealPromise = null;
+    }
+  })();
+
+  return questionBankSelfHealPromise;
 }
 
 async function getLocalQuestions(className, subject) {
@@ -224,6 +290,7 @@ router.post("/teacher", async (req, res) => {
 // Get all questions
 router.get("/", async (_req, res) => {
   try {
+    await ensureLocalQuestionBankClassesImported();
     const questions = await Question.find().sort(QUESTION_SORT).collation(NUMERIC_COLLATION);
     res.status(200).json(questions);
   } catch (err) {

@@ -47,7 +47,8 @@ import {
   Pencil,
   Camera,
   KeyRound,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -151,12 +152,13 @@ const StudentProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const routeStudentId = id || getCurrentUser()?.studentId || '';
   const [student, setStudent] = useState<StudentData | null>(null);
   const [summary, setSummary] = useState<StudentSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const isOwnProfile = getCurrentUser()?.studentId === id;
+  const isOwnProfile = Boolean(routeStudentId) && getCurrentUser()?.studentId === routeStudentId;
 
   // ── Edit profile dialog ──────────────────────────────────────────────────
   const [editOpen, setEditOpen] = useState(false);
@@ -181,14 +183,20 @@ const StudentProfile: React.FC = () => {
     };
     loadProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [routeStudentId]);
 
   const fetchStudentProfile = async () => {
+    if (!routeStudentId) {
+      setLoading(false);
+      setError('Student session not found. Please log in again.');
+      return;
+    }
+
     try {
       setLoading(true);
       const [profileRes, summaryRes] = await Promise.all([
-        axios.get(`${API_URL}/students/${id}`),
-        axios.get(`${API_URL}/students/${id}/summary`).catch(() => ({ data: null })),
+        axios.get(`${API_URL}/students/${routeStudentId}`),
+        axios.get(`${API_URL}/students/${routeStudentId}/summary`).catch(() => ({ data: null })),
       ]);
       setStudent(profileRes.data);
       setSummary(summaryRes.data);

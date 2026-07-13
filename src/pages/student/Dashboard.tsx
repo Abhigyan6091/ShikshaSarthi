@@ -115,23 +115,7 @@ const StudentDashboard: React.FC = () => {
   const [quizId, setQuizId] = useState("");
   const [loading, setLoading] = useState(true);
   const [language, setLanguage] = useState(() => localStorage.getItem("appLanguage") || "hi");
-  const [newQuizzes, setNewQuizzes] = useState<{ quizId: string; totalQuestions?: number; timeLimit?: number }[]>([]);
   const [enrolledClassLabel, setEnrolledClassLabel] = useState("");
-  const [dismissedQuizIds, setDismissedQuizIds] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem("dismissedQuizNotifications") || "[]");
-    } catch {
-      return [];
-    }
-  });
-
-  const dismissQuizNotification = (quizIdToDismiss: string) => {
-    setDismissedQuizIds((prev) => {
-      const next = [...prev, quizIdToDismiss];
-      localStorage.setItem("dismissedQuizNotifications", JSON.stringify(next));
-      return next;
-    });
-  };
 
   useEffect(() => {
     const handleLanguageChange = (event: Event) => {
@@ -179,17 +163,12 @@ const StudentDashboard: React.FC = () => {
     const studentId = currentUser?.studentId;
     if (!studentId) return;
 
-    Promise.all([
-      axios.get(`${API_URL}/classes/student/${studentId}`),
-      axios.get(`${API_URL}/reports/student/${studentId}`).catch(() => ({ data: [] })),
-    ])
-      .then(([classesRes, reportsRes]) => {
+    axios
+      .get(`${API_URL}/classes/student/${studentId}`)
+      .then((classesRes) => {
         setEnrolledClassLabel(resolveEnrolledClassLabel(classesRes.data?.classes));
-        const attemptedIds = new Set((reportsRes.data || []).map((r: any) => r.quizId));
-        const quizzes = (classesRes.data?.quizzes || []).filter((q: any) => !attemptedIds.has(q.quizId));
-        setNewQuizzes(quizzes);
       })
-      .catch((error) => console.error("Failed to load new quiz notifications:", error));
+      .catch((error) => console.error("Failed to load enrolled class label:", error));
   }, []);
 
   const handleStartQuiz = () => {
@@ -429,46 +408,6 @@ const StudentDashboard: React.FC = () => {
               <p className="text-sm text-gray-600">{isHindi ? "तेज access के लिए मुख्य learning tools." : "Main learning tools with quick access."}</p>
             </div>
           </div>
-          {newQuizzes.filter((q) => !dismissedQuizIds.includes(q.quizId)).length > 0 && (
-            <div className="mb-5 space-y-2">
-              {newQuizzes
-                .filter((q) => !dismissedQuizIds.includes(q.quizId))
-                .map((q) => (
-                  <div
-                    key={q.quizId}
-                    className="glass-card flex items-center justify-between gap-3 border-0 bg-gradient-to-r from-blue-600/90 to-indigo-600/90 px-5 py-3 text-white shadow-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Sparkles className="h-5 w-5 shrink-0 text-amber-300" />
-                      <div>
-                        <p className="font-semibold">
-                          {isHindi ? "नया क्विज़ उपलब्ध है" : "New quiz available"}: {q.quizId}
-                        </p>
-                        <p className="text-xs text-blue-50/90">
-                          {q.totalQuestions ? `${q.totalQuestions} ${isHindi ? "प्रश्न" : "questions"}` : ""}
-                          {q.timeLimit ? ` · ${q.timeLimit} ${isHindi ? "मिनट" : "min"}` : ""}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Link to={`/student/take-advanced-quiz?quizId=${encodeURIComponent(q.quizId)}`}>
-                        <Button size="sm" className="bg-white text-blue-700 hover:bg-blue-50">
-                          {isHindi ? "टेस्ट दें" : "Take Test"}
-                        </Button>
-                      </Link>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-white hover:bg-white/15"
-                        onClick={() => dismissQuizNotification(q.quizId)}
-                      >
-                        {isHindi ? "बंद करें" : "Dismiss"}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          )}
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 mb-12">
             <Card className="glass-card group border-0 ring-1 ring-blue-100/60">
