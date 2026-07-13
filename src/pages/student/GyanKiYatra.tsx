@@ -14,7 +14,6 @@ import {
   ArrowLeft,
   Trophy,
   BookOpen,
-  Dices,
   CheckCircle2,
   XCircle,
   RotateCcw,
@@ -22,6 +21,9 @@ import {
   Star,
   AlertTriangle,
   Zap,
+  Target,
+  Languages,
+  Lightbulb,
 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -117,6 +119,9 @@ interface Question {
   correctAnswerIndex?: number;
   explanation?: string;
   explanationHindi?: string;
+  hints?: string[];
+  hintsHindi?: string[];
+  hint?: { text?: string };
   eloRating?: number;
 }
 
@@ -127,6 +132,7 @@ interface JourneyReviewItem {
   square: number;
   context: "ladder" | "snake" | "question" | null;
   timeSpentMs: number;
+  hintUsed: boolean;
 }
 
 type SquareType = "normal" | "ladder-foot" | "ladder-top" | "snake-head" | "snake-tail" | "question";
@@ -508,6 +514,7 @@ const GyanKiYatra: React.FC = () => {
   // Question state
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [hintVisible, setHintVisible] = useState(false);
   const [questionContext, setQuestionContext] = useState<"ladder" | "snake" | "question" | null>(null);
   const [landedSquare, setLandedSquare] = useState<number>(0);
 
@@ -527,6 +534,7 @@ const GyanKiYatra: React.FC = () => {
   const [gameStartedAt, setGameStartedAt] = useState<number | null>(null);
   const [completedAt, setCompletedAt] = useState<number | null>(null);
   const [reviewAnswers, setReviewAnswers] = useState<JourneyReviewItem[]>([]);
+  const reviewAnswersRef = useRef<JourneyReviewItem[]>([]);
 
   // Confetti for win
   const [stars, setStars] = useState<{ id: number; left: string; delay: string; duration: string }[]>([]);
@@ -558,6 +566,12 @@ const GyanKiYatra: React.FC = () => {
           params: { studentId: storedStudent?.studentId },
         });
         if (!active) return;
+        const loadedClassNumber = resolveClassNumber({ class: res.data.className });
+        if (loadedClassNumber !== classNumber) {
+          setQuestionBank([]);
+          setQuestionError(`Class ${classNumber} questions are not available for Gyan Ki Yatra.`);
+          return;
+        }
         setQuestionBank(Array.isArray(res.data.questions) ? res.data.questions : []);
       } catch (error) {
         console.error("Failed to load Gyan Ki Yatra questions:", error);
@@ -576,6 +590,13 @@ const GyanKiYatra: React.FC = () => {
   const addLog = useCallback((msg: string) => {
     setLog((prev) => [...prev, msg].slice(-10)); // Keep last 10
   }, []);
+
+  const switchLanguage = useCallback(() => {
+    const next = language === "hi" ? "en" : "hi";
+    setLanguage(next);
+    localStorage.setItem("appLanguage", next);
+    window.dispatchEvent(new CustomEvent("appLanguageChanged", { detail: { language: next } }));
+  }, [language]);
 
   const subjectQuestions = questionBank
     .filter((question) => question.subject === selectedSubject)
@@ -599,15 +620,20 @@ const GyanKiYatra: React.FC = () => {
     const pool = available.length > 0 ? available : subjectPool;
     if (pool.length === 0) return null;
 
-    const progress = clamp(square / 100, 0, 1);
-    const targetIndex = Math.round(progress * (pool.length - 1));
+    const progress = clamp((square - 1) / 99, 0, 1);
+    const indexById = new Map(subjectPool.map((question, index) => [String(question.id), index]));
+    const targetIndex = Math.round(progress * (subjectPool.length - 1));
     const windowSize = Math.max(4, Math.ceil(pool.length * 0.08));
-    const start = Math.max(0, targetIndex - windowSize);
-    const end = Math.min(pool.length, targetIndex + windowSize + 1);
-    const difficultyWindow = pool.slice(start, end);
+    const difficultyWindow = pool
+      .map((question) => ({
+        question,
+        distance: Math.abs((indexById.get(String(question.id)) ?? targetIndex) - targetIndex),
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, Math.min(pool.length, windowSize));
     const q = difficultyWindow[Math.floor(Math.random() * difficultyWindow.length)];
-    setUsedQIds((prev) => new Set([...prev, String(q.id)]));
-    return q;
+    setUsedQIds((prev) => new Set([...prev, String(q.question.id)]));
+    return q.question;
   }, [questionBank, selectedSubject, usedQIds]);
 
   const triggerWin = useCallback(() => {
@@ -624,22 +650,23 @@ const GyanKiYatra: React.FC = () => {
     // Record the answered questions against the student's real adaptive
     // rating/history, same endpoint the Adaptive Test page submits to, so
     // progress made during the game isn't silently lost.
-    if (storedStudent?.studentId && reviewAnswers.length > 0) {
+    const completedAnswers = reviewAnswersRef.current;
+    if (storedStudent?.studentId && completedAnswers.length > 0) {
       axios
         .post(`${API_URL}/quizzes/adaptive-test/submit`, {
           studentId: storedStudent.studentId,
           className: String(classNumber),
           startedAt: gameStartedAt ? new Date(gameStartedAt).toISOString() : undefined,
-          answers: reviewAnswers.map((item) => ({
+          answers: completedAnswers.map((item) => ({
             question: item.question,
             selectedOptionIndex: item.selectedOptionIndex,
-            hintUsed: false,
+            hintUsed: item.hintUsed,
             timeSpentMs: item.timeSpentMs,
           })),
         })
         .catch((error) => console.error("Failed to save Gyan Ki Yatra progress:", error));
     }
-  }, [reviewAnswers, storedStudent?.studentId, classNumber, gameStartedAt]);
+  }, [storedStudent?.studentId, classNumber, gameStartedAt]);
 
   const openQuestion = useCallback((square: number, context: "ladder" | "snake" | "question") => {
     const question = pickQuestion(square);
@@ -654,6 +681,7 @@ const GyanKiYatra: React.FC = () => {
     setQuestionContext(context);
     setQuestionStartedAt(Date.now());
     setSelectedOption(null);
+    setHintVisible(false);
     setPhase("question");
   }, [addLog, pickQuestion]);
 
@@ -768,17 +796,20 @@ const GyanKiYatra: React.FC = () => {
       ? Number(currentQuestion.correctAnswerIndex)
       : Number(currentQuestion.correct || 0);
     const isCorrect = idx === correctIndex;
-    setReviewAnswers((answers) => [
-      ...answers,
-      {
-        question: currentQuestion,
-        selectedOptionIndex: idx,
-        isCorrect,
-        square: landedSquare,
-        context: questionContext,
-        timeSpentMs: Date.now() - questionStartedAt,
-      },
-    ]);
+    const reviewItem = {
+      question: currentQuestion,
+      selectedOptionIndex: idx,
+      isCorrect,
+      square: landedSquare,
+      context: questionContext,
+      timeSpentMs: Date.now() - questionStartedAt,
+      hintUsed: hintVisible,
+    };
+    setReviewAnswers((answers) => {
+      const nextAnswers = [...answers, reviewItem];
+      reviewAnswersRef.current = nextAnswers;
+      return nextAnswers;
+    });
 
     if (isCorrect) {
       setScore((s) => s + 10);
@@ -833,12 +864,13 @@ const GyanKiYatra: React.FC = () => {
     setTimeout(() => {
       setPhase("result-feedback");
     }, 500);
-  }, [selectedOption, currentQuestion, questionContext, landedSquare, position, addLog, movePlayerInstantly, triggerWin, questionStartedAt]);
+  }, [selectedOption, currentQuestion, questionContext, landedSquare, position, addLog, movePlayerInstantly, triggerWin, questionStartedAt, hintVisible]);
 
   const dismissFeedback = useCallback(() => {
     setPhase("playing");
     setCurrentQuestion(null);
     setSelectedOption(null);
+    setHintVisible(false);
     setQuestionContext(null);
     if (displayPosition === targetPosition) {
       setCanRoll(true);
@@ -857,6 +889,7 @@ const GyanKiYatra: React.FC = () => {
     setSkipTurns(0);
     setCurrentQuestion(null);
     setSelectedOption(null);
+    setHintVisible(false);
     setQuestionContext(null);
     setLandedSquare(0);
     setScore(0);
@@ -864,6 +897,7 @@ const GyanKiYatra: React.FC = () => {
     setLog([]);
     setUsedQIds(new Set());
     setReviewAnswers([]);
+    reviewAnswersRef.current = [];
     setGameStartedAt(Date.now());
     setCompletedAt(null);
     setStars([]);
@@ -882,6 +916,7 @@ const GyanKiYatra: React.FC = () => {
     setSkipTurns(0);
     setCurrentQuestion(null);
     setSelectedOption(null);
+    setHintVisible(false);
     setQuestionContext(null);
     setLandedSquare(0);
     setScore(0);
@@ -889,6 +924,7 @@ const GyanKiYatra: React.FC = () => {
     setLog([]);
     setUsedQIds(new Set());
     setReviewAnswers([]);
+    reviewAnswersRef.current = [];
     setGameStartedAt(Date.now());
     setCompletedAt(null);
     setStars([]);
@@ -896,12 +932,21 @@ const GyanKiYatra: React.FC = () => {
 
   const selectedSubjectMeta = SUBJECT_OPTIONS.find((subject) => subject.id === selectedSubject) || SUBJECT_OPTIONS[0];
   const isHindi = language === "hi";
+  const localizedText = (primary?: string, fallback?: string) => {
+    const value = String(primary || "").trim();
+    if (value && value.toUpperCase() !== "NA") return value;
+    return String(fallback || "").trim();
+  };
   const questionText = (question: Question) =>
-    isHindi ? (question.questionHindi || question.question) : question.question;
+    isHindi ? localizedText(question.questionHindi, question.question) : localizedText(question.question, question.questionHindi);
   const questionOptions = (question: Question) =>
     isHindi && question.optionsHindi?.length === question.options.length ? question.optionsHindi : question.options;
   const questionExplanation = (question: Question) =>
-    isHindi ? (question.explanationHindi || question.explanation || "") : (question.explanation || question.explanationHindi || "");
+    isHindi ? localizedText(question.explanationHindi, question.explanation) : localizedText(question.explanation, question.explanationHindi);
+  const questionHint = (question: Question) => {
+    const hints = isHindi && question.hintsHindi?.length ? question.hintsHindi : question.hints || [];
+    return localizedText(hints[0], question.hint?.text);
+  };
   const correctIndexFor = (question: Question) =>
     Number.isInteger(question.correctAnswerIndex) ? Number(question.correctAnswerIndex) : Number(question.correct || 0);
   const correctAnswers = reviewAnswers.filter((item) => item.isCorrect).length;
@@ -948,6 +993,17 @@ const GyanKiYatra: React.FC = () => {
 
           <div className="container mx-auto px-4 max-w-2xl relative z-10">
             <div className="text-center mb-10 animate-slide-up">
+              <div className="mb-5 flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-2xl border-orange-200 bg-white/80 text-orange-700 hover:bg-orange-50"
+                  onClick={switchLanguage}
+                >
+                  <Languages className="h-4 w-4 mr-2" />
+                  {isHindi ? "English" : "हिंदी"}
+                </Button>
+              </div>
               <div className="inline-flex items-center justify-center w-28 h-28 bg-gradient-to-br from-orange-400 to-rose-500 rounded-3xl shadow-xl mb-6 transform hover:scale-105 transition-transform border border-white">
                 <span className="text-6xl animate-player-bounce">🎲</span>
               </div>
@@ -958,6 +1014,9 @@ const GyanKiYatra: React.FC = () => {
             </div>
 
             <div className="bg-white/80 backdrop-blur-md rounded-3xl p-8 mb-8 animate-pop-in border border-orange-100 shadow-xl" style={{ animationDelay: '0.2s' }}>
+              <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800">
+                {isHindi ? "आपकी कक्षा" : "Your class"}: {classNumber}
+              </div>
               <h2 className="font-bold text-slate-800 text-xl flex items-center gap-3 mb-4">
                 <Target className="h-6 w-6 text-blue-500" />
                 विषय चुनें
@@ -1204,7 +1263,19 @@ const GyanKiYatra: React.FC = () => {
                 </div>
                 ज्ञान की यात्रा
               </h1>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-2xl border-slate-200 bg-white text-slate-700"
+                  onClick={switchLanguage}
+                >
+                  <Languages className="h-4 w-4 mr-2" />
+                  {isHindi ? "English" : "हिंदी"}
+                </Button>
+                <div className="bg-gradient-to-br from-violet-50 to-fuchsia-50 border border-violet-200 text-violet-700 px-4 py-2 rounded-2xl flex items-center gap-2 font-bold shadow-sm">
+                  {isHindi ? selectedSubjectMeta.labelHindi : selectedSubjectMeta.label}
+                </div>
                 <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 text-amber-700 px-4 py-2 rounded-2xl flex items-center gap-2 font-bold shadow-sm">
                   <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
                   {score} अंक
@@ -1375,11 +1446,23 @@ const GyanKiYatra: React.FC = () => {
               "bg-gradient-to-r from-amber-500 to-orange-600"
             }`}
           >
-            <DialogTitle className="flex items-center gap-3 text-2xl font-black">
-              {questionContext === "ladder" && <>🪜 सीढ़ी का प्रश्न</>}
-              {questionContext === "snake" && <>🐍 साँप का प्रश्न</>}
-              {questionContext === "question" && <>❓ बोनस प्रश्न</>}
-            </DialogTitle>
+            <div className="flex items-start justify-between gap-3">
+              <DialogTitle className="flex items-center gap-3 text-2xl font-black">
+                {questionContext === "ladder" && <>🪜 सीढ़ी का प्रश्न</>}
+                {questionContext === "snake" && <>🐍 साँप का प्रश्न</>}
+                {questionContext === "question" && <>❓ बोनस प्रश्न</>}
+              </DialogTitle>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 border-white/40 bg-white/15 text-white hover:bg-white/25 hover:text-white"
+                onClick={switchLanguage}
+              >
+                <Languages className="h-4 w-4 mr-1" />
+                {isHindi ? "EN" : "HI"}
+              </Button>
+            </div>
             <p className="text-white/90 text-sm mt-1 font-medium">
               {questionContext === "ladder" && "सही उत्तर दें और सीढ़ी चढ़ें!"}
               {questionContext === "snake" && "सही उत्तर दें और साँप से बचें!"}
@@ -1394,6 +1477,35 @@ const GyanKiYatra: React.FC = () => {
                 <p className="font-bold text-slate-800 text-lg sm:text-xl leading-relaxed">
                   {questionText(currentQuestion)}
                 </p>
+
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-sm font-bold text-amber-800">
+                      <Lightbulb className="h-5 w-5" />
+                      {isHindi ? "संकेत" : "Hint"}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100"
+                      disabled={!questionHint(currentQuestion)}
+                      onClick={() => setHintVisible(true)}
+                    >
+                      {hintVisible ? (isHindi ? "संकेत दिख रहा है" : "Hint shown") : (isHindi ? "संकेत दिखाएं" : "Show hint")}
+                    </Button>
+                  </div>
+                  {hintVisible && questionHint(currentQuestion) && (
+                    <p className="mt-3 text-sm font-semibold leading-6 text-amber-900">
+                      {questionHint(currentQuestion)}
+                    </p>
+                  )}
+                  {!questionHint(currentQuestion) && (
+                    <p className="mt-3 text-sm text-amber-700">
+                      {isHindi ? "इस प्रश्न के लिए संकेत उपलब्ध नहीं है।" : "No hint is available for this question."}
+                    </p>
+                  )}
+                </div>
 
                 {/* Options */}
                 <div className="grid grid-cols-1 gap-3">
@@ -1423,7 +1535,7 @@ const GyanKiYatra: React.FC = () => {
                         <div className="flex items-center">
                           <span className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm border-2 ${
                             selectedOption === null ? "border-slate-200 text-slate-500 bg-slate-100" : 
-                            idx === currentQuestion.correct ? "border-emerald-500 bg-emerald-100 text-emerald-700" :
+                            idx === correctIndex ? "border-emerald-500 bg-emerald-100 text-emerald-700" :
                             idx === selectedOption ? "border-rose-400 bg-rose-100 text-rose-700" : "border-slate-200 bg-slate-100 text-slate-400"
                           }`}>
                             {labels[idx]}

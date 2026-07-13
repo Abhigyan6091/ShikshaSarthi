@@ -909,7 +909,7 @@ const StudentProfile: React.FC = () => {
               </div>
               <CardDescription>Quiz attempts, adaptive tests, rating movement, and weak topics</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="max-h-[72vh] overflow-y-auto pr-3">
               {(summary?.weakTopics?.length || 0) > 0 && (
                 <div className="mb-5 flex flex-wrap gap-2">
                   {summary?.weakTopics.map((topic) => (
