@@ -16,6 +16,18 @@ const resolveDisplayClass = (student?: { class?: string; batch?: string }) => {
   const derived = batchToClass(student?.batch);
   return derived ? String(derived) : "-";
 };
+
+const resolveEnrolledClassLabel = (classes?: Array<{ className?: string }>) => {
+  const classNames = Array.from(
+    new Set(
+      (classes || [])
+        .map((classDoc) => String(classDoc?.className || "").trim())
+        .filter(Boolean)
+    )
+  ).sort((left, right) => left.localeCompare(right, "en", { numeric: true, sensitivity: "base" }));
+
+  return classNames.length > 0 ? classNames.join(", ") : "";
+};
 import {
   Card,
   CardContent,
@@ -104,6 +116,7 @@ const StudentDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [language, setLanguage] = useState(() => localStorage.getItem("appLanguage") || "hi");
   const [newQuizzes, setNewQuizzes] = useState<{ quizId: string; totalQuestions?: number; timeLimit?: number }[]>([]);
+  const [enrolledClassLabel, setEnrolledClassLabel] = useState("");
   const [dismissedQuizIds, setDismissedQuizIds] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem("dismissedQuizNotifications") || "[]");
@@ -171,6 +184,7 @@ const StudentDashboard: React.FC = () => {
       axios.get(`${API_URL}/reports/student/${studentId}`).catch(() => ({ data: [] })),
     ])
       .then(([classesRes, reportsRes]) => {
+        setEnrolledClassLabel(resolveEnrolledClassLabel(classesRes.data?.classes));
         const attemptedIds = new Set((reportsRes.data || []).map((r: any) => r.quizId));
         const quizzes = (classesRes.data?.quizzes || []).filter((q: any) => !attemptedIds.has(q.quizId));
         setNewQuizzes(quizzes);
@@ -236,6 +250,8 @@ const StudentDashboard: React.FC = () => {
 
   const stats = calculateStats();
   const isHindi = language === "hi";
+  const displayClass = resolveDisplayClass(student);
+  const classCardValue = displayClass !== "-" ? displayClass : enrolledClassLabel || "-";
   
 
   const subjectProgress = [
@@ -359,7 +375,7 @@ const StudentDashboard: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600">Class</p>
-                      <p className="text-lg font-bold text-gray-900">{resolveDisplayClass(student)}</p>
+                      <p className="text-lg font-bold text-gray-900">{classCardValue}</p>
                     </div>
                     <User className="h-8 w-8 text-edu-green/30" />
                   </div>

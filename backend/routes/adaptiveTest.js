@@ -112,13 +112,21 @@ router.get("/leaderboard", async (req, res) => {
     const leaderboard = students
       .filter((s) => s.adaptiveRating && typeof s.adaptiveRating.rating === "number")
       .filter((s) => !Number.isFinite(requestedClass) || derivedClass(s) === requestedClass)
-      .map((s) => ({
-        studentId: s.studentId,
-        name: s.name || s.studentId,
-        rating: Math.round(s.adaptiveRating.rating),
-        // Tests completed (not the internal per-question rating counter).
-        testsTaken: Array.isArray(s.adaptiveTestAttempts) ? s.adaptiveTestAttempts.length : 0,
-      }))
+      .map((s) => {
+        const totalTestsAttempted = Array.isArray(s.adaptiveTestAttempts)
+          ? s.adaptiveTestAttempts.filter((attempt) => attempt && attempt.completedAt).length
+          : 0;
+
+        return {
+          studentId: s.studentId,
+          name: s.name || s.studentId,
+          rating: Math.round(s.adaptiveRating.rating),
+          // Dedicated test counter. Do not use adaptiveRating.attempts here:
+          // that is an internal per-question rating-update counter.
+          testsTaken: totalTestsAttempted,
+          totalTestsAttempted,
+        };
+      })
       .sort((a, b) => b.rating - a.rating)
       .slice(0, 20);
 

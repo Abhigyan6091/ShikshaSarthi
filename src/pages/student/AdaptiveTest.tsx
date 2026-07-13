@@ -352,7 +352,15 @@ const AdaptiveTest: React.FC = () => {
         const res = await axios.get(`${API_URL}/quizzes/adaptive-test/leaderboard`, {
           params: { schoolId: storedStudent.schoolId, classNumber },
         });
-        if (active) setLeaderboard(res.data.leaderboard || []);
+        if (active) {
+          const normalizedLeaderboard = (res.data.leaderboard || []).map((entry: any) => ({
+            studentId: entry.studentId,
+            name: entry.name,
+            rating: Number(entry.rating || 0),
+            testsTaken: Number(entry.totalTestsAttempted ?? entry.testsTaken ?? 0),
+          }));
+          setLeaderboard(normalizedLeaderboard);
+        }
       } catch (lbError) {
         console.error("Leaderboard load failed:", lbError);
         if (active) setLeaderboard([]);
@@ -1031,7 +1039,9 @@ const AdaptiveTest: React.FC = () => {
                               i === 0 ? "text-amber-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-orange-600" : "text-slate-500"
                             }`}>{i + 1}</span>
                             <span className="flex-1 truncate">{entry.name}{isMe ? (language === "hi" ? " (आप)" : " (You)") : ""}</span>
-                            <span className="text-slate-500">{entry.testsTaken} {language === "hi" ? "टेस्ट" : "tests"}</span>
+                            <span className="text-slate-500">
+                              {entry.testsTaken} {language === "hi" ? "टेस्ट दिए" : "tests attempted"}
+                            </span>
                             <span className="w-16 text-right font-bold text-blue-700">{entry.rating}</span>
                           </li>
                         );

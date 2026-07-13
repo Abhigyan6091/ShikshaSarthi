@@ -11,8 +11,26 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
 import { getCurrentUser } from '@/lib/session';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import {
   User,
   BookOpen,
@@ -58,16 +76,83 @@ interface StudentData {
   email?: string;
   schoolId: string;
   class: string;
+  batch?: string;
   profilePhoto?: string;
   quizAttempted: QuizAttempt[];
+  adaptiveRating?: {
+    rating?: number;
+    momentum?: string;
+    streak?: number;
+    attempts?: number;
+    weakTopics?: string[];
+  };
   createdAt?: string;
 }
+
+interface StudentSummary {
+  totals: {
+    totalQuizzes: number;
+    totalAdaptiveTests: number;
+    overallAccuracy: number;
+    combinedCorrect: number;
+    combinedTotal: number;
+  };
+  adaptiveRating?: StudentData['adaptiveRating'] | null;
+  quizHistory: {
+    quizId: string;
+    correct: number;
+    incorrect: number;
+    unattempted: number;
+    total: number;
+    percentage: number;
+    attemptedAt: string | null;
+  }[];
+  adaptiveHistory: {
+    className: string | null;
+    correct: number;
+    incorrect: number;
+    total: number;
+    percentage: number;
+    ratingBefore: number | null;
+    ratingAfter: number | null;
+    ratingChange: number | null;
+    weakTopics: string[];
+    completedAt: string | null;
+    startedAt: string | null;
+  }[];
+  scoreTrend: {
+    date: string;
+    percentage: number;
+    source: 'quiz' | 'adaptive';
+    label: string | null;
+  }[];
+  weakTopics: { topic: string; count: number }[];
+}
+
+const batchToClass = (batch?: string) => {
+  const n = Number.parseInt(String(batch || '').replace(/\D/g, ''), 10);
+  const derived = Number.isFinite(n) && n >= 2026 && n <= 2037 ? 2038 - n : 0;
+  return derived >= 6 && derived <= 12 ? String(derived) : '';
+};
+
+const resolveDisplayClass = (student?: Pick<StudentData, 'class' | 'batch'> | null) => {
+  const legacyClass = String(student?.class || '').trim();
+  return legacyClass || batchToClass(student?.batch) || 'N/A';
+};
+
+const formatDate = (value?: string | null) => {
+  if (!value) return 'N/A';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return 'N/A';
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+};
 
 const StudentProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [student, setStudent] = useState<StudentData | null>(null);
+  const [summary, setSummary] = useState<StudentSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,8 +186,12 @@ const StudentProfile: React.FC = () => {
   const fetchStudentProfile = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/students/${id}`);
-      setStudent(response.data);
+      const [profileRes, summaryRes] = await Promise.all([
+        axios.get(`${API_URL}/students/${id}`),
+        axios.get(`${API_URL}/students/${id}/summary`).catch(() => ({ data: null })),
+      ]);
+      setStudent(profileRes.data);
+      setSummary(summaryRes.data);
       setError(null);
     } catch (err) {
       console.error('Error fetching student profile:', err);
@@ -277,6 +366,17 @@ const StudentProfile: React.FC = () => {
     return 'Low';
   };
 
+  const getCompletionStats = () => {
+    const quizAttempts = student?.quizAttempted || [];
+    const totalUnattempted = quizAttempts.reduce((sum, quiz) => sum + (quiz.score?.unattempted || 0), 0);
+    const totalQuestions = quizAttempts.reduce(
+      (sum, quiz) => sum + (quiz.score?.correct || 0) + (quiz.score?.incorrect || 0) + (quiz.score?.unattempted || 0),
+      0
+    );
+    const attemptRate = totalQuestions > 0 ? Math.round(((totalQuestions - totalUnattempted) / totalQuestions) * 100) : 0;
+    return { totalUnattempted, totalQuestions, attemptRate };
+  };
+
   // Get recent quiz performance
   const getRecentPerformance = () => {
     if (!student?.quizAttempted || student.quizAttempted.length === 0) return [];
@@ -337,6 +437,58 @@ const StudentProfile: React.FC = () => {
   const consistency = getConsistency();
   const focusLevel = getFocusLevel();
   const recentPerformance = getRecentPerformance();
+  const adaptiveRating = student.adaptiveRating?.rating ?? summary?.adaptiveRating?.rating;
+  const chartData = (summary?.scoreTrend || []).map((point, index) => ({
+    index: index + 1,
+    date: formatDate(point.date),
+    percentage: point.percentage,
+    label: point.label || (point.source === 'quiz' ? 'Quiz' : 'Adaptive Test'),
+  }));
+  const completionStats = getCompletionStats();
+  const totalActivities = (summary?.totals.totalQuizzes || 0) + (summary?.totals.totalAdaptiveTests || 0);
+  const overallAccuracy = summary?.totals.overallAccuracy ?? averageScore;
+  const topWeakTopics = (summary?.weakTopics || []).slice(0, 3).map((item) => item.topic);
+  const trendDelta =
+    chartData.length >= 2
+      ? Math.round(chartData[chartData.length - 1].percentage - chartData[0].percentage)
+      : 0;
+  const lastActivityDate = (summary?.scoreTrend || [])
+    .map((point) => new Date(point.date))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((a, b) => b.getTime() - a.getTime())[0];
+
+  const progressSummary =
+    totalActivities === 0
+      ? `${student.name} has not attempted any scored activity yet. Start with one quiz or adaptive test to build a baseline.`
+      : `${student.name} has completed ${totalActivities} scored activit${totalActivities === 1 ? 'y' : 'ies'} with ${overallAccuracy}% overall accuracy${typeof adaptiveRating === 'number' ? ` and an adaptive rating of ${Math.round(adaptiveRating)}` : ''}. ${
+          trendDelta > 5
+            ? `Recent scores are improving by about ${trendDelta} points from the first recorded score.`
+            : trendDelta < -5
+              ? `Recent scores are down by about ${Math.abs(trendDelta)} points, so revision should be prioritized.`
+              : 'Performance is currently steady.'
+        }`;
+
+  const focusRecommendation =
+    topWeakTopics.length > 0
+      ? `Focus first on ${topWeakTopics.join(', ')}. These topics are repeatedly appearing as weak areas in adaptive tests.`
+      : completionStats.totalQuestions === 0
+        ? 'Begin with a short quiz or adaptive test so the system can identify focus areas.'
+        : completionStats.attemptRate < 70
+          ? `Focus on completing more questions. ${completionStats.totalUnattempted} out of ${completionStats.totalQuestions} quiz questions were left unattempted.`
+          : overallAccuracy < 50
+            ? 'Focus on fundamentals and review incorrect answers before attempting harder tests.'
+            : overallAccuracy < 75
+              ? 'Focus on converting near-misses into correct answers by revising mistakes after every quiz.'
+              : 'Focus on maintaining accuracy with mixed practice and slightly harder adaptive tests.';
+
+  const consistencyRecommendation =
+    totalActivities === 0
+      ? 'No consistency pattern yet. Attempt at least three activities to get a reliable reading.'
+      : totalActivities < 3
+        ? `Only ${totalActivities} scored activit${totalActivities === 1 ? 'y has' : 'ies have'} been completed. Aim for at least three attempts this week.`
+        : lastActivityDate
+          ? `Last activity was on ${formatDate(lastActivityDate.toISOString())}. Keep a regular rhythm with small practice sessions every few days.`
+          : 'Practice is happening, but activity dates are incomplete. Keep attempts regular for better tracking.';
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -400,7 +552,10 @@ const StudentProfile: React.FC = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-gray-900 break-words overflow-hidden">{student.class}</p>
+                <p className="text-2xl font-bold text-gray-900 break-words overflow-hidden">{resolveDisplayClass(student)}</p>
+                {student.batch && (
+                  <p className="text-xs text-gray-500 mt-1">Batch {student.batch}</p>
+                )}
               </CardContent>
             </Card>
 
@@ -482,6 +637,62 @@ const StudentProfile: React.FC = () => {
             </Card>
           </div>
 
+          {/* Rating and Summary */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-gray-600">Adaptive Rating</CardTitle>
+                  <Star className="h-4 w-4 text-yellow-500" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-gray-900">
+                  {typeof adaptiveRating === 'number' ? Math.round(adaptiveRating) : 'N/A'}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">{student.adaptiveRating?.momentum || 'Steady'}</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-gray-600">Adaptive Tests</CardTitle>
+                  <Brain className="h-4 w-4 text-edu-purple" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-gray-900">{summary?.totals.totalAdaptiveTests || 0}</p>
+                <p className="text-sm text-gray-500 mt-1">Completed tests</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-gray-600">Overall Accuracy</CardTitle>
+                  <Target className="h-4 w-4 text-edu-green" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-gray-900">{summary?.totals.overallAccuracy ?? averageScore}%</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {summary?.totals.combinedCorrect || 0}/{summary?.totals.combinedTotal || 0} correct
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-gray-600">Weak Topics</CardTitle>
+                  <Activity className="h-4 w-4 text-amber-500" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold text-gray-900">{summary?.weakTopics.length || 0}</p>
+                <p className="text-sm text-gray-500 mt-1">Need attention</p>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Behavioral Insights */}
           <Card className="mb-8">
             <CardHeader>
@@ -492,9 +703,33 @@ const StudentProfile: React.FC = () => {
               <CardDescription>Understanding learning patterns and engagement</CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50 p-4">
+                <div className="mb-2 flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-edu-blue" />
+                  <p className="font-semibold text-gray-900">Current Situation Summary</p>
+                </div>
+                <p className="text-sm leading-6 text-gray-700">{progressSummary}</p>
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="rounded-md bg-white/75 p-3">
+                    <p className="text-xs text-gray-500">Activity</p>
+                    <p className="text-lg font-bold text-gray-900">{totalActivities}</p>
+                  </div>
+                  <div className="rounded-md bg-white/75 p-3">
+                    <p className="text-xs text-gray-500">Question Completion</p>
+                    <p className="text-lg font-bold text-gray-900">{completionStats.attemptRate}%</p>
+                  </div>
+                  <div className="rounded-md bg-white/75 p-3">
+                    <p className="text-xs text-gray-500">Trend</p>
+                    <p className={`text-lg font-bold ${trendDelta >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                      {chartData.length >= 2 ? `${trendDelta >= 0 ? '+' : ''}${trendDelta} pts` : 'N/A'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Focus Level */}
-                <div className="space-y-2">
+                <div className="space-y-3 rounded-lg border bg-white p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Activity className="h-5 w-5 text-edu-yellow" />
@@ -504,13 +739,23 @@ const StudentProfile: React.FC = () => {
                       {focusLevel}
                     </Badge>
                   </div>
-                  <p className="text-sm text-gray-600">
-                    Measures question completion rate and engagement
+                  <p className="text-sm leading-6 text-gray-700">{focusRecommendation}</p>
+                  {topWeakTopics.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {topWeakTopics.map((topic) => (
+                        <Badge key={topic} variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">
+                          {topic}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Based on weak topics, accuracy, and unattempted questions.
                   </p>
                 </div>
 
                 {/* Consistency */}
-                <div className="space-y-2">
+                <div className="space-y-3 rounded-lg border bg-white p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <TrendingUp className="h-5 w-5 text-edu-green" />
@@ -520,11 +765,67 @@ const StudentProfile: React.FC = () => {
                       {consistency}
                     </Badge>
                   </div>
-                  <p className="text-sm text-gray-600">
-                    Regular practice and quiz participation
+                  <p className="text-sm leading-6 text-gray-700">{consistencyRecommendation}</p>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                    <div className="rounded-md bg-gray-50 p-2">
+                      <span className="block text-gray-500">Quizzes</span>
+                      <span className="font-semibold text-gray-900">{summary?.totals.totalQuizzes ?? totalQuizzes}</span>
+                    </div>
+                    <div className="rounded-md bg-gray-50 p-2">
+                      <span className="block text-gray-500">Adaptive Tests</span>
+                      <span className="font-semibold text-gray-900">{summary?.totals.totalAdaptiveTests || 0}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Based on number of attempts and recent activity.
                   </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Score Trend */}
+          <Card className="mb-8">
+            <CardHeader>
+              <div className="flex items-center space-x-2">
+                <TrendingUp className="h-6 w-6 text-edu-blue" />
+                <CardTitle>Score Trend</CardTitle>
+              </div>
+              <CardDescription>Performance across quizzes and adaptive tests</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {chartData.length === 0 ? (
+                <div className="text-center py-10 text-gray-500">
+                  <TrendingUp className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+                  <p>No scored activity yet.</p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <AreaChart data={chartData} margin={{ top: 10, right: 16, left: -16, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="studentProfileScoreTrend" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#2563eb" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#2563eb" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.25)" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                    <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} width={42} tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      formatter={(value: number, _name, item) => [`${value}%`, item?.payload?.label || 'Score']}
+                      labelFormatter={(label) => `Date: ${label}`}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="percentage"
+                      stroke="#2563eb"
+                      strokeWidth={2}
+                      fill="url(#studentProfileScoreTrend)"
+                      dot={{ r: 3, fill: '#2563eb', strokeWidth: 0 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
 
@@ -564,21 +865,102 @@ const StudentProfile: React.FC = () => {
             </Card>
           )}
 
-          {/* Rating Section - Coming Soon */}
-          <Card className="mb-8 border-dashed border-2">
+          {/* Full Attempt History */}
+          <Card className="mb-8">
             <CardHeader>
               <div className="flex items-center space-x-2">
-                <Star className="h-6 w-6 text-yellow-500" />
-                <CardTitle>Performance Rating</CardTitle>
-                <Badge variant="secondary">Coming Soon</Badge>
+                <Calendar className="h-6 w-6 text-edu-blue" />
+                <CardTitle>History and Insights</CardTitle>
               </div>
-              <CardDescription>Advanced performance analytics and personalized recommendations</CardDescription>
+              <CardDescription>Quiz attempts, adaptive tests, rating movement, and weak topics</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600 text-center py-6">
-                This feature will be available in the next version. Stay tuned for detailed performance ratings, 
-                personalized study recommendations, and AI-powered insights!
-              </p>
+              {(summary?.weakTopics?.length || 0) > 0 && (
+                <div className="mb-5 flex flex-wrap gap-2">
+                  {summary?.weakTopics.map((topic) => (
+                    <Badge key={topic.topic} variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">
+                      {topic.topic} ({topic.count})
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              <Tabs defaultValue="quizzes" className="w-full">
+                <TabsList>
+                  <TabsTrigger value="quizzes">Quizzes ({summary?.quizHistory.length || 0})</TabsTrigger>
+                  <TabsTrigger value="adaptive">Adaptive Tests ({summary?.adaptiveHistory.length || 0})</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="quizzes">
+                  {(summary?.quizHistory.length || 0) === 0 ? (
+                    <div className="text-center py-8 text-gray-500">No quizzes attempted yet.</div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Quiz ID</TableHead>
+                            <TableHead>Correct</TableHead>
+                            <TableHead>Incorrect</TableHead>
+                            <TableHead>Unattempted</TableHead>
+                            <TableHead>Score</TableHead>
+                            <TableHead>Date</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {summary?.quizHistory.map((quiz, index) => (
+                            <TableRow key={`${quiz.quizId}-${index}`}>
+                              <TableCell className="font-medium">{quiz.quizId}</TableCell>
+                              <TableCell className="text-green-700">{quiz.correct}</TableCell>
+                              <TableCell className="text-red-600">{quiz.incorrect}</TableCell>
+                              <TableCell className="text-gray-600">{quiz.unattempted}</TableCell>
+                              <TableCell>{quiz.percentage}%</TableCell>
+                              <TableCell>{formatDate(quiz.attemptedAt)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="adaptive">
+                  {(summary?.adaptiveHistory.length || 0) === 0 ? (
+                    <div className="text-center py-8 text-gray-500">No adaptive tests attempted yet.</div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Class</TableHead>
+                            <TableHead>Correct</TableHead>
+                            <TableHead>Incorrect</TableHead>
+                            <TableHead>Score</TableHead>
+                            <TableHead>Rating</TableHead>
+                            <TableHead>Date</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {summary?.adaptiveHistory.map((attempt, index) => (
+                            <TableRow key={`${attempt.className}-${index}`}>
+                              <TableCell className="font-medium">{attempt.className || 'N/A'}</TableCell>
+                              <TableCell className="text-green-700">{attempt.correct}</TableCell>
+                              <TableCell className="text-red-600">{attempt.incorrect}</TableCell>
+                              <TableCell>{attempt.percentage}%</TableCell>
+                              <TableCell>
+                                {typeof attempt.ratingChange === 'number'
+                                  ? `${Math.round(attempt.ratingBefore || 0)} → ${Math.round(attempt.ratingAfter || 0)} (${attempt.ratingChange >= 0 ? '+' : ''}${Math.round(attempt.ratingChange)})`
+                                  : 'N/A'}
+                              </TableCell>
+                              <TableCell>{formatDate(attempt.completedAt || attempt.startedAt)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </div>

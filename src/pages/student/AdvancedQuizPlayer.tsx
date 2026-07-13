@@ -712,6 +712,13 @@ const AdvancedQuizPlayer: React.FC = () => {
     return null;
   };
 
+  const normalizeHintMedia = (hint: any): { image: string | null; video: string | null } => {
+    if (!hint || typeof hint !== 'object') return { image: null, video: null };
+    const image = typeof hint.image === 'string' && hint.image.trim().length > 0 ? hint.image.trim() : null;
+    const video = typeof hint.video === 'string' && hint.video.trim().length > 0 ? hint.video.trim() : null;
+    return { image, video };
+  };
+
   const normalizeSolutionText = (solution: any): string | null => {
     if (typeof solution === 'string') {
       const trimmedSolution = solution.trim();
@@ -1191,6 +1198,8 @@ const AdvancedQuizPlayer: React.FC = () => {
     const options = Array.isArray(data.options) ? data.options : [];
     const optionsHindi = Array.isArray(data.optionsHindi) ? data.optionsHindi : [];
     const hintText = normalizeHintText(data.hint);
+    const hintMedia = normalizeHintMedia(data.hint);
+    const hasHint = Boolean(hintText || hintMedia.image || hintMedia.video);
     const isHintRevealed = questionId ? revealedHints.has(questionId) : false;
 
     return (
@@ -1235,12 +1244,36 @@ const AdvancedQuizPlayer: React.FC = () => {
             <div className="p-4 text-gray-600">No options available</div>
           )}
         </div>
-        {hintText && questionId && (
+        {hasHint && questionId && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
             {isHintRevealed ? (
-              <div className="flex items-start gap-2 text-amber-800">
-                <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />
-                <p className="text-sm">{hintText}</p>
+              <div className="space-y-3 text-amber-800">
+                <div className="flex items-start gap-2">
+                  <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="space-y-2 text-sm">
+                    {hintText && <p>{hintText}</p>}
+                    {hintMedia.image && (
+                      <a
+                        href={hintMedia.image}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block font-medium text-amber-900 underline underline-offset-2"
+                      >
+                        View image hint
+                      </a>
+                    )}
+                    {hintMedia.video && (
+                      <a
+                        href={hintMedia.video}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block font-medium text-amber-900 underline underline-offset-2"
+                      >
+                        Watch video hint
+                      </a>
+                    )}
+                  </div>
+                </div>
               </div>
             ) : (
               <button

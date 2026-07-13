@@ -141,7 +141,8 @@
         res.json({ 
           submitted: true, 
           reportId: existingReport._id,
-          submittedAt: existingReport.createdAt
+          submittedAt: existingReport.createdAt,
+          report: existingReport
         });
       } else {
         res.status(404).json({ submitted: false });

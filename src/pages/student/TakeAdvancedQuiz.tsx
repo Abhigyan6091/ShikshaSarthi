@@ -34,6 +34,29 @@ interface QuizInfo {
   };
 }
 
+const buildPastReportState = (report: any) => {
+  const correct = Number(report?.correct || 0);
+  const incorrect = Number(report?.incorrect || 0);
+  const unattempted = Number(report?.unattempted || 0);
+  const total = correct + incorrect + unattempted;
+
+  return {
+    results: {
+      quizId: report?.quizId,
+      studentId: report?.studentId,
+      score: {
+        correct,
+        incorrect,
+        unattempted,
+        percentage: total > 0 ? ((correct / total) * 100).toFixed(2) : '0',
+      },
+      answers: Array.isArray(report?.answers) ? report.answers : [],
+      quizEndTime: report?.createdAt || report?.updatedAt || new Date().toISOString(),
+      isPastReport: true,
+    },
+  };
+};
+
 const TakeAdvancedQuiz: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -174,13 +197,18 @@ const TakeAdvancedQuiz: React.FC = () => {
         );
         
         if (checkResponse.data && checkResponse.data.submitted) {
+          const report = checkResponse.data.report;
           toast({
-            title: "❌ Already Submitted",
-            description: `You have already attempted this quiz on ${new Date(checkResponse.data.submittedAt).toLocaleString()}. Duplicate attempts are not allowed.`,
-            variant: "destructive",
+            title: "Quiz Already Submitted",
+            description: "Opening your review report.",
             duration: 6000
           });
           setLoading(false);
+          if (report) {
+            navigate('/student/advanced-quiz-results', { state: buildPastReportState(report) });
+          } else {
+            navigate('/student/advanced-quiz-past-reports');
+          }
           return; // Stop here - don't load quiz
         }
       } catch (checkError: any) {

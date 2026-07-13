@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,9 +39,40 @@ const subjectGradient = (subject?: string) => {
   return SUBJECT_GRADIENTS[match || 'default'];
 };
 
+const buildPastReportState = (report: any) => {
+  const correct = Number(report?.correct || 0);
+  const incorrect = Number(report?.incorrect || 0);
+  const unattempted = Number(report?.unattempted || 0);
+  const total = correct + incorrect + unattempted;
+
+  return {
+    results: {
+      quizId: report?.quizId,
+      studentId: report?.studentId,
+      score: {
+        correct,
+        incorrect,
+        unattempted,
+        percentage: total > 0 ? ((correct / total) * 100).toFixed(2) : '0',
+      },
+      answers: Array.isArray(report?.answers) ? report.answers : [],
+      quizEndTime: report?.createdAt || report?.updatedAt || new Date().toISOString(),
+      isPastReport: true,
+    },
+  };
+};
+
+const isClosed = (quiz: any) => {
+  if (!quiz?.endTime) return false;
+  const endTime = new Date(quiz.endTime).getTime();
+  return Number.isFinite(endTime) && Date.now() > endTime;
+};
+
 const MyClasses: React.FC = () => {
+  const navigate = useNavigate();
   const [data, setData] = useState<any>({ classes: [], documents: [], announcements: [], quizzes: [] });
   const [attemptedQuizIds, setAttemptedQuizIds] = useState<Set<string>>(new Set());
+  const [reportsByQuizId, setReportsByQuizId] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [activeClassId, setActiveClassId] = useState<string | null>(null);
   const studentId = getCurrentUser()?.studentId;
@@ -57,8 +88,14 @@ const MyClasses: React.FC = () => {
     ])
       .then(([classesRes, reportsRes]) => {
         setData(classesRes.data);
-        const ids = new Set<string>((reportsRes.data || []).map((r: any) => r.quizId));
+        const reports = reportsRes.data || [];
+        const ids = new Set<string>(reports.map((r: any) => r.quizId));
+        const reportMap = reports.reduce((acc: Record<string, any>, report: any) => {
+          acc[report.quizId] = report;
+          return acc;
+        }, {});
         setAttemptedQuizIds(ids);
+        setReportsByQuizId(reportMap);
       })
       .catch((error) => console.error('Failed to load my classes:', error))
       .finally(() => setLoading(false));
@@ -70,7 +107,7 @@ const MyClasses: React.FC = () => {
     const quizzes = data.quizzes || [];
     return (data.classes || []).map((classDoc: any) => {
       const classQuizzes = quizzes.filter(
-        (quiz: any) => quiz.audience?.type === 'global' || quiz.audience?.classIds?.includes(classDoc.classId)
+        (quiz: any) => quiz.audience?.type === 'classes' && quiz.audience?.classIds?.includes(classDoc.classId)
       );
       return {
         ...classDoc,
@@ -228,6 +265,8 @@ const MyClasses: React.FC = () => {
                       ) : (
                         activeClass.quizzes.map((quiz: any) => {
                           const isDone = attemptedQuizIds.has(quiz.quizId);
+                          const report = reportsByQuizId[quiz.quizId];
+                          const quizClosed = isClosed(quiz);
                           return (
                             <div key={quiz.quizId} className="flex items-center justify-between rounded-xl bg-white/70 p-3">
                               <div className="flex items-center gap-3">
@@ -240,18 +279,36 @@ const MyClasses: React.FC = () => {
                                   <p className="font-medium text-slate-900">{quiz.quizId}</p>
                                   <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
                                     <Badge variant="outline" className="text-[10px]">
-                                      {quiz.audience?.type === 'global' ? 'Global' : 'Class quiz'}
+                                      Class quiz
                                     </Badge>
+                                    {quizClosed && (
+                                      <Badge variant="outline" className="border-slate-300 bg-slate-50 text-[10px] text-slate-600">
+                                        Closed
+                                      </Badge>
+                                    )}
                                     <span>{quiz.totalQuestions} questions &middot; {quiz.timeLimit} min</span>
                                   </div>
                                 </div>
                               </div>
-                              {isDone ? (
+                              {isDone && report ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1"
+                                  onClick={() => navigate('/student/advanced-quiz-results', { state: buildPastReportState(report) })}
+                                >
+                                  <Eye className="h-3.5 w-3.5" /> Review
+                                </Button>
+                              ) : isDone ? (
                                 <Link to={`/singlequiz/${encodeURIComponent(quiz.quizId)}`}>
                                   <Button size="sm" variant="outline" className="gap-1">
                                     <Eye className="h-3.5 w-3.5" /> Review
                                   </Button>
                                 </Link>
+                              ) : quizClosed ? (
+                                <Button size="sm" variant="outline" className="gap-1" disabled>
+                                  Closed
+                                </Button>
                               ) : (
                                 <Link to={`/student/take-advanced-quiz?quizId=${encodeURIComponent(quiz.quizId)}`}>
                                   <Button size="sm" className="gap-1">

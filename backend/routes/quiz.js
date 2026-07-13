@@ -49,28 +49,55 @@ const serializeDraftFromStudentReport = (reportDoc) => ({
   updatedAt: reportDoc.updatedAt,
 });
 
-async function getStudentClassIds(studentId) {
+async function getStudentClassContext(studentId) {
   const student = await Student.findOne({ studentId }).lean();
-  if (!student) return [];
+  if (!student) return { classIds: [], joinedAtByClassId: new Map() };
 
   const classDocs = await Class.find({
     $or: [
       { students: student.studentId },
       { classId: { $in: student.classes || [] } },
     ],
-  }).select("classId").lean();
+  }).select("classId createdAt studentJoinedAt").lean();
 
-  return [...new Set([
+  const joinedAtByClassId = new Map();
+  classDocs.forEach((classDoc) => {
+    const rawJoinedAt =
+      (classDoc.studentJoinedAt instanceof Map
+        ? classDoc.studentJoinedAt.get(student.studentId)
+        : classDoc.studentJoinedAt?.[student.studentId]) ||
+      classDoc.createdAt ||
+      new Date(0);
+    joinedAtByClassId.set(String(classDoc.classId), new Date(rawJoinedAt));
+  });
+
+  const classIds = [...new Set([
     ...(student.classes || []).map(String),
     ...classDocs.map((classDoc) => String(classDoc.classId)),
   ])];
+
+  classIds.forEach((classId) => {
+    if (!joinedAtByClassId.has(classId)) joinedAtByClassId.set(classId, new Date(0));
+  });
+
+  return { classIds, joinedAtByClassId };
 }
 
-function quizIsAvailableToStudent(quiz, classIds) {
+function quizIsAvailableToStudent(quiz, classContext) {
+  const classIds = classContext?.classIds || [];
+  const joinedAtByClassId = classContext?.joinedAtByClassId || new Map();
   const audienceType = quiz?.audience?.type || "global";
   if (audienceType === "global") return true;
   const allowedClassIds = (quiz?.audience?.classIds || []).map(String);
-  return allowedClassIds.some((classId) => classIds.includes(classId));
+  const quizPostedAt = new Date(quiz?.createdAt || quiz?.startTime || 0);
+  const quizPostedMs = Number.isNaN(quizPostedAt.getTime()) ? 0 : quizPostedAt.getTime();
+
+  return allowedClassIds.some((classId) => {
+    if (!classIds.includes(classId)) return false;
+    const joinedAt = joinedAtByClassId.get(classId);
+    const joinedMs = joinedAt instanceof Date && !Number.isNaN(joinedAt.getTime()) ? joinedAt.getTime() : 0;
+    return quizPostedMs >= joinedMs;
+  });
 }
 
 function normalizeQuizPayload(payload) {
@@ -150,8 +177,8 @@ router.get("/by-id/:quizId/student/:studentId", async (req, res) => {
     const quiz = await Quiz.findOne({ quizId: req.params.quizId });
     if (!quiz) return res.status(404).json({ message: "Quiz not found" });
 
-    const classIds = await getStudentClassIds(req.params.studentId);
-    if (!quizIsAvailableToStudent(quiz, classIds)) {
+    const classContext = await getStudentClassContext(req.params.studentId);
+    if (!quizIsAvailableToStudent(quiz, classContext)) {
       return res.status(403).json({ message: "This quiz is not assigned to your class." });
     }
 
@@ -163,7 +190,8 @@ router.get("/by-id/:quizId/student/:studentId", async (req, res) => {
 
 router.get("/student/:studentId/available", async (req, res) => {
   try {
-    const classIds = await getStudentClassIds(req.params.studentId);
+    const classContext = await getStudentClassContext(req.params.studentId);
+    const { classIds } = classContext;
     const quizzes = await Quiz.find({
       $or: [
         { "audience.type": "global" },
@@ -171,7 +199,7 @@ router.get("/student/:studentId/available", async (req, res) => {
         { audience: { $exists: false } },
       ],
     }).sort({ startTime: -1, createdAt: -1 });
-    res.status(200).json(quizzes);
+    res.status(200).json(quizzes.filter((quiz) => quizIsAvailableToStudent(quiz, classContext)));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -727,8 +755,8 @@ async function saveAdvancedDraft(body) {
     return { status: 404, payload: { error: "Quiz not found" } };
   }
 
-  const classIds = await getStudentClassIds(studentId);
-  if (!quizIsAvailableToStudent(quiz, classIds)) {
+  const classContext = await getStudentClassContext(studentId);
+  if (!quizIsAvailableToStudent(quiz, classContext)) {
     return { status: 403, payload: { error: "This quiz is not assigned to your class." } };
   }
 
@@ -855,8 +883,8 @@ router.post("/submit-advanced", async (req, res) => {
 
     const normalizedStudentId = studentId.trim();
 
-    const classIds = await getStudentClassIds(normalizedStudentId);
-    if (!quizIsAvailableToStudent(quiz, classIds)) {
+    const classContext = await getStudentClassContext(normalizedStudentId);
+    if (!quizIsAvailableToStudent(quiz, classContext)) {
       return res.status(403).json({ error: "This quiz is not assigned to your class." });
     }
 
