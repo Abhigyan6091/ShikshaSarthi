@@ -71,6 +71,8 @@ const TeacherDashboard: React.FC = () => {
   const [showStudentList, setShowStudentList] = useState(false);
   const [enrolledStudents, setEnrolledStudents] = useState<TeacherStudent[]>([]);
   const [studentsByClass, setStudentsByClass] = useState<Record<string, TeacherStudent[]>>({});
+  const [averageScore, setAverageScore] = useState<number | null>(null);
+  const [averageScoreLoading, setAverageScoreLoading] = useState(true);
 
   // Teacher data from cookies
   const [teacherId, setTeacherId] = useState("");
@@ -117,10 +119,17 @@ const TeacherDashboard: React.FC = () => {
           throw new Error('Teacher ID not found in session data');
         }
 
-        const [quizResponse, studentResponse] = await Promise.all([
+        const [quizResponse, studentResponse, statsResponse] = await Promise.all([
           fetch(`${API_URL}/teachers/${teacherIdFromCookie}/quizzes`),
           fetch(`${API_URL}/teachers/${teacherIdFromCookie}/students`),
+          fetch(`${API_URL}/teachers/${teacherIdFromCookie}/stats`),
         ]);
+
+        if (statsResponse.ok) {
+          const statsData = await statsResponse.json();
+          setAverageScore(typeof statsData.averageScore === "number" ? statsData.averageScore : null);
+        }
+        setAverageScoreLoading(false);
 
         if (!quizResponse.ok) {
           throw new Error(`HTTP error! status: ${quizResponse.status}`);
@@ -142,6 +151,7 @@ const TeacherDashboard: React.FC = () => {
       } finally {
         setLoading(false);
         setStudentLoading(false);
+        setAverageScoreLoading(false);
       }
     };
 
@@ -175,9 +185,9 @@ const TeacherDashboard: React.FC = () => {
     },
     {
       title: "Avg. Score",
-      value: "N/A",
+      value: averageScoreLoading ? "..." : averageScore !== null ? `${averageScore}%` : "N/A",
       icon: <BarChart className="h-8 w-8 text-edu-purple" />,
-      description: "Open analytics for scores",
+      description: averageScore !== null ? "Across all submitted quizzes" : "No submissions yet",
     },
   ];
 
@@ -190,10 +200,10 @@ const TeacherDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="glass-page-bg flex flex-col min-h-screen">
       <Header />
 
-      <main className="flex-1 py-6 md:py-8 bg-gray-50">
+      <main className="flex-1 py-6 md:py-8">
         <div className="edu-container">
           <div className="mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
@@ -207,7 +217,7 @@ const TeacherDashboard: React.FC = () => {
             {statsData.map((stat, i) => (
               <Card
                 key={i}
-                className={`hover:shadow-md transition-shadow ${stat.onClick ? 'cursor-pointer' : ''}`}
+                className={`glass-card border-0 ${stat.onClick ? 'cursor-pointer' : ''}`}
                 onClick={stat.onClick}
               >
                 <CardHeader className="pb-2">
@@ -227,7 +237,7 @@ const TeacherDashboard: React.FC = () => {
           </div>
 
           {showStudentList && (
-            <Card className="mb-12">
+            <Card className="glass-card mb-12 border-0">
               <CardHeader>
                 <CardTitle>Enrolled Students</CardTitle>
                 <CardDescription>Students grouped by class for your assigned classes</CardDescription>
@@ -280,7 +290,7 @@ const TeacherDashboard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
 
 
-            <Card className="border-2 border-edu-green/20 hover:border-edu-green/40 transition-colors">
+            <Card className="glass-card border-0 ring-1 ring-edu-green/20">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
@@ -304,7 +314,7 @@ const TeacherDashboard: React.FC = () => {
               </CardFooter>
             </Card>
 
-            <Card className="border-2 border-edu-purple/20 hover:border-edu-purple/40 transition-colors">
+            <Card className="glass-card border-0 ring-1 ring-edu-purple/20">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
@@ -328,7 +338,7 @@ const TeacherDashboard: React.FC = () => {
               </CardFooter>
             </Card>
 
-            <Card className="border-2 border-orange-500/20 hover:border-orange-500/40 transition-colors">
+            <Card className="glass-card border-0 ring-1 ring-orange-500/20">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
@@ -352,7 +362,7 @@ const TeacherDashboard: React.FC = () => {
               </CardFooter>
             </Card>
 
-            <Card className="border-2 border-teal-500/20 hover:border-teal-500/40 transition-colors">
+            <Card className="glass-card border-0 ring-1 ring-teal-500/20">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
@@ -386,7 +396,7 @@ const TeacherDashboard: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <Card className="border-2 border-blue-500/30 hover:border-blue-500/50 transition-colors bg-gradient-to-br from-blue-50 to-white shadow-sm">
+            <Card className="glass-card border-0 ring-1 ring-blue-500/20">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
@@ -423,7 +433,7 @@ const TeacherDashboard: React.FC = () => {
               </CardFooter>
             </Card>
 
-            <Card className="border-2 border-purple-500/30 hover:border-purple-500/50 transition-colors bg-gradient-to-br from-purple-50 to-white">
+            <Card className="glass-card border-0 ring-1 ring-purple-500/20">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
@@ -513,7 +523,7 @@ const TeacherDashboard: React.FC = () => {
             </div>
 
             {loading ? (
-              <Card>
+              <Card className="glass-card border-0">
                 <CardContent className="py-12">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-edu-blue mx-auto mb-4"></div>
@@ -522,7 +532,7 @@ const TeacherDashboard: React.FC = () => {
                 </CardContent>
               </Card>
             ) : error ? (
-              <Card>
+              <Card className="glass-card border-0">
                 <CardContent className="py-12">
                   <div className="text-center">
                     <div className="text-red-500 mb-4">⚠️</div>
@@ -582,7 +592,7 @@ const TeacherDashboard: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <Card>
+              <Card className="glass-card border-0">
                 <CardContent className="py-12">
                   <div className="text-center">
                     <ListChecks className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

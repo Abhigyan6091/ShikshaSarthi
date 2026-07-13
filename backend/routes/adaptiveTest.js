@@ -96,7 +96,7 @@ router.get("/leaderboard", async (req, res) => {
     if (!schoolId) return res.status(400).json({ error: "schoolId is required" });
 
     const students = await Student.find({ schoolId })
-      .select("studentId name class batch adaptiveRating")
+      .select("studentId name class batch adaptiveRating adaptiveTestAttempts")
       .lean();
 
     const batchToClass = (batch) => {
@@ -116,7 +116,8 @@ router.get("/leaderboard", async (req, res) => {
         studentId: s.studentId,
         name: s.name || s.studentId,
         rating: Math.round(s.adaptiveRating.rating),
-        attempts: s.adaptiveRating.attempts || 0,
+        // Tests completed (not the internal per-question rating counter).
+        testsTaken: Array.isArray(s.adaptiveTestAttempts) ? s.adaptiveTestAttempts.length : 0,
       }))
       .sort((a, b) => b.rating - a.rating)
       .slice(0, 20);

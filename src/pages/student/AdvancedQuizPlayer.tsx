@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Volume2, Video, BookOpen, Puzzle, ChevronLeft, ChevronRight, Flag, CheckCircle, Languages } from 'lucide-react';
+import { Clock, Volume2, Video, BookOpen, Puzzle, ChevronLeft, ChevronRight, Flag, CheckCircle, Languages, Lightbulb } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import axios from 'axios';
 import EmbeddableMemoryMatch from '@/components/puzzles/EmbeddableMemoryMatch';
@@ -87,6 +87,7 @@ const AdvancedQuizPlayer: React.FC = () => {
   
   const [questions, setQuestions] = useState<QuestionData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [revealedHints, setRevealedHints] = useState<Set<string>>(new Set());
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [initialTimeLimit, setInitialTimeLimit] = useState(0); // Store the actual starting time
@@ -1168,7 +1169,7 @@ const AdvancedQuizPlayer: React.FC = () => {
 
     switch (currentQuestion.type) {
       case 'mcq':
-        return renderMCQ(currentQuestion.data, currentAnswer?.selectedAnswer as string);
+        return renderMCQ(currentQuestion.data, currentAnswer?.selectedAnswer as string, currentQuestion._id);
       case 'audio':
         return renderAudioQuestion(currentQuestion.data, currentAnswer?.selectedAnswer as string);
       case 'video':
@@ -1180,7 +1181,7 @@ const AdvancedQuizPlayer: React.FC = () => {
     }
   };
 
-  const renderMCQ = (data: any, selectedAnswer?: string) => {
+  const renderMCQ = (data: any, selectedAnswer?: string, questionId?: string) => {
     // Safety check for data structure
     if (!data) {
       return <div className="p-4 text-red-600">Error: MCQ data not loaded</div>;
@@ -1189,6 +1190,8 @@ const AdvancedQuizPlayer: React.FC = () => {
     const secondaryQuestion = getSecondaryText(data.question, data.questionHindi);
     const options = Array.isArray(data.options) ? data.options : [];
     const optionsHindi = Array.isArray(data.optionsHindi) ? data.optionsHindi : [];
+    const hintText = normalizeHintText(data.hint);
+    const isHintRevealed = questionId ? revealedHints.has(questionId) : false;
 
     return (
       <div className="space-y-4">
@@ -1232,6 +1235,24 @@ const AdvancedQuizPlayer: React.FC = () => {
             <div className="p-4 text-gray-600">No options available</div>
           )}
         </div>
+        {hintText && questionId && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+            {isHintRevealed ? (
+              <div className="flex items-start gap-2 text-amber-800">
+                <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />
+                <p className="text-sm">{hintText}</p>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setRevealedHints((prev) => new Set(prev).add(questionId))}
+                className="flex items-center gap-2 text-sm font-medium text-amber-700 hover:text-amber-900"
+              >
+                <Lightbulb className="h-4 w-4" /> Show Hint
+              </button>
+            )}
+          </div>
+        )}
       </div>
     );
   };

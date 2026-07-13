@@ -341,7 +341,7 @@ const AdaptiveTest: React.FC = () => {
   }, [classNumber, storedStudent?.studentId]);
 
   // Class-scoped leaderboard for the student's own school + grade.
-  const [leaderboard, setLeaderboard] = useState<{ studentId: string; name: string; rating: number; attempts: number }[]>([]);
+  const [leaderboard, setLeaderboard] = useState<{ studentId: string; name: string; rating: number; testsTaken: number }[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   useEffect(() => {
     let active = true;
@@ -1031,7 +1031,7 @@ const AdaptiveTest: React.FC = () => {
                               i === 0 ? "text-amber-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-orange-600" : "text-slate-500"
                             }`}>{i + 1}</span>
                             <span className="flex-1 truncate">{entry.name}{isMe ? (language === "hi" ? " (आप)" : " (You)") : ""}</span>
-                            <span className="text-slate-500">{entry.attempts} {language === "hi" ? "टेस्ट" : "tests"}</span>
+                            <span className="text-slate-500">{entry.testsTaken} {language === "hi" ? "टेस्ट" : "tests"}</span>
                             <span className="w-16 text-right font-bold text-blue-700">{entry.rating}</span>
                           </li>
                         );

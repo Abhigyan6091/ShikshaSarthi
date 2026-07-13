@@ -610,7 +610,26 @@ const GyanKiYatra: React.FC = () => {
     setStars(newStars);
     setCompletedAt(Date.now());
     setPhase("won");
-  }, []);
+
+    // Record the answered questions against the student's real adaptive
+    // rating/history, same endpoint the Adaptive Test page submits to, so
+    // progress made during the game isn't silently lost.
+    if (storedStudent?.studentId && reviewAnswers.length > 0) {
+      axios
+        .post(`${API_URL}/quizzes/adaptive-test/submit`, {
+          studentId: storedStudent.studentId,
+          className: String(classNumber),
+          startedAt: gameStartedAt ? new Date(gameStartedAt).toISOString() : undefined,
+          answers: reviewAnswers.map((item) => ({
+            question: item.question,
+            selectedOptionIndex: item.selectedOptionIndex,
+            hintUsed: false,
+            timeSpentMs: item.timeSpentMs,
+          })),
+        })
+        .catch((error) => console.error("Failed to save Gyan Ki Yatra progress:", error));
+    }
+  }, [reviewAnswers, storedStudent?.studentId, classNumber, gameStartedAt]);
 
   const openQuestion = useCallback((square: number, context: "ladder" | "snake" | "question") => {
     const question = pickQuestion(square);

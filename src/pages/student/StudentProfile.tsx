@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Header from '@/components/Header';
@@ -8,6 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/use-toast';
+import { getCurrentUser } from '@/lib/session';
 import {
   User,
   BookOpen,
@@ -20,7 +25,11 @@ import {
   Calendar,
   School,
   Hash,
-  GraduationCap
+  GraduationCap,
+  Pencil,
+  Camera,
+  KeyRound,
+  Loader2
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -46,6 +55,7 @@ interface StudentData {
   name: string;
   username?: string;
   phone?: string;
+  email?: string;
   schoolId: string;
   class: string;
   profilePhoto?: string;
@@ -56,9 +66,29 @@ interface StudentData {
 const StudentProfile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [student, setStudent] = useState<StudentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const isOwnProfile = getCurrentUser()?.studentId === id;
+
+  // ── Edit profile dialog ──────────────────────────────────────────────────
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Change password dialog ───────────────────────────────────────────────
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -79,6 +109,105 @@ const StudentProfile: React.FC = () => {
       setError((err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to load student profile');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openEditDialog = () => {
+    if (!student) return;
+    setEditName(student.name || '');
+    setEditPhone(student.phone || '');
+    setEditEmail(student.email || '');
+    setPhotoPreview(null);
+    setPhotoDataUrl(null);
+    setEditOpen(true);
+  };
+
+  const handlePhotoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid file', description: 'Please choose an image file.', variant: 'destructive' });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      setPhotoPreview(result);
+      setPhotoDataUrl(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!student) return;
+    if (!editName.trim()) {
+      toast({ title: 'Name is required', variant: 'destructive' });
+      return;
+    }
+    try {
+      setSavingProfile(true);
+      const payload: Record<string, string> = {
+        name: editName.trim(),
+        phone: editPhone.trim(),
+        email: editEmail.trim(),
+      };
+      if (photoDataUrl) payload.profilePhoto = photoDataUrl;
+
+      const response = await axios.patch(`${API_URL}/students/${student.studentId}/profile`, payload);
+      setStudent((prev) => (prev ? { ...prev, ...response.data } : response.data));
+
+      // Keep the locally cached session in sync so Header/Dashboard reflect the change immediately.
+      try {
+        const raw = localStorage.getItem('student');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.student) parsed.student = { ...parsed.student, ...response.data };
+          localStorage.setItem('student', JSON.stringify(parsed));
+        }
+      } catch {
+        // non-fatal; session cache stays stale until next login
+      }
+
+      toast({ title: 'Profile updated' });
+      setEditOpen(false);
+    } catch (err) {
+      const message = (err as { response?: { data?: { error?: string } } }).response?.data?.error || 'Failed to update profile';
+      toast({ title: 'Update failed', description: message, variant: 'destructive' });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!student) return;
+    if (!currentPassword || !newPassword) {
+      toast({ title: 'All fields are required', variant: 'destructive' });
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast({ title: 'Password too short', description: 'New password must be at least 8 characters.', variant: 'destructive' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ title: 'Passwords do not match', variant: 'destructive' });
+      return;
+    }
+    try {
+      setSavingPassword(true);
+      await axios.post(`${API_URL}/students/${student.studentId}/change-password`, {
+        currentPassword,
+        newPassword,
+      });
+      toast({ title: 'Password changed successfully' });
+      setPasswordOpen(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      const message = (err as { response?: { data?: { error?: string } } }).response?.data?.error || 'Failed to change password';
+      toast({ title: 'Change failed', description: message, variant: 'destructive' });
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -232,10 +361,20 @@ const StudentProfile: React.FC = () => {
                   {student.name.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div>
+              <div className="flex-1">
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{student.name}</h1>
                 <p className="text-gray-600">Student Profile</p>
               </div>
+              {isOwnProfile && (
+                <div className="flex gap-2">
+                  <Button variant="outline" className="gap-2" onClick={openEditDialog}>
+                    <Pencil className="h-4 w-4" /> Edit Profile
+                  </Button>
+                  <Button variant="outline" className="gap-2" onClick={() => setPasswordOpen(true)}>
+                    <KeyRound className="h-4 w-4" /> Change Password
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -444,7 +583,88 @@ const StudentProfile: React.FC = () => {
           </Card>
         </div>
       </main>
-      
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex flex-col items-center gap-2">
+              <Avatar className="h-24 w-24 ring-4 ring-edu-blue/20">
+                <AvatarImage
+                  src={photoPreview || (student.profilePhoto ? `${API_URL}/${student.profilePhoto.replace(/^\//, '')}` : '')}
+                  alt={student.name}
+                  className="object-cover"
+                />
+                <AvatarFallback className="bg-gradient-to-br from-edu-blue to-edu-purple text-white text-3xl font-bold">
+                  {student.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoSelect}
+              />
+              <Button type="button" size="sm" variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()}>
+                <Camera className="h-4 w-4" /> Change Photo
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Full Name</Label>
+              <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Full name" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-phone">Phone Number</Label>
+              <Input id="edit-phone" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Phone number" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input id="edit-email" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email address" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={savingProfile}>Cancel</Button>
+            <Button onClick={handleSaveProfile} disabled={savingProfile} className="gap-2">
+              {savingProfile && <Loader2 className="h-4 w-4 animate-spin" />} Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={passwordOpen} onOpenChange={setPasswordOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="current-password">Current Password</Label>
+              <Input id="current-password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New Password</Label>
+              <Input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="At least 8 characters" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPasswordOpen(false)} disabled={savingPassword}>Cancel</Button>
+            <Button onClick={handleChangePassword} disabled={savingPassword} className="gap-2">
+              {savingPassword && <Loader2 className="h-4 w-4 animate-spin" />} Update Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Footer />
     </div>
   );

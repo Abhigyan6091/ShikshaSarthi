@@ -89,6 +89,139 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+// Get computed insights/summary for a student: quiz + adaptive test history rollups,
+// score trend over time, weak-topic aggregation. Read-only, defensive against
+// students with zero attempts (never returns NaN).
+router.get("/:id/summary", async (req, res) => {
+  try {
+    const student = await Student.findOne({ studentId: req.params.id }).select("-password");
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    const quizAttempted = Array.isArray(student.quizAttempted) ? student.quizAttempted : [];
+    const adaptiveTestAttempts = Array.isArray(student.adaptiveTestAttempts) ? student.adaptiveTestAttempts : [];
+
+    const safePct = (correct, total) => (total > 0 ? Math.round((correct / total) * 1000) / 10 : 0);
+
+    // Per-quiz breakdown
+    const quizHistory = quizAttempted.map((q) => {
+      const score = q.score || {};
+      const correct = Number(score.correct) || 0;
+      const incorrect = Number(score.incorrect) || 0;
+      const unattempted = Number(score.unattempted) || 0;
+      const total = correct + incorrect + unattempted;
+      return {
+        quizId: q.quizId,
+        correct,
+        incorrect,
+        unattempted,
+        total,
+        percentage: safePct(correct, total),
+        attemptedAt: q.attemptedAt || null,
+      };
+    });
+
+    // Per-adaptive-test breakdown
+    const adaptiveHistory = adaptiveTestAttempts.map((a) => {
+      const correct = Number(a.correct) || 0;
+      const total = Number(a.total) || (correct + (Number(a.incorrect) || 0));
+      return {
+        className: a.className || null,
+        correct,
+        incorrect: Number(a.incorrect) || 0,
+        total,
+        percentage: safePct(correct, total),
+        ratingBefore: typeof a.ratingBefore === "number" ? a.ratingBefore : null,
+        ratingAfter: typeof a.ratingAfter === "number" ? a.ratingAfter : null,
+        ratingChange: typeof a.ratingChange === "number" ? a.ratingChange : null,
+        weakTopics: Array.isArray(a.weakTopics) ? a.weakTopics : [],
+        startedAt: a.startedAt || null,
+        completedAt: a.completedAt || null,
+      };
+    });
+
+    // Totals / overall accuracy
+    const totalQuizzes = quizHistory.length;
+    const totalAdaptiveTests = adaptiveHistory.length;
+
+    const combinedCorrect =
+      quizHistory.reduce((sum, q) => sum + q.correct, 0) +
+      adaptiveHistory.reduce((sum, a) => sum + a.correct, 0);
+    const combinedTotal =
+      quizHistory.reduce((sum, q) => sum + q.total, 0) +
+      adaptiveHistory.reduce((sum, a) => sum + a.total, 0);
+    const overallAccuracy = safePct(combinedCorrect, combinedTotal);
+
+    // Chronological score trend combining both sources
+    const trendPoints = [
+      ...quizHistory
+        .filter((q) => q.attemptedAt)
+        .map((q) => ({
+          date: q.attemptedAt,
+          percentage: q.percentage,
+          source: "quiz",
+          label: q.quizId,
+        })),
+      ...adaptiveHistory
+        .filter((a) => a.completedAt || a.startedAt)
+        .map((a) => ({
+          date: a.completedAt || a.startedAt,
+          percentage: a.percentage,
+          source: "adaptive",
+          label: a.className,
+        })),
+    ]
+      .filter((p) => p.date)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // Weak topics rollup across adaptive test attempts (frequency count)
+    const weakTopicCounts = {};
+    adaptiveHistory.forEach((a) => {
+      a.weakTopics.forEach((topic) => {
+        if (!topic) return;
+        weakTopicCounts[topic] = (weakTopicCounts[topic] || 0) + 1;
+      });
+    });
+    const weakTopics = Object.entries(weakTopicCounts)
+      .map(([topic, count]) => ({ topic, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Subject-wise accuracy breakdown - derived from adaptive test className when
+    // available (quizAttempted doesn't carry a subject field on the Student doc).
+    const subjectCounts = {};
+    adaptiveHistory.forEach((a) => {
+      if (!a.className) return;
+      if (!subjectCounts[a.className]) subjectCounts[a.className] = { correct: 0, total: 0 };
+      subjectCounts[a.className].correct += a.correct;
+      subjectCounts[a.className].total += a.total;
+    });
+    const subjectBreakdown = Object.entries(subjectCounts).map(([subject, v]) => ({
+      subject,
+      correct: v.correct,
+      total: v.total,
+      percentage: safePct(v.correct, v.total),
+    }));
+
+    res.status(200).json({
+      studentId: student.studentId,
+      totals: {
+        totalQuizzes,
+        totalAdaptiveTests,
+        overallAccuracy,
+        combinedCorrect,
+        combinedTotal,
+      },
+      adaptiveRating: student.adaptiveRating || null,
+      quizHistory,
+      adaptiveHistory,
+      scoreTrend: trendPoints,
+      weakTopics,
+      subjectBreakdown,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Update student by ID
 router.put("/:id", async (req, res) => {
   try {
@@ -197,13 +330,23 @@ router.patch("/:id/attempt-quiz", async (req, res) => {
 });
 
 
-// Update student profile (name, profilePhoto)
+// Update student profile (name, phone, email, profilePhoto)
 router.patch("/:id/profile", async (req, res) => {
   try {
-    const { name, profilePhoto } = req.body;
+    const { name, phone, email, profilePhoto } = req.body;
     const updateFields = {};
+    const unsetFields = {};
 
     if (name !== undefined && name.trim()) updateFields.name = name.trim();
+    if (phone !== undefined) updateFields.phone = String(phone).trim();
+    if (email !== undefined) {
+      const trimmedEmail = String(email).trim();
+      if (trimmedEmail && !/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
+        return res.status(400).json({ error: "Invalid email address" });
+      }
+      if (trimmedEmail) updateFields.email = trimmedEmail;
+      else unsetFields.email = "";
+    }
     if (profilePhoto !== undefined) {
       if (profilePhoto.startsWith("data:")) {
         const mimeMatch = profilePhoto.match(/^data:(image\/\w+);base64,/);
@@ -225,19 +368,55 @@ router.patch("/:id/profile", async (req, res) => {
       }
     }
 
-    if (Object.keys(updateFields).length === 0) {
+    if (Object.keys(updateFields).length === 0 && Object.keys(unsetFields).length === 0) {
       return res.status(400).json({ error: "No valid fields to update" });
     }
 
+    const mongoUpdate = {};
+    if (Object.keys(updateFields).length > 0) mongoUpdate.$set = updateFields;
+    if (Object.keys(unsetFields).length > 0) mongoUpdate.$unset = unsetFields;
+
     const updated = await Student.findOneAndUpdate(
       { studentId: req.params.id },
-      { $set: updateFields },
+      mongoUpdate,
       { new: true, runValidators: true }
     );
     if (!updated) return res.status(404).json({ message: "Student not found" });
     res.status(200).json(updated);
   } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ error: "This email is already in use by another account." });
+    }
     res.status(400).json({ error: err.message });
+  }
+});
+
+// Self-service password change from the profile page (requires current password).
+router.post("/:id/change-password", async (req, res) => {
+  try {
+    const currentPassword = typeof req.body.currentPassword === "string" ? req.body.currentPassword : "";
+    const newPassword = typeof req.body.newPassword === "string" ? req.body.newPassword : "";
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "Current password and new password are required" });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "New password must be at least 8 characters long" });
+    }
+
+    const student = await Student.findOne({ studentId: req.params.id });
+    if (!student) return res.status(404).json({ error: "Student not found" });
+
+    const isValid = await student.comparePassword(currentPassword);
+    if (!isValid) return res.status(401).json({ error: "Current password is incorrect" });
+
+    student.password = newPassword;
+    student.must_change_password = false;
+    await student.save();
+
+    res.status(200).json({ message: "Password updated successfully." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

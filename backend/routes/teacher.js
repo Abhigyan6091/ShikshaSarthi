@@ -8,6 +8,7 @@ const School = require("../models/School");
 const Student = require("../models/Student");
 const Class = require("../models/Class");
 const SchoolAdmin = require("../models/SchoolAdmin");
+const StudentReport = require("../models/StudentReport");
 const { ensureRecordWithBootstrap } = require("../sync/bootstrapGuard");
 const { requireAuth, signAuthToken } = require("../middleware/auth");
 const { checkLoginRateLimit } = require("../middleware/loginRateLimiter");
@@ -248,6 +249,45 @@ router.get("/:teacherId/quizzes", async (req, res) => {
     res.status(200).json(quizzes);
   } catch (err) {
     console.error("Error fetching teacher quizzes:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Average score across every submitted report for this teacher's quizzes.
+router.get("/:teacherId/stats", async (req, res) => {
+  try {
+    const teacher = await findTeacherByIdentifier(req.params.teacherId);
+    if (!teacher) {
+      return res.status(404).json({ error: "Teacher not found" });
+    }
+
+    const quizzes = await findQuizzesForTeacher(teacher);
+    const quizIds = quizzes.map((quiz) => quiz.quizId).filter(Boolean);
+
+    if (quizIds.length === 0) {
+      return res.status(200).json({ averageScore: null, reportCount: 0 });
+    }
+
+    const reports = await StudentReport.find({
+      quizId: { $in: quizIds },
+      submissionStatus: { $ne: "draft" },
+    }).select("correct incorrect unattempted");
+
+    if (reports.length === 0) {
+      return res.status(200).json({ averageScore: null, reportCount: 0 });
+    }
+
+    const percentages = reports.map((report) => {
+      const total = (report.correct || 0) + (report.incorrect || 0) + (report.unattempted || 0);
+      return total > 0 ? (report.correct / total) * 100 : 0;
+    });
+    const averageScore = Math.round(
+      percentages.reduce((sum, value) => sum + value, 0) / percentages.length
+    );
+
+    res.status(200).json({ averageScore, reportCount: reports.length });
+  } catch (err) {
+    console.error("Error computing teacher stats:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });

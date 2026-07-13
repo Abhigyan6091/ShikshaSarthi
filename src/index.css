@@ -187,6 +187,47 @@
     animation: bounce-gentle 2s ease-in-out infinite;
   }
 
+  /* Liquid glass: frosted, translucent surface used across LMS-style cards. */
+  .glass-panel {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.42));
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    box-shadow: 0 8px 32px rgba(31, 41, 55, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+
+  .glass-panel-dark {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.65), rgba(15, 23, 42, 0.35));
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-card {
+    @apply glass-panel rounded-2xl transition-all duration-300;
+  }
+
+  .glass-card:hover {
+    box-shadow: 0 12px 40px rgba(31, 41, 55, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    transform: translateY(-2px);
+  }
+
+  .glass-pill {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+
+  .glass-page-bg {
+    background:
+      radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.12), transparent 45%),
+      radial-gradient(circle at 85% 0%, rgba(56, 189, 248, 0.14), transparent 45%),
+      radial-gradient(circle at 50% 100%, rgba(16, 185, 129, 0.10), transparent 50%),
+      #f4f6fb;
+  }
+
   @media (max-width: 1023px) {
     .edu-container {
       @apply px-4;

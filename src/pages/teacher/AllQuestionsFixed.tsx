@@ -232,9 +232,9 @@ const AllQuestionsFixed: React.FC = () => {
   const classes = sortLabels(Object.keys(grouped));
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="glass-page-bg flex min-h-screen flex-col">
       <Header />
-      <main className="flex-1 bg-gray-50 py-6 md:py-8">
+      <main className="flex-1 py-6 md:py-8">
         <div className="edu-container">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Question Bank</h1>
@@ -242,7 +242,7 @@ const AllQuestionsFixed: React.FC = () => {
           </div>
 
           <div className="mb-6 grid gap-6 lg:grid-cols-2">
-            <Card>
+            <Card className="glass-card border-0">
               <CardHeader>
                 <CardTitle>Add Question Manually</CardTitle>
               </CardHeader>
@@ -309,7 +309,7 @@ const AllQuestionsFixed: React.FC = () => {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="glass-card border-0">
               <CardHeader>
                 <CardTitle>Upload JSON</CardTitle>
               </CardHeader>
@@ -332,7 +332,7 @@ const AllQuestionsFixed: React.FC = () => {
             </Card>
           </div>
 
-          <Card className="mb-6">
+          <Card className="glass-card mb-6 border-0">
             <CardContent className="pt-6">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -342,11 +342,11 @@ const AllQuestionsFixed: React.FC = () => {
           </Card>
 
           {loading ? (
-            <Card>
+            <Card className="glass-card border-0">
               <CardContent className="py-12 text-center text-muted-foreground">Loading questions...</CardContent>
             </Card>
           ) : classes.length === 0 ? (
-            <Card>
+            <Card className="glass-card border-0">
               <CardContent className="py-12 text-center text-muted-foreground">No questions found</CardContent>
             </Card>
           ) : (
@@ -356,7 +356,7 @@ const AllQuestionsFixed: React.FC = () => {
                 const subjects = sortLabels(Object.keys(grouped[className]));
                 const isClassOpen = expandedClass === className;
                 return (
-                  <Card key={className}>
+                  <Card key={className} className="glass-card border-0">
                     <button onClick={() => setExpandedClass(isClassOpen ? null : className)} className="flex w-full items-center justify-between px-6 py-4 text-left hover:bg-gray-50">
                       <span className="flex items-center gap-3">
                         <BookOpen className="h-5 w-5 text-blue-600" />

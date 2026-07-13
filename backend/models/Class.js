@@ -7,6 +7,9 @@ const classSchema = new mongoose.Schema({
   teacherId: { type: String, ref: "Teacher", required: true },
   schoolId: { type: String, ref: "School", required: true },
   students: [{ type: String, ref: "Student" }],
+  // Per-student enrollment timestamps, keyed by studentId. Used to scope quiz
+  // visibility to content posted after a student joined the class.
+  studentJoinedAt: { type: Map, of: Date, default: {} },
   description: { type: String, default: "" },
   createdAt: { type: Date, default: Date.now }
 });

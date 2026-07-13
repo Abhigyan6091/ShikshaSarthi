@@ -149,7 +149,17 @@ router.get("/student/:studentId", async (req, res) => {
     }).sort({ createdAt: -1 });
     const classIds = classes.map((item) => item.classId);
 
-    const [documents, announcements, quizzes] = await Promise.all([
+    // Earliest join date per class this student belongs to. Falls back to the
+    // class creation date for legacy enrollments recorded before we tracked
+    // per-student join timestamps.
+    const joinedAtByClassId = new Map(
+      classes.map((c) => [
+        c.classId,
+        (c.studentJoinedAt && c.studentJoinedAt.get(student.studentId)) || c.createdAt || new Date(0),
+      ])
+    );
+
+    const [documents, announcements, quizzesRaw] = await Promise.all([
       ClassDocument.find({ classId: { $in: classIds } }).sort({ createdAt: -1 }),
       ClassAnnouncement.find({ classId: { $in: classIds } }).sort({ createdAt: -1 }),
       Quiz.find({
@@ -160,6 +170,20 @@ router.get("/student/:studentId", async (req, res) => {
         ],
       }).sort({ startTime: -1, createdAt: -1 }),
     ]);
+
+    // Only show class-targeted quizzes created after the student joined that
+    // class. Global quizzes remain visible to everyone regardless of join date.
+    const quizzes = quizzesRaw.filter((quiz) => {
+      const targetClassIds = quiz.audience?.classIds || [];
+      const isClassTargeted = quiz.audience?.type !== "global" && targetClassIds.length > 0;
+      if (!isClassTargeted) return true;
+
+      const quizCreatedAt = quiz.createdAt || quiz.startTime || new Date(0);
+      return targetClassIds.some((classId) => {
+        const joinedAt = joinedAtByClassId.get(classId);
+        return !joinedAt || quizCreatedAt >= joinedAt;
+      });
+    });
 
     res.status(200).json({ student, classes, documents, announcements, quizzes });
   } catch (err) {
@@ -187,6 +211,7 @@ router.post("/:classId/students", async (req, res) => {
 
     if (!classData.students.includes(studentId)) {
       classData.students.push(studentId);
+      classData.studentJoinedAt.set(studentId, new Date());
       await classData.save();
       await Student.findOneAndUpdate({ studentId }, { $addToSet: { classes: classData.classId } });
     }

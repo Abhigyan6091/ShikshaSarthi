@@ -31,6 +31,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -361,9 +362,9 @@ export default function QuizAnalyticsFinal() {
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-300 rounded-lg shadow-lg">
+        <div className="bg-white/95 backdrop-blur-sm p-3 border border-white/70 rounded-xl shadow-lg">
           {payload.map((entry: any, index: number) => (
-            <p key={index} style={{ color: entry.color }}>
+            <p key={index} className="text-sm font-medium" style={{ color: entry.color }}>
               {entry.name}: {entry.value}
               {entry.name.includes('%') || entry.name.includes('Percentage') ? '%' : ''}
             </p>
@@ -375,19 +376,20 @@ export default function QuizAnalyticsFinal() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="glass-page-bg min-h-screen">
       <Header />
       <div className="container mx-auto p-4 md:p-6 max-w-7xl">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-          📊 Comprehensive Quiz Analytics
+        <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2 flex items-center gap-3">
+          <BarChart3 className="h-7 w-7 sm:h-9 sm:w-9 text-blue-600 shrink-0" />
+          Quiz Analytics
         </h1>
         <p className="text-gray-600">Deep insights into student performance and quiz effectiveness</p>
       </div>
 
       {/* Quiz ID Input */}
-      <Card className="mb-6 border-2 shadow-lg">
+      <Card className="glass-card border-0 mb-6">
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <Input
@@ -395,7 +397,7 @@ export default function QuizAnalyticsFinal() {
               value={quizId}
               onChange={(e) => setQuizId(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && loadAnalytics()}
-              className="flex-1 text-lg"
+              className="flex-1 text-lg bg-white/70"
             />
             <Button onClick={loadAnalytics} disabled={loading} size="lg" className="px-8 w-full sm:w-auto">
               {loading ? (
@@ -416,7 +418,7 @@ export default function QuizAnalyticsFinal() {
               size="lg"
               onClick={handleQuizSelectorToggle}
               disabled={loading || quizzesLoading}
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto bg-white/50"
             >
               <Layers className="mr-2 h-5 w-5" />
               {showQuizSelector ? "Hide Quiz List" : "Select Advanced Quiz"}
@@ -427,7 +429,7 @@ export default function QuizAnalyticsFinal() {
 
       {/* Advanced Quiz Cards */}
       {showQuizSelector && (
-        <Card className="mb-6 border-2 shadow-lg">
+        <Card className="glass-card border-0 mb-6">
           <CardHeader>
             <CardTitle className="flex flex-wrap items-center gap-2 text-lg sm:text-xl">
               <Layers className="h-5 w-5 text-indigo-600" />
@@ -455,10 +457,10 @@ export default function QuizAnalyticsFinal() {
                       type="button"
                       onClick={() => loadAnalytics(quiz.quizId)}
                       disabled={loading}
-                      className={`w-full rounded-xl border-2 p-4 text-left transition-all ${
+                      className={`w-full rounded-xl border p-4 text-left transition-all ${
                         isSelected
-                          ? "border-blue-500 bg-blue-50 shadow-md"
-                          : "border-gray-200 bg-white hover:border-blue-300 hover:shadow-md"
+                          ? "border-blue-400 bg-blue-50/80 shadow-md"
+                          : "border-white/60 bg-white/50 hover:border-blue-300 hover:bg-white/70 hover:shadow-md"
                       } ${loading ? "cursor-not-allowed opacity-70" : ""}`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -466,16 +468,16 @@ export default function QuizAnalyticsFinal() {
                           <p className="text-sm text-gray-500">Quiz ID</p>
                           <p className="font-bold text-blue-700 break-all">{quiz.quizId}</p>
                         </div>
-                        <Badge variant="outline" className="shrink-0">
+                        <Badge variant="outline" className="shrink-0 bg-white/60">
                           {Number(quiz.totalQuestions || 0)} Qs
                         </Badge>
                       </div>
 
                       <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:text-sm">
-                        <div className="rounded-md bg-blue-50 px-2 py-1 text-blue-700">MCQ: {mcq}</div>
-                        <div className="rounded-md bg-green-50 px-2 py-1 text-green-700">Audio: {audio}</div>
-                        <div className="rounded-md bg-purple-50 px-2 py-1 text-purple-700">Video: {video}</div>
-                        <div className="rounded-md bg-orange-50 px-2 py-1 text-orange-700">Puzzle: {puzzle}</div>
+                        <div className="rounded-md bg-blue-50/80 px-2 py-1 text-blue-700">MCQ: {mcq}</div>
+                        <div className="rounded-md bg-green-50/80 px-2 py-1 text-green-700">Audio: {audio}</div>
+                        <div className="rounded-md bg-purple-50/80 px-2 py-1 text-purple-700">Video: {video}</div>
+                        <div className="rounded-md bg-orange-50/80 px-2 py-1 text-orange-700">Puzzle: {puzzle}</div>
                       </div>
 
                       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
@@ -487,7 +489,7 @@ export default function QuizAnalyticsFinal() {
                 })}
               </div>
             ) : (
-              <div className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-600">
+              <div className="rounded-lg border border-dashed border-gray-300 bg-white/40 p-4 text-sm text-gray-600">
                 No advanced/comprehensive quizzes found for your account.
               </div>
             )}
@@ -497,8 +499,25 @@ export default function QuizAnalyticsFinal() {
 
       {analytics && (
         <div className="space-y-6">
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="glass-pill flex w-full flex-wrap justify-start gap-1 h-auto p-1.5 sm:inline-flex sm:w-auto">
+              <TabsTrigger value="overview" className="gap-1.5">
+                <Target className="h-4 w-4" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="questions" className="gap-1.5">
+                <BarChart3 className="h-4 w-4" />
+                Question Analytics
+              </TabsTrigger>
+              <TabsTrigger value="rankings" className="gap-1.5">
+                <Award className="h-4 w-4" />
+                Rankings
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-6 mt-6">
           {/* Quiz Overview */}
-          <Card className="border-2 border-blue-200 shadow-xl bg-gradient-to-br from-blue-50 to-indigo-50">
+          <Card className="glass-card border-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-2xl">
                 <Target className="h-6 w-6 text-blue-600" />
@@ -508,39 +527,39 @@ export default function QuizAnalyticsFinal() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white p-4 rounded-lg shadow">
+                <div className="glass-pill p-4 rounded-xl">
                   <div className="text-sm text-gray-500 mb-1">Quiz ID</div>
-                  <div className="font-bold text-xl text-blue-600">{analytics.quizInfo.quizId}</div>
+                  <div className="font-bold text-xl text-blue-600 break-all">{analytics.quizInfo.quizId}</div>
                 </div>
-                <div className="bg-white p-4 rounded-lg shadow">
+                <div className="glass-pill p-4 rounded-xl">
                   <div className="text-sm text-gray-500 mb-1">Total Questions</div>
                   <div className="font-bold text-xl text-purple-600">{analytics.quizInfo.totalQuestions}</div>
                 </div>
-                <div className="bg-white p-4 rounded-lg shadow">
+                <div className="glass-pill p-4 rounded-xl">
                   <div className="text-sm text-gray-500 mb-1">Time Limit</div>
                   <div className="font-bold text-xl text-orange-600">{analytics.quizInfo.timeLimit} min</div>
                 </div>
-                <div className="bg-white p-4 rounded-lg shadow">
+                <div className="glass-pill p-4 rounded-xl">
                   <div className="text-sm text-gray-500 mb-1">Total Attempts</div>
                   <div className="font-bold text-xl text-green-600">{analytics.totalAttempts}</div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                <Badge variant="outline" className="justify-center py-3 text-base bg-blue-100 border-blue-300">
-                  <BookOpen className="mr-2 h-5 w-5" />
+                <Badge variant="outline" className="justify-center py-3 text-base bg-blue-50/80 border-blue-200">
+                  <BookOpen className="mr-2 h-5 w-5 text-blue-600" />
                   MCQ: {analytics.quizInfo.questionTypes.mcq}
                 </Badge>
-                <Badge variant="outline" className="justify-center py-3 text-base bg-green-100 border-green-300">
-                  <Volume2 className="mr-2 h-5 w-5" />
+                <Badge variant="outline" className="justify-center py-3 text-base bg-green-50/80 border-green-200">
+                  <Volume2 className="mr-2 h-5 w-5 text-green-600" />
                   Audio: {analytics.quizInfo.questionTypes.audio}
                 </Badge>
-                <Badge variant="outline" className="justify-center py-3 text-base bg-purple-100 border-purple-300">
-                  <Video className="mr-2 h-5 w-5" />
+                <Badge variant="outline" className="justify-center py-3 text-base bg-purple-50/80 border-purple-200">
+                  <Video className="mr-2 h-5 w-5 text-purple-600" />
                   Video: {analytics.quizInfo.questionTypes.video}
                 </Badge>
-                <Badge variant="outline" className="justify-center py-3 text-base bg-orange-100 border-orange-300">
-                  <Puzzle className="mr-2 h-5 w-5" />
+                <Badge variant="outline" className="justify-center py-3 text-base bg-orange-50/80 border-orange-200">
+                  <Puzzle className="mr-2 h-5 w-5 text-orange-600" />
                   Puzzle: {analytics.quizInfo.questionTypes.puzzle}
                 </Badge>
               </div>
@@ -549,9 +568,9 @@ export default function QuizAnalyticsFinal() {
 
           {/* Key Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="border-2 border-green-200 shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-green-50 to-emerald-50">
+            <Card className="glass-card border-0">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-600">
                   <Users className="h-4 w-4 text-green-600" />
                   Total Students
                 </CardTitle>
@@ -562,9 +581,9 @@ export default function QuizAnalyticsFinal() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-blue-200 shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-blue-50 to-cyan-50">
+            <Card className="glass-card border-0">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-600">
                   <Trophy className="h-4 w-4 text-blue-600" />
                   Class Average
                 </CardTitle>
@@ -575,9 +594,9 @@ export default function QuizAnalyticsFinal() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-yellow-200 shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-yellow-50 to-amber-50">
+            <Card className="glass-card border-0">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-600">
                   <Trophy className="h-4 w-4 text-yellow-600" />
                   Highest Score
                 </CardTitle>
@@ -588,9 +607,9 @@ export default function QuizAnalyticsFinal() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-red-200 shadow-lg hover:shadow-xl transition-shadow bg-gradient-to-br from-red-50 to-rose-50">
+            <Card className="glass-card border-0">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2 text-gray-600">
                   <AlertCircle className="h-4 w-4 text-red-600" />
                   Lowest Score
                 </CardTitle>
@@ -603,7 +622,7 @@ export default function QuizAnalyticsFinal() {
           </div>
 
           {/* Answer Distribution */}
-          <Card className="border-2 shadow-lg">
+          <Card className="glass-card border-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Target className="h-5 w-5 text-blue-600" />
@@ -633,20 +652,20 @@ export default function QuizAnalyticsFinal() {
                       dataKey="value"
                     >
                       {answerDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+                        <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(255,255,255,0.8)" strokeWidth={2} />
                       ))}
                     </Pie>
                     <Tooltip content={<CustomTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="flex flex-col justify-center space-y-4">
+                <div className="flex flex-col justify-center space-y-3">
                   {answerDistribution.map((item, idx) => {
                     const percentage = totalResponses > 0 ? ((item.value / totalResponses) * 100).toFixed(1) : "0.0";
                     return (
-                    <div key={idx} className="flex items-center justify-between p-4 rounded-lg border-2" style={{ borderColor: item.color, backgroundColor: `${item.color}20` }}>
+                    <div key={idx} className="glass-pill flex items-center justify-between p-4 rounded-xl">
                       <div className="flex items-center gap-3">
-                        <div className="w-6 h-6 rounded-full" style={{ backgroundColor: item.color }}></div>
-                        <span className="font-semibold text-lg">{item.name}</span>
+                        <div className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: item.color }}></div>
+                        <span className="font-semibold text-base text-gray-800">{item.name}</span>
                       </div>
                       <div className="text-right">
                         <div className="text-2xl font-bold" style={{ color: item.color }}>{item.value}</div>
@@ -661,9 +680,11 @@ export default function QuizAnalyticsFinal() {
               })()}
             </CardContent>
           </Card>
+            </TabsContent>
 
+            <TabsContent value="questions" className="mt-6">
           {/* Question-wise Analytics */}
-          <Card className="border-2 shadow-lg">
+          <Card className="glass-card border-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-indigo-600" />
@@ -671,19 +692,25 @@ export default function QuizAnalyticsFinal() {
               </CardTitle>
               <CardDescription>Detailed breakdown for each question</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
               {analytics.questionAnalytics && analytics.questionAnalytics.length > 0 ? (
-                analytics.questionAnalytics.map((q, index) => (
+                analytics.questionAnalytics.map((q, index) => {
+                  const correctPct = parseFloat(q.correctPercentage);
+                  const accentColor = correctPct >= 70 ? '#10b981' : correctPct >= 50 ? '#f59e0b' : '#ef4444';
+                  return (
                   <Collapsible
                     key={q.questionId}
                     open={expandedQuestion === q.questionId}
                     onOpenChange={() => setExpandedQuestion(expandedQuestion === q.questionId ? null : q.questionId)}
                   >
-                    <Card className="border">
+                    <Card
+                      className="glass-card border-0 overflow-hidden"
+                      style={{ borderLeft: `4px solid ${accentColor}` }}
+                    >
                       <CollapsibleTrigger className="w-full">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 hover:bg-gray-50 cursor-pointer">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 hover:bg-white/40 cursor-pointer transition-colors">
                           <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                            <Badge variant="outline" className="text-base px-3 py-1">
+                            <Badge variant="outline" className="text-base px-3 py-1 bg-white/60">
                               Q{index + 1}
                             </Badge>
                             <div className="flex items-center gap-2">
@@ -695,22 +722,24 @@ export default function QuizAnalyticsFinal() {
                             </Badge>
                           </div>
                           <div className="flex items-center gap-3 sm:gap-4 self-start sm:self-auto">
-                            <div className="text-sm text-gray-600">
-                              {q.correct}✓ / {q.incorrect}✗ / {q.skipped}○
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="flex items-center gap-1 text-green-700 font-medium"><CheckCircle2 className="h-3.5 w-3.5" />{q.correct}</span>
+                              <span className="flex items-center gap-1 text-red-600 font-medium"><XCircle className="h-3.5 w-3.5" />{q.incorrect}</span>
+                              <span className="flex items-center gap-1 text-gray-500 font-medium"><MinusCircle className="h-3.5 w-3.5" />{q.skipped}</span>
                             </div>
                             {expandedQuestion === q.questionId ? (
-                              <ChevronUp className="h-5 w-5" />
+                              <ChevronUp className="h-5 w-5 text-gray-500" />
                             ) : (
-                              <ChevronDown className="h-5 w-5" />
+                              <ChevronDown className="h-5 w-5 text-gray-500" />
                             )}
                           </div>
                         </div>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
-                        <div className="px-4 pb-4 border-t pt-4">
+                        <div className="px-4 pb-4 border-t border-white/60 pt-4">
                           {/* Question Content Display */}
                           {q.questionData && (
-                            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="mb-6 p-4 bg-blue-50/60 rounded-lg border border-blue-100">
                               <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
                                 {getQuestionTypeIcon(q.questionType)}
                                 Question Content
@@ -887,27 +916,24 @@ export default function QuizAnalyticsFinal() {
                                   { name: 'Incorrect', value: parseFloat(q.incorrectPercentage), fill: '#ef4444' },
                                   { name: 'Skipped', value: parseFloat(q.skippedPercentage), fill: '#94a3b8' }
                                 ]}>
-                                  <CartesianGrid strokeDasharray="3 3" />
-                                  <XAxis dataKey="name" />
-                                  <YAxis domain={[0, 100]} label={{ value: '%', angle: 0, position: 'top' }} />
-                                  <Tooltip />
-                                  <Bar dataKey="value" />
+                                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(100,116,139,0.2)" vertical={false} />
+                                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={{ stroke: 'rgba(100,116,139,0.25)' }} tickLine={false} />
+                                  <YAxis domain={[0, 100]} label={{ value: '%', angle: 0, position: 'top' }} tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(100,116,139,0.08)' }} />
+                                  <Bar dataKey="value" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                               </ResponsiveContainer>
                             </div>
                           </div>
-                          
+
                           {/* Difficulty Indicator */}
-                          <div className="mt-4 p-3 rounded-lg" style={{
-                            backgroundColor: parseFloat(q.correctPercentage) >= 70 ? '#dcfce7' : 
-                                          parseFloat(q.correctPercentage) >= 50 ? '#fef3c7' : '#fee2e2',
-                            borderLeft: `4px solid ${parseFloat(q.correctPercentage) >= 70 ? '#10b981' : 
-                                          parseFloat(q.correctPercentage) >= 50 ? '#f59e0b' : '#ef4444'}`
+                          <div className="mt-4 p-3 rounded-lg glass-pill" style={{
+                            borderLeft: `4px solid ${accentColor}`
                           }}>
-                            <p className="text-sm font-medium">
+                            <p className="text-sm font-medium text-gray-800">
                               💡 <strong>Difficulty Assessment:</strong> {
-                                parseFloat(q.correctPercentage) >= 70 ? 'Easy - Most students answered correctly' :
-                                parseFloat(q.correctPercentage) >= 50 ? 'Moderate - About half got it right' :
+                                correctPct >= 70 ? 'Easy - Most students answered correctly' :
+                                correctPct >= 50 ? 'Moderate - About half got it right' :
                                 'Difficult - Consider reviewing this topic'
                               }
                             </p>
@@ -916,7 +942,8 @@ export default function QuizAnalyticsFinal() {
                       </CollapsibleContent>
                     </Card>
                   </Collapsible>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   No question analytics available
@@ -924,9 +951,11 @@ export default function QuizAnalyticsFinal() {
               )}
             </CardContent>
           </Card>
+            </TabsContent>
 
+            <TabsContent value="rankings" className="mt-6">
           {/* Comprehensive Leaderboard */}
-          <Card className="border-2 shadow-lg">
+          <Card className="glass-card border-0">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Award className="h-5 w-5 text-purple-600" />
@@ -935,10 +964,10 @@ export default function QuizAnalyticsFinal() {
               <CardDescription>Rankings with overall and section-wise scores</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-lg">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-gray-100">
+                    <TableRow className="bg-white/40 hover:bg-white/40">
                       <TableHead className="w-16 font-bold">Rank</TableHead>
                       <TableHead className="font-bold">Student ID</TableHead>
                       <TableHead className="text-center font-bold">
@@ -971,7 +1000,7 @@ export default function QuizAnalyticsFinal() {
                     {analytics.studentReports.map((student, index) => {
                       const percentage = parseFloat(student.percentage);
                       return (
-                        <TableRow key={student.studentId} className="hover:bg-gray-50">
+                        <TableRow key={student.studentId} className="hover:bg-white/40">
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               {index === 0 && <Crown className="h-5 w-5 text-yellow-500" />}
@@ -1040,11 +1069,13 @@ export default function QuizAnalyticsFinal() {
               )}
             </CardContent>
           </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       )}
 
       {!analytics && !loading && (
-        <Card className="border-2 border-dashed border-gray-300">
+        <Card className="glass-card border-0 border-dashed">
           <CardContent className="py-16 text-center">
             <BarChart3 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-600 mb-2">No Analytics Loaded</h3>

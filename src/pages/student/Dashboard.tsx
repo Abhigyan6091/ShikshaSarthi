@@ -3,6 +3,19 @@ import Cookies from "js-cookie";
 import axios from "axios";
 import { Link, useNavigate } from "react-router-dom";
 const API_URL = import.meta.env.VITE_API_URL;
+
+const batchToClass = (batch?: string) => {
+  const n = Number.parseInt(String(batch || "").replace(/\D/g, ""), 10);
+  const derived = Number.isFinite(n) && n >= 2026 && n <= 2037 ? 2038 - n : 0;
+  return derived >= 6 && derived <= 12 ? derived : 0;
+};
+
+const resolveDisplayClass = (student?: { class?: string; batch?: string }) => {
+  const raw = String(student?.class || "").trim();
+  if (raw) return raw;
+  const derived = batchToClass(student?.batch);
+  return derived ? String(derived) : "-";
+};
 import {
   Card,
   CardContent,
@@ -53,6 +66,7 @@ const StudentDashboard: React.FC = () => {
     _id: string;
     studentId: string;
     class: string;
+    batch?: string;
     name: string;
     schoolId: string;
     phone?: string;
@@ -89,6 +103,22 @@ const StudentDashboard: React.FC = () => {
   const [quizId, setQuizId] = useState("");
   const [loading, setLoading] = useState(true);
   const [language, setLanguage] = useState(() => localStorage.getItem("appLanguage") || "hi");
+  const [newQuizzes, setNewQuizzes] = useState<{ quizId: string; totalQuestions?: number; timeLimit?: number }[]>([]);
+  const [dismissedQuizIds, setDismissedQuizIds] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("dismissedQuizNotifications") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  const dismissQuizNotification = (quizIdToDismiss: string) => {
+    setDismissedQuizIds((prev) => {
+      const next = [...prev, quizIdToDismiss];
+      localStorage.setItem("dismissedQuizNotifications", JSON.stringify(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     const handleLanguageChange = (event: Event) => {
@@ -130,7 +160,23 @@ const StudentDashboard: React.FC = () => {
       setLoading(false);
     }
   }, []);
-  
+
+  useEffect(() => {
+    const currentUser = getCurrentUser();
+    const studentId = currentUser?.studentId;
+    if (!studentId) return;
+
+    Promise.all([
+      axios.get(`${API_URL}/classes/student/${studentId}`),
+      axios.get(`${API_URL}/reports/student/${studentId}`).catch(() => ({ data: [] })),
+    ])
+      .then(([classesRes, reportsRes]) => {
+        const attemptedIds = new Set((reportsRes.data || []).map((r: any) => r.quizId));
+        const quizzes = (classesRes.data?.quizzes || []).filter((q: any) => !attemptedIds.has(q.quizId));
+        setNewQuizzes(quizzes);
+      })
+      .catch((error) => console.error("Failed to load new quiz notifications:", error));
+  }, []);
 
   const handleStartQuiz = () => {
     const trimmedQuizId = quizId.trim();
@@ -268,13 +314,13 @@ const StudentDashboard: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="glass-page-bg flex flex-col min-h-screen">
       <Header />
 
       <main className="flex-1 py-6 md:py-8">
         <div className="edu-container">
           {/* Welcome Section with Student Info */}
-          <div className="mb-8 rounded-2xl border border-blue-100 bg-white/80 p-5 shadow-sm backdrop-blur md:p-6">
+          <div className="glass-card mb-8 border-0 p-5 md:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <Avatar className="h-16 w-16 ring-4 ring-edu-blue/20">
@@ -296,7 +342,7 @@ const StudentDashboard: React.FC = () => {
 
             {/* Quick Info Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-              <Card className="border-l-4 border-l-edu-blue">
+              <Card className="glass-card border-0 border-l-4 border-l-edu-blue">
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -308,19 +354,19 @@ const StudentDashboard: React.FC = () => {
                 </CardContent>
               </Card>
 
-              <Card className="border-l-4 border-l-edu-green">
+              <Card className="glass-card border-0 border-l-4 border-l-edu-green">
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-600">Class</p>
-                      <p className="text-lg font-bold text-gray-900">{student.class}</p>
+                      <p className="text-lg font-bold text-gray-900">{resolveDisplayClass(student)}</p>
                     </div>
                     <User className="h-8 w-8 text-edu-green/30" />
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-l-4 border-l-edu-purple">
+              <Card className="glass-card border-0 border-l-4 border-l-edu-purple">
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -332,7 +378,7 @@ const StudentDashboard: React.FC = () => {
                 </CardContent>
               </Card>
 
-              <Card className="border-l-4 border-l-edu-yellow">
+              <Card className="glass-card border-0 border-l-4 border-l-edu-yellow">
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -346,7 +392,7 @@ const StudentDashboard: React.FC = () => {
                 </CardContent>
               </Card>
 
-              <Card className="border-l-4 border-l-cyan-500 bg-gradient-to-br from-cyan-50 to-white">
+              <Card className="glass-card border-0 border-l-4 border-l-cyan-500">
                 <CardContent className="pt-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -367,8 +413,49 @@ const StudentDashboard: React.FC = () => {
               <p className="text-sm text-gray-600">{isHindi ? "तेज access के लिए मुख्य learning tools." : "Main learning tools with quick access."}</p>
             </div>
           </div>
+          {newQuizzes.filter((q) => !dismissedQuizIds.includes(q.quizId)).length > 0 && (
+            <div className="mb-5 space-y-2">
+              {newQuizzes
+                .filter((q) => !dismissedQuizIds.includes(q.quizId))
+                .map((q) => (
+                  <div
+                    key={q.quizId}
+                    className="glass-card flex items-center justify-between gap-3 border-0 bg-gradient-to-r from-blue-600/90 to-indigo-600/90 px-5 py-3 text-white shadow-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="h-5 w-5 shrink-0 text-amber-300" />
+                      <div>
+                        <p className="font-semibold">
+                          {isHindi ? "नया क्विज़ उपलब्ध है" : "New quiz available"}: {q.quizId}
+                        </p>
+                        <p className="text-xs text-blue-50/90">
+                          {q.totalQuestions ? `${q.totalQuestions} ${isHindi ? "प्रश्न" : "questions"}` : ""}
+                          {q.timeLimit ? ` · ${q.timeLimit} ${isHindi ? "मिनट" : "min"}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Link to={`/student/take-advanced-quiz?quizId=${encodeURIComponent(q.quizId)}`}>
+                        <Button size="sm" className="bg-white text-blue-700 hover:bg-blue-50">
+                          {isHindi ? "टेस्ट दें" : "Take Test"}
+                        </Button>
+                      </Link>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-white hover:bg-white/15"
+                        onClick={() => dismissQuizNotification(q.quizId)}
+                      >
+                        {isHindi ? "बंद करें" : "Dismiss"}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 mb-12">
-            <Card className="group border-0 bg-white shadow-sm ring-1 ring-blue-100 transition hover:-translate-y-1 hover:shadow-lg">
+            <Card className="glass-card group border-0 ring-1 ring-blue-100/60">
               <CardHeader>
                 <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-700 group-hover:bg-blue-600 group-hover:text-white">
                   <BookOpen className="h-6 w-6" />
@@ -390,7 +477,7 @@ const StudentDashboard: React.FC = () => {
               </CardFooter>
             </Card>
 
-            <Card className="group border-0 bg-gradient-to-br from-cyan-600 to-blue-700 text-white shadow-md transition hover:-translate-y-1 hover:shadow-xl md:col-span-2 xl:col-span-1">
+            <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-cyan-600/90 to-blue-700/90 text-white shadow-lg backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-xl md:col-span-2 xl:col-span-1">
               <CardHeader>
                 <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 text-white">
                   <BrainCircuit className="h-7 w-7" />
@@ -414,7 +501,7 @@ const StudentDashboard: React.FC = () => {
               </CardFooter>
             </Card>
 
-            <Card className="group border-0 bg-white shadow-sm ring-1 ring-emerald-100 transition hover:-translate-y-1 hover:shadow-lg">
+            <Card className="glass-card group border-0 ring-1 ring-emerald-100/60">
               <CardHeader>
                 <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white">
                   <School className="h-6 w-6" />

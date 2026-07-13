@@ -8,10 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import TagSelect from '@/components/TagSelect';
-import { ArrowLeft, BookOpen, CheckCircle, ChevronRight, FolderOpen, Languages, Loader2, Plus, Search } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle, ChevronRight, ClipboardList, FolderOpen, Headphones, Languages, ListChecks, Loader2, Plus, Puzzle, Search, Sparkles, Users, Video } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -532,62 +533,98 @@ const CreateQuizNewFixed: React.FC = () => {
 
   const selectedSlotType = selectedSlot !== null ? slots[selectedSlot]?.type : null;
   const isMcq = selectedSlotType === 'mcq';
+  const filledSlots = slots.filter((slot) => slot.question).length;
+
+  const slotStyles: Record<SlotType, { icon: typeof BookOpen; badge: string; ring: string }> = {
+    mcq: { icon: ListChecks, badge: 'bg-blue-50/80 text-blue-700', ring: 'border-blue-200' },
+    audio: { icon: Headphones, badge: 'bg-purple-50/80 text-purple-700', ring: 'border-purple-200' },
+    video: { icon: Video, badge: 'bg-orange-50/80 text-orange-700', ring: 'border-orange-200' },
+    puzzle: { icon: Puzzle, badge: 'bg-emerald-50/80 text-emerald-700', ring: 'border-emerald-200' },
+  };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="glass-page-bg flex min-h-screen flex-col">
       <Header />
-      <main className="flex-1 bg-gray-50 py-6 md:py-8">
+      <main className="flex-1 py-6 md:py-8">
         <div className="edu-container">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Advanced Quiz Creator</h1>
-            <p className="mt-1 text-muted-foreground">Pick questions from the bank by subject &amp; topic, or add a custom one with the + button.</p>
+          <div className="mb-6 flex items-center gap-3">
+            <div className="glass-pill flex h-11 w-11 items-center justify-center rounded-xl">
+              <Sparkles className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Advanced Quiz Creator</h1>
+              <p className="mt-1 text-muted-foreground">Pick questions from the bank by subject &amp; topic, or add a custom one with the + button.</p>
+            </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-            <Card>
+          <div className="grid gap-6 lg:grid-cols-[380px_1fr] lg:items-start">
+            <Card className="glass-card border-0">
               <CardHeader>
-                <CardTitle>Quiz Configuration</CardTitle>
+                <CardTitle className="flex items-center gap-2"><ClipboardList className="h-5 w-5 text-blue-600" /> Quiz Configuration</CardTitle>
                 <CardDescription>Custom questions you add are saved to the question bank.</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
+              <CardContent className="space-y-5">
+                <div className="space-y-2">
                   <Label>Quiz ID</Label>
-                  <Input value={config.quizId} onChange={(event) => setConfig((prev) => ({ ...prev, quizId: event.target.value }))} />
+                  <Input placeholder="e.g. science-week-4" value={config.quizId} onChange={(event) => setConfig((prev) => ({ ...prev, quizId: event.target.value }))} />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label>Time Limit (minutes)</Label>
                   <Input type="number" value={config.timeLimit} onChange={(event) => updateCount('timeLimit', Number(event.target.value))} />
                 </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Question counts</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="flex items-center gap-1.5 text-xs font-medium text-blue-700"><ListChecks className="h-3.5 w-3.5" /> MCQ</Label>
+                      <Input type="number" value={config.mcqCount} onChange={(event) => updateCount('mcqCount', Number(event.target.value))} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="flex items-center gap-1.5 text-xs font-medium text-purple-700"><Headphones className="h-3.5 w-3.5" /> Audio</Label>
+                      <Input type="number" value={config.audioCount} onChange={(event) => updateCount('audioCount', Number(event.target.value))} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="flex items-center gap-1.5 text-xs font-medium text-orange-700"><Video className="h-3.5 w-3.5" /> Video</Label>
+                      <Input type="number" value={config.videoCount} onChange={(event) => updateCount('videoCount', Number(event.target.value))} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="flex items-center gap-1.5 text-xs font-medium text-emerald-700"><Puzzle className="h-3.5 w-3.5" /> Puzzle</Label>
+                      <Input type="number" value={config.puzzleCount} onChange={(event) => updateCount('puzzleCount', Number(event.target.value))} />
+                    </div>
+                  </div>
+                  <div className="glass-pill mt-1 flex items-center justify-between rounded-lg px-3 py-2">
+                    <span className="text-sm font-medium text-muted-foreground">Total questions</span>
+                    <span className="text-lg font-bold text-gray-900">{totalQuestions}</span>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>MCQ</Label><Input type="number" value={config.mcqCount} onChange={(event) => updateCount('mcqCount', Number(event.target.value))} /></div>
-                  <div><Label>Audio</Label><Input type="number" value={config.audioCount} onChange={(event) => updateCount('audioCount', Number(event.target.value))} /></div>
-                  <div><Label>Video</Label><Input type="number" value={config.videoCount} onChange={(event) => updateCount('videoCount', Number(event.target.value))} /></div>
-                  <div><Label>Puzzle</Label><Input type="number" value={config.puzzleCount} onChange={(event) => updateCount('puzzleCount', Number(event.target.value))} /></div>
-                  <div><Label>Total</Label><Input value={totalQuestions} disabled className="bg-gray-50 font-bold" /></div>
+                  <div className="space-y-2">
+                    <Label>Start Time</Label>
+                    <Input type="datetime-local" value={config.startTime} onChange={(event) => setConfig((prev) => ({ ...prev, startTime: event.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>End Time</Label>
+                    <Input type="datetime-local" value={config.endTime} onChange={(event) => setConfig((prev) => ({ ...prev, endTime: event.target.value }))} />
+                  </div>
                 </div>
-                <div>
-                  <Label>Start Time</Label>
-                  <Input type="datetime-local" value={config.startTime} onChange={(event) => setConfig((prev) => ({ ...prev, startTime: event.target.value }))} />
-                </div>
-                <div>
-                  <Label>End Time</Label>
-                  <Input type="datetime-local" value={config.endTime} onChange={(event) => setConfig((prev) => ({ ...prev, endTime: event.target.value }))} />
-                </div>
-                <div className="space-y-3 rounded-md border bg-white p-3">
-                  <Label>Quiz Availability</Label>
+
+                <div className="glass-panel space-y-3 rounded-xl p-3.5">
+                  <Label className="flex items-center gap-1.5"><Users className="h-4 w-4 text-muted-foreground" /> Quiz Availability</Label>
                   <div className="grid grid-cols-2 gap-2">
                     <Button type="button" variant={audienceType === 'global' ? 'default' : 'outline'} onClick={() => setAudienceType('global')}>Global</Button>
                     <Button type="button" variant={audienceType === 'classes' ? 'default' : 'outline'} onClick={() => setAudienceType('classes')}>Select Class</Button>
                   </div>
                   {audienceType === 'classes' && (
-                    <div className="max-h-44 space-y-2 overflow-y-auto rounded border bg-gray-50 p-2">
+                    <div className="max-h-44 space-y-2 overflow-y-auto rounded-lg border border-white/60 bg-white/40 p-2">
                       {teacherClasses.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No classes found. Create classes first.</p>
                       ) : teacherClasses.map((classDoc) => {
                         const classId = asString(classDoc.classId);
                         const checked = selectedClassIds.includes(classId);
                         return (
-                          <label key={classId} className="flex cursor-pointer items-center gap-2 rounded bg-white p-2 text-sm">
+                          <label key={classId} className={`flex cursor-pointer items-center gap-2 rounded-md border p-2 text-sm transition ${checked ? 'border-blue-300 bg-blue-50/80' : 'border-transparent bg-white/70'}`}>
                             <input
                               type="checkbox"
                               checked={checked}
@@ -606,42 +643,66 @@ const CreateQuizNewFixed: React.FC = () => {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button onClick={generateSlots} className="w-full">
-                  <Plus className="mr-2 h-4 w-4" />
+                <Button onClick={generateSlots} className="w-full gap-2">
+                  <Plus className="h-4 w-4" />
                   Create Slots
                 </Button>
               </CardFooter>
             </Card>
 
-            <Card>
+            <Card className="glass-card border-0">
               <CardHeader>
-                <CardTitle>Question Slots</CardTitle>
-                <CardDescription>{slots.length ? `${slots.filter((slot) => slot.question).length}/${slots.length} selected` : 'Create slots from the configuration first.'}</CardDescription>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5 text-blue-600" /> Question Slots</CardTitle>
+                  {slots.length > 0 && (
+                    <Badge variant={filledSlots === slots.length ? 'default' : 'outline'} className={filledSlots === slots.length ? 'bg-emerald-600 hover:bg-emerald-600' : ''}>
+                      {filledSlots}/{slots.length} selected
+                    </Badge>
+                  )}
+                </div>
+                <CardDescription>{slots.length ? 'Tap a slot to choose or add a question.' : 'Create slots from the configuration first.'}</CardDescription>
               </CardHeader>
               <CardContent>
                 {slots.length === 0 ? (
-                  <div className="py-16 text-center text-muted-foreground">
+                  <div className="glass-panel flex flex-col items-center rounded-xl py-16 text-center text-muted-foreground">
                     <BookOpen className="mx-auto mb-3 h-12 w-12 opacity-40" />
-                    No slots yet
+                    No slots yet — set your question counts and click <span className="font-medium">Create Slots</span>.
                   </div>
                 ) : (
                   <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    {slots.map((slot) => (
-                      <button key={slot.index} onClick={() => openSlot(slot.index)} className="rounded-lg border bg-white p-4 text-left hover:shadow-sm">
-                        <div className="mb-2 flex items-center justify-between">
-                          <span className="rounded bg-blue-50 px-2 py-1 text-xs font-semibold uppercase text-blue-700">{slot.type}</span>
-                          {slot.question ? <CheckCircle className="h-5 w-5 text-green-600" /> : null}
-                        </div>
-                        <p className="line-clamp-4 text-sm font-medium">{renderChoiceText(slot.question)}</p>
-                      </button>
-                    ))}
+                    {slots.map((slot) => {
+                      const style = slotStyles[slot.type];
+                      const SlotIcon = style.icon;
+                      return (
+                        <button
+                          key={slot.index}
+                          onClick={() => openSlot(slot.index)}
+                          className={`group relative rounded-xl border bg-white/70 p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${slot.question ? style.ring : 'border-dashed border-gray-300'}`}
+                        >
+                          <div className="mb-2.5 flex items-center justify-between">
+                            <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${style.badge}`}>
+                              <SlotIcon className="h-3.5 w-3.5" />
+                              {slot.type}
+                            </span>
+                            {slot.question ? (
+                              <CheckCircle className="h-5 w-5 text-emerald-600" />
+                            ) : (
+                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase text-gray-500">Empty</span>
+                            )}
+                          </div>
+                          <p className={`line-clamp-4 text-sm ${slot.question ? 'font-medium text-gray-900' : 'italic text-muted-foreground'}`}>
+                            {renderChoiceText(slot.question)}
+                          </p>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
               {slots.length > 0 && (
                 <CardFooter>
-                  <Button onClick={handleCreateQuiz} disabled={saving} className="w-full">
-                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  <Button onClick={handleCreateQuiz} disabled={saving} className="w-full gap-2">
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                     Create Quiz
                   </Button>
                 </CardFooter>
@@ -678,86 +739,104 @@ const CreateQuizNewFixed: React.FC = () => {
 
           {/* Inline custom-question form (reachable via the + button on MCQ). */}
           {showCustomForm ? (
-            <div className="space-y-3">
-              <Button size="sm" variant="ghost" onClick={mcqBack} className="mb-1 h-8 px-2">
+            <div className="space-y-4">
+              <Button size="sm" variant="ghost" onClick={mcqBack} className="mb-1 h-8 px-2 -ml-2">
                 <ArrowLeft className="mr-1 h-4 w-4" /> Back to questions
               </Button>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <TagSelect label="Class" options={classes} value={customDraft.class} onChange={(v) => setCustomDraft((prev) => ({ ...prev, class: v, subject: '', topic: '' }))} />
-                <TagSelect label="Subject" options={customDraft.class ? customSubjects : subjects} value={customDraft.subject} onChange={(v) => setCustomDraft((prev) => ({ ...prev, subject: v, topic: '' }))} disabled={!customDraft.class} emptyHint="Pick a class first" />
-                <TagSelect label="Topic" options={customTopics} value={customDraft.topic} onChange={(v) => setCustomDraft((prev) => ({ ...prev, topic: v }))} disabled={!customDraft.class || !customDraft.subject} emptyHint="Pick class and subject first" />
-              </div>
-              <div><Label>Question</Label><Textarea value={customDraft.question} onChange={(event) => setCustomDraft((prev) => ({ ...prev, question: event.target.value }))} /></div>
-              <div><Label>Question — हिंदी <span className="text-gray-400 font-normal">(optional)</span></Label><Textarea value={customDraft.questionHindi} placeholder="प्रश्न (वैकल्पिक)" onChange={(event) => setCustomDraft((prev) => ({ ...prev, questionHindi: event.target.value }))} /></div>
-              <div className="space-y-2">
-                <Label>Options <span className="text-gray-400 font-normal">(Hindi optional)</span></Label>
-                {customDraft.options.map((opt, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <span className="w-6 text-center font-semibold text-gray-600">{LETTERS[idx]}</span>
-                    <Input
-                      value={opt}
-                      placeholder={`Option ${LETTERS[idx]}`}
-                      onChange={(event) => setCustomDraft((prev) => {
-                        const options = [...prev.options];
-                        options[idx] = event.target.value;
-                        return { ...prev, options };
-                      })}
-                    />
-                    <Input
-                      value={customDraft.optionsHindi[idx]}
-                      placeholder={`विकल्प ${LETTERS[idx]} (हिंदी)`}
-                      onChange={(event) => setCustomDraft((prev) => {
-                        const optionsHindi = [...prev.optionsHindi];
-                        optionsHindi[idx] = event.target.value;
-                        return { ...prev, optionsHindi };
-                      })}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div>
-                <Label>Correct Answer</Label>
-                <select
-                  value={customDraft.correctIndex}
-                  onChange={(event) => setCustomDraft((prev) => ({ ...prev, correctIndex: Number(event.target.value) }))}
-                  className="w-full rounded-md border p-2 bg-white"
-                >
-                  <option value={-1}>Choose correct option…</option>
+              <div className="glass-panel space-y-4 rounded-xl p-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <TagSelect label="Class" options={classes} value={customDraft.class} onChange={(v) => setCustomDraft((prev) => ({ ...prev, class: v, subject: '', topic: '' }))} />
+                  <TagSelect label="Subject" options={customDraft.class ? customSubjects : subjects} value={customDraft.subject} onChange={(v) => setCustomDraft((prev) => ({ ...prev, subject: v, topic: '' }))} disabled={!customDraft.class} emptyHint="Pick a class first" />
+                  <TagSelect label="Topic" options={customTopics} value={customDraft.topic} onChange={(v) => setCustomDraft((prev) => ({ ...prev, topic: v }))} disabled={!customDraft.class || !customDraft.subject} emptyHint="Pick class and subject first" />
+                </div>
+                <div className="space-y-2"><Label>Question</Label><Textarea value={customDraft.question} onChange={(event) => setCustomDraft((prev) => ({ ...prev, question: event.target.value }))} /></div>
+                <div className="space-y-2"><Label>Question — हिंदी <span className="font-normal text-gray-400">(optional)</span></Label><Textarea value={customDraft.questionHindi} placeholder="प्रश्न (वैकल्पिक)" onChange={(event) => setCustomDraft((prev) => ({ ...prev, questionHindi: event.target.value }))} /></div>
+                <div className="space-y-2">
+                  <Label>Options <span className="font-normal text-gray-400">(Hindi optional)</span></Label>
                   {customDraft.options.map((opt, idx) => (
-                    <option key={idx} value={idx}>{LETTERS[idx]}{opt ? ` — ${opt}` : ''}</option>
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-center text-sm font-semibold text-blue-700">{LETTERS[idx]}</span>
+                      <Input
+                        value={opt}
+                        placeholder={`Option ${LETTERS[idx]}`}
+                        onChange={(event) => setCustomDraft((prev) => {
+                          const options = [...prev.options];
+                          options[idx] = event.target.value;
+                          return { ...prev, options };
+                        })}
+                      />
+                      <Input
+                        value={customDraft.optionsHindi[idx]}
+                        placeholder={`विकल्प ${LETTERS[idx]} (हिंदी)`}
+                        onChange={(event) => setCustomDraft((prev) => {
+                          const optionsHindi = [...prev.optionsHindi];
+                          optionsHindi[idx] = event.target.value;
+                          return { ...prev, optionsHindi };
+                        })}
+                      />
+                    </div>
                   ))}
-                </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Correct Answer</Label>
+                  <select
+                    value={customDraft.correctIndex}
+                    onChange={(event) => setCustomDraft((prev) => ({ ...prev, correctIndex: Number(event.target.value) }))}
+                    className="w-full rounded-md border border-input bg-white p-2 text-sm"
+                  >
+                    <option value={-1}>Choose correct option…</option>
+                    {customDraft.options.map((opt, idx) => (
+                      <option key={idx} value={idx}>{LETTERS[idx]}{opt ? ` — ${opt}` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2"><Label>Hint (optional)</Label><Input value={customDraft.hintText} onChange={(event) => setCustomDraft((prev) => ({ ...prev, hintText: event.target.value }))} /></div>
               </div>
-              <div><Label>Hint (optional)</Label><Input value={customDraft.hintText} onChange={(event) => setCustomDraft((prev) => ({ ...prev, hintText: event.target.value }))} /></div>
-              <Button onClick={saveCustomQuestion} disabled={saving}>
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              <Button onClick={saveCustomQuestion} disabled={saving} className="w-full gap-2 sm:w-auto">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 Save &amp; add to quiz
               </Button>
             </div>
           ) : isMcq ? (
             /* Class -> Subject -> Topic -> Question tree */
             <div className="space-y-4">
-              {/* Breadcrumb */}
-              <div className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
-                <button onClick={() => { setMcqStep('class'); setSelectedClassName(''); setSelectedSubject(''); setSelectedTopic(''); }} className="hover:text-blue-600">Classes</button>
-                {selectedClassName && (<><ChevronRight className="h-4 w-4" /><button onClick={() => handleClassSelect(selectedClassName)} className="hover:text-blue-600">Class {selectedClassName}</button></>)}
-                {selectedSubject && (<><ChevronRight className="h-4 w-4" /><button onClick={() => handleSubjectSelect(selectedSubject)} className="hover:text-blue-600">{selectedSubject}</button></>)}
-                {selectedTopic && (<><ChevronRight className="h-4 w-4" /><span className="text-gray-900">{selectedTopic}</span></>)}
+              {/* Step indicator */}
+              <div className="flex items-center gap-1.5">
+                {(['class', 'subject', 'topic', 'questions'] as McqStep[]).map((step, idx) => {
+                  const stepOrder: McqStep[] = ['class', 'subject', 'topic', 'questions'];
+                  const currentIdx = stepOrder.indexOf(mcqStep);
+                  const isDone = idx < currentIdx;
+                  const isActive = idx === currentIdx;
+                  return (
+                    <div key={step} className="flex flex-1 items-center gap-1.5">
+                      <div className={`h-1.5 flex-1 rounded-full transition-colors ${isDone || isActive ? 'bg-blue-600' : 'bg-gray-200'}`} />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {/* Breadcrumb */}
+                <div className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+                  <button onClick={() => { setMcqStep('class'); setSelectedClassName(''); setSelectedSubject(''); setSelectedTopic(''); }} className="rounded px-1.5 py-0.5 font-medium hover:bg-blue-50 hover:text-blue-600">Classes</button>
+                  {selectedClassName && (<><ChevronRight className="h-3.5 w-3.5" /><button onClick={() => handleClassSelect(selectedClassName)} className="rounded px-1.5 py-0.5 font-medium hover:bg-blue-50 hover:text-blue-600">Class {selectedClassName}</button></>)}
+                  {selectedSubject && (<><ChevronRight className="h-3.5 w-3.5" /><button onClick={() => handleSubjectSelect(selectedSubject)} className="rounded px-1.5 py-0.5 font-medium hover:bg-blue-50 hover:text-blue-600">{selectedSubject}</button></>)}
+                  {selectedTopic && (<><ChevronRight className="h-3.5 w-3.5" /><span className="rounded bg-blue-50 px-1.5 py-0.5 font-medium text-blue-700">{selectedTopic}</span></>)}
+                </div>
+
+                {mcqStep !== 'class' && (
+                  <Button size="sm" variant="ghost" onClick={mcqBack} className="h-8 px-2">
+                    <ArrowLeft className="mr-1 h-4 w-4" /> Back
+                  </Button>
+                )}
               </div>
 
-              {mcqStep !== 'class' && (
-                <Button size="sm" variant="ghost" onClick={mcqBack} className="h-8 px-2">
-                  <ArrowLeft className="mr-1 h-4 w-4" /> Back
-                </Button>
-              )}
-
               {loadingChoices ? (
-                <div className="py-12 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin" /></div>
+                <div className="py-12 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-600" /></div>
               ) : mcqStep === 'class' ? (
                 classes.length === 0 ? <p className="py-8 text-center text-muted-foreground">No classes in the question bank yet.</p> : (
                   <div className="grid gap-2 sm:grid-cols-2">
                     {classes.map((className) => (
-                      <button key={className} onClick={() => handleClassSelect(className)} className="flex items-center justify-between rounded-md border bg-white p-3 text-left hover:bg-blue-50">
+                      <button key={className} onClick={() => handleClassSelect(className)} className="flex items-center justify-between rounded-lg border border-white/60 bg-white/70 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/70">
                         <span className="flex items-center gap-2 font-medium"><FolderOpen className="h-4 w-4 text-blue-600" />Class {className}</span>
                         <ChevronRight className="h-4 w-4 text-gray-400" />
                       </button>
@@ -768,7 +847,7 @@ const CreateQuizNewFixed: React.FC = () => {
                 subjects.length === 0 ? <p className="py-8 text-center text-muted-foreground">No subjects found for Class {selectedClassName}.</p> : (
                   <div className="grid gap-2 sm:grid-cols-2">
                     {subjects.map((subject) => (
-                      <button key={subject} onClick={() => handleSubjectSelect(subject)} className="flex items-center justify-between rounded-md border bg-white p-3 text-left hover:bg-blue-50">
+                      <button key={subject} onClick={() => handleSubjectSelect(subject)} className="flex items-center justify-between rounded-lg border border-white/60 bg-white/70 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/70">
                         <span className="flex items-center gap-2 font-medium"><FolderOpen className="h-4 w-4 text-blue-600" />{subject}</span>
                         <ChevronRight className="h-4 w-4 text-gray-400" />
                       </button>
@@ -779,7 +858,7 @@ const CreateQuizNewFixed: React.FC = () => {
                 topics.length === 0 ? <p className="py-8 text-center text-muted-foreground">No topics found for {selectedSubject}.</p> : (
                   <div className="grid gap-2 sm:grid-cols-2">
                     {topics.map((topic) => (
-                      <button key={topic} onClick={() => handleTopicSelect(topic)} className="flex items-center justify-between rounded-md border bg-white p-3 text-left hover:bg-blue-50">
+                      <button key={topic} onClick={() => handleTopicSelect(topic)} className="flex items-center justify-between rounded-lg border border-white/60 bg-white/70 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/70">
                         <span className="font-medium">{topic}</span>
                         <ChevronRight className="h-4 w-4 text-gray-400" />
                       </button>
@@ -793,11 +872,11 @@ const CreateQuizNewFixed: React.FC = () => {
                     <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search within this topic..." className="pl-10" />
                   </div>
                   {filteredChoices.length === 0 ? (
-                    <p className="py-8 text-center text-muted-foreground">No questions in this topic. Use “Add custom question”.</p>
+                    <p className="py-8 text-center text-muted-foreground">No questions in this topic. Use "Add custom question".</p>
                   ) : (
                     <div className="space-y-2">
                       {filteredChoices.slice(0, 300).map((choice) => (
-                        <button key={choice._id} onClick={() => selectChoice(choice)} className="w-full rounded-md border bg-white p-3 text-left hover:bg-blue-50">
+                        <button key={choice._id} onClick={() => selectChoice(choice)} className="w-full rounded-lg border border-white/60 bg-white/70 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/70">
                           <p className="font-medium">{renderChoiceText(choice, 'Question')}</p>
                           <p className="mt-1 text-xs text-muted-foreground">
                             {[choice.subject, choice.class ? `Class ${choice.class}` : '', choice.topic].filter(Boolean).join(' | ')}
@@ -817,13 +896,13 @@ const CreateQuizNewFixed: React.FC = () => {
                 <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search questions..." className="pl-10" />
               </div>
               {loadingChoices ? (
-                <div className="py-12 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin" /></div>
+                <div className="py-12 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-600" /></div>
               ) : filteredChoices.length === 0 ? (
                 <p className="py-8 text-center text-muted-foreground">No questions found.</p>
               ) : (
                 <div className="space-y-2">
                   {filteredChoices.slice(0, 200).map((choice) => (
-                    <button key={choice._id} onClick={() => selectChoice(choice)} className="w-full rounded-md border bg-white p-3 text-left hover:bg-blue-50">
+                    <button key={choice._id} onClick={() => selectChoice(choice)} className="w-full rounded-lg border border-white/60 bg-white/70 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/70">
                       <p className="font-medium">{renderChoiceText(choice, 'Question')}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {[choice.subject, choice.class ? `Class ${choice.class}` : '', choice.topic].filter(Boolean).join(' | ')}
