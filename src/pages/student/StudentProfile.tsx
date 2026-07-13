@@ -33,6 +33,7 @@ import {
 } from 'recharts';
 import {
   User,
+  Users,
   BookOpen,
   Award,
   TrendingUp,
@@ -55,6 +56,8 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 interface QuizAttempt {
   quizId: string;
+  attemptMode?: 'quiz' | 'group';
+  groupAttemptId?: string;
   answers: {
     questionId: string;
     selectedAnswer: string;
@@ -93,6 +96,7 @@ interface StudentData {
 interface StudentSummary {
   totals: {
     totalQuizzes: number;
+    totalGroupQuizzes?: number;
     totalAdaptiveTests: number;
     overallAccuracy: number;
     combinedCorrect: number;
@@ -101,6 +105,7 @@ interface StudentSummary {
   adaptiveRating?: StudentData['adaptiveRating'] | null;
   quizHistory: {
     quizId: string;
+    attemptMode?: 'quiz' | 'group';
     correct: number;
     incorrect: number;
     unattempted: number;
@@ -311,32 +316,38 @@ const StudentProfile: React.FC = () => {
   // Calculate average score
   const calculateAverageScore = (): number => {
     if (!student?.quizAttempted || student.quizAttempted.length === 0) return 0;
-    
-    const totalCorrect = student.quizAttempted.reduce((sum, quiz) => sum + quiz.score.correct, 0);
-    const totalQuestions = student.quizAttempted.reduce(
-      (sum, quiz) => sum + quiz.score.correct + quiz.score.incorrect + quiz.score.unattempted,
-      0
-    );
-    
-    return totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+
+    const percentages = student.quizAttempted
+      .map((quiz) => {
+        const total = (quiz.score?.correct || 0) + (quiz.score?.incorrect || 0) + (quiz.score?.unattempted || 0);
+        return total > 0 ? ((quiz.score?.correct || 0) / total) * 100 : null;
+      })
+      .filter((score): score is number => typeof score === 'number');
+
+    return percentages.length > 0
+      ? Math.round(percentages.reduce((sum, score) => sum + score, 0) / percentages.length)
+      : 0;
   };
 
   // Calculate total quizzes attempted
   const getTotalQuizzes = (): number => {
-    return student?.quizAttempted?.length || 0;
+    return student?.quizAttempted?.filter((quiz) => quiz.attemptMode !== 'group').length || 0;
   };
 
-  // Calculate subject proficiency (placeholder for future enhancement)
+  const getTotalGroupQuizzes = (): number => {
+    return student?.quizAttempted?.filter((quiz) => quiz.attemptMode === 'group').length || 0;
+  };
+
   const getSubjectProficiency = () => {
-    if (!student?.quizAttempted || student.quizAttempted.length === 0) {
+    const adaptiveTotal = summary?.totals.combinedTotal || 0;
+    if ((!student?.quizAttempted || student.quizAttempted.length === 0) && adaptiveTotal === 0) {
       return { subject: 'N/A', score: 0 };
     }
-    
-    // Placeholder - In future, group by subject from quiz data
-    const avgScore = calculateAverageScore();
+
+    const score = summary?.totals.overallAccuracy ?? calculateAverageScore();
     return {
-      subject: 'Overall Performance',
-      score: avgScore
+      subject: 'Overall Progress',
+      score
     };
   };
 
@@ -441,6 +452,7 @@ const StudentProfile: React.FC = () => {
 
   const averageScore = calculateAverageScore();
   const totalQuizzes = getTotalQuizzes();
+  const totalGroupQuizzes = getTotalGroupQuizzes();
   const subjectProficiency = getSubjectProficiency();
   const consistency = getConsistency();
   const focusLevel = getFocusLevel();
@@ -453,7 +465,7 @@ const StudentProfile: React.FC = () => {
     label: point.label || (point.source === 'quiz' ? 'Quiz' : 'Adaptive Test'),
   }));
   const completionStats = getCompletionStats();
-  const totalActivities = (summary?.totals.totalQuizzes || 0) + (summary?.totals.totalAdaptiveTests || 0);
+  const totalActivities = (summary?.totals.totalQuizzes || 0) + (summary?.totals.totalGroupQuizzes || 0) + (summary?.totals.totalAdaptiveTests || 0);
   const overallAccuracy = summary?.totals.overallAccuracy ?? averageScore;
   const topWeakTopics = (summary?.weakTopics || []).slice(0, 3).map((item) => item.topic);
   const trendDelta =
@@ -595,7 +607,7 @@ const StudentProfile: React.FC = () => {
           </div>
 
           {/* Performance Metrics */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
             {/* Average Score */}
             <Card className="bg-gradient-to-br from-edu-blue to-blue-600 text-white">
               <CardHeader>
@@ -625,6 +637,21 @@ const StudentProfile: React.FC = () => {
                 <p className="text-4xl font-bold mb-2">{totalQuizzes}</p>
                 <p className="text-sm text-green-100">
                   {totalQuizzes > 0 ? 'Keep up the practice!' : 'Start practicing today!'}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-cyan-600 to-teal-600 text-white">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-white">Group Quiz</CardTitle>
+                  <Users className="h-6 w-6" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-4xl font-bold mb-2">{totalGroupQuizzes}</p>
+                <p className="text-sm text-cyan-100">
+                  {totalGroupQuizzes > 0 ? 'Collaborative attempts completed' : 'No group quiz yet'}
                 </p>
               </CardContent>
             </Card>
@@ -908,6 +935,7 @@ const StudentProfile: React.FC = () => {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Quiz ID</TableHead>
+                            <TableHead>Type</TableHead>
                             <TableHead>Correct</TableHead>
                             <TableHead>Incorrect</TableHead>
                             <TableHead>Unattempted</TableHead>
@@ -919,6 +947,7 @@ const StudentProfile: React.FC = () => {
                           {summary?.quizHistory.map((quiz, index) => (
                             <TableRow key={`${quiz.quizId}-${index}`}>
                               <TableCell className="font-medium">{quiz.quizId}</TableCell>
+                              <TableCell>{quiz.attemptMode === 'group' ? 'Group Quiz' : 'Quiz'}</TableCell>
                               <TableCell className="text-green-700">{quiz.correct}</TableCell>
                               <TableCell className="text-red-600">{quiz.incorrect}</TableCell>
                               <TableCell className="text-gray-600">{quiz.unattempted}</TableCell>

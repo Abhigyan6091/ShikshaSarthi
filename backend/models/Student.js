@@ -22,6 +22,12 @@ const studentSchema = new mongoose.Schema({
   quizAttempted: [
     {
       quizId: { type: String, ref: "Quiz" },
+      attemptMode: {
+        type: String,
+        enum: ["quiz", "group"],
+        default: "quiz",
+      },
+      groupAttemptId: String,
       answers: [
         {
           questionId: { type: String, ref: "Question" },

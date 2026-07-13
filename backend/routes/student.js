@@ -111,6 +111,7 @@ router.get("/:id/summary", async (req, res) => {
       const total = correct + incorrect + unattempted;
       return {
         quizId: q.quizId,
+        attemptMode: q.attemptMode === "group" ? "group" : "quiz",
         correct,
         incorrect,
         unattempted,
@@ -140,7 +141,8 @@ router.get("/:id/summary", async (req, res) => {
     });
 
     // Totals / overall accuracy
-    const totalQuizzes = quizHistory.length;
+    const totalQuizzes = quizHistory.filter((q) => q.attemptMode !== "group").length;
+    const totalGroupQuizzes = quizHistory.filter((q) => q.attemptMode === "group").length;
     const totalAdaptiveTests = adaptiveHistory.length;
 
     const combinedCorrect =
@@ -205,6 +207,7 @@ router.get("/:id/summary", async (req, res) => {
       studentId: student.studentId,
       totals: {
         totalQuizzes,
+        totalGroupQuizzes,
         totalAdaptiveTests,
         overallAccuracy,
         combinedCorrect,

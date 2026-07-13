@@ -49,6 +49,8 @@ const serializeDraftFromStudentReport = (reportDoc) => ({
   updatedAt: reportDoc.updatedAt,
 });
 
+const SKIPPED_ANSWER = "__SKIPPED__";
+
 async function getStudentClassContext(studentId) {
   const student = await Student.findOne({ studentId }).lean();
   if (!student) return { classIds: [], joinedAtByClassId: new Map() };
@@ -1010,6 +1012,31 @@ router.post("/submit-advanced", async (req, res) => {
       }).save();
     }
 
+    if (student) {
+      const attemptedEntry = {
+        quizId,
+        attemptMode: quiz.mode === "group" ? "group" : "quiz",
+        answers: normalizedAnswers.map((answer) => ({
+          questionId: answer.questionId,
+          selectedAnswer: answer.selectedAnswer || "",
+          isCorrect: Boolean(answer.isCorrect),
+        })),
+        score: {
+          correct: score.correct,
+          incorrect: score.incorrect,
+          unattempted: score.unattempted,
+        },
+        attemptedAt: new Date(completedAt || Date.now()),
+      };
+      const existingAttemptIndex = student.quizAttempted.findIndex((attempt) => attempt.quizId === quizId);
+      if (existingAttemptIndex >= 0) {
+        student.quizAttempted[existingAttemptIndex] = attemptedEntry;
+      } else {
+        student.quizAttempted.push(attemptedEntry);
+      }
+      await student.save();
+    }
+
     // Also save puzzle results to PuzzleResult collection for puzzle history tracking
     const PuzzleResult = require("../models/PuzzleResult");
     const puzzleAnswers = answers.filter(ans => ans.questionType === 'puzzle' && ans.puzzleData);
@@ -1181,8 +1208,10 @@ router.post("/submit-group", async (req, res) => {
       const reportAnswers = groupQuestions.map((question) => {
         const questionId = String(question?._id || question?.questionId || "").trim();
         const correctAnswer = String(question?.correctAnswer || "").trim();
-        const selectedAnswer = submittedAnswers?.[student.studentId]?.[questionId] || null;
-        const answered = selectedAnswer !== null && selectedAnswer !== undefined && String(selectedAnswer).trim() !== "";
+        const rawSelectedAnswer = submittedAnswers?.[student.studentId]?.[questionId] || null;
+        const skipped = rawSelectedAnswer === SKIPPED_ANSWER;
+        const selectedAnswer = skipped ? null : rawSelectedAnswer;
+        const answered = !skipped && selectedAnswer !== null && selectedAnswer !== undefined && String(selectedAnswer).trim() !== "";
         const isCorrect = answered && String(selectedAnswer) === correctAnswer;
 
         if (!answered) unattempted += 1;
@@ -1213,6 +1242,26 @@ router.post("/submit-group", async (req, res) => {
         timeTaken: Number(timeTaken) || 0,
         answers: reportAnswers,
       }).save();
+
+      await Student.findOneAndUpdate(
+        { studentId: student.studentId },
+        {
+          $push: {
+            quizAttempted: {
+              quizId: normalizedQuizId,
+              attemptMode: "group",
+              groupAttemptId,
+              answers: reportAnswers.map((answer) => ({
+                questionId: answer.questionId,
+                selectedAnswer: answer.selectedAnswer || "",
+                isCorrect: answer.isCorrect,
+              })),
+              score: { correct, incorrect, unattempted },
+              attemptedAt: new Date(),
+            },
+          },
+        }
+      );
 
       reports.push(report);
     }

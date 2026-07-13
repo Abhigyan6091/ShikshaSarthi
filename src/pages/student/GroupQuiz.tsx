@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { ArrowLeft, CheckCircle2, ChevronLeft, ChevronRight, Loader2, Trophy, Users } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Languages, Lightbulb, Loader2, SkipForward, Trophy, Users } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -25,8 +25,11 @@ interface Student {
 interface Question {
   _id: string;
   question: string;
+  questionHindi?: string;
   options: string[];
+  optionsHindi?: string[];
   correctAnswer: string;
+  hint?: { text?: string };
   topic?: string;
   subject?: string;
 }
@@ -40,10 +43,11 @@ interface Quiz {
 }
 
 const studentColors = [
-  { bg: "bg-blue-500", soft: "bg-blue-50", text: "text-blue-700" },
-  { bg: "bg-emerald-500", soft: "bg-emerald-50", text: "text-emerald-700" },
-  { bg: "bg-orange-500", soft: "bg-orange-50", text: "text-orange-700" },
+  { bg: "bg-blue-500", soft: "bg-blue-50", text: "text-blue-700", border: "border-blue-500", ring: "ring-blue-200" },
+  { bg: "bg-emerald-500", soft: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-500", ring: "ring-emerald-200" },
+  { bg: "bg-orange-500", soft: "bg-orange-50", text: "text-orange-700", border: "border-orange-500", ring: "ring-orange-200" },
 ];
+const SKIPPED_ANSWER = "__SKIPPED__";
 
 const normalizeQuestion = (raw: any): Question | null => {
   if (!raw || typeof raw === "string") return null;
@@ -55,8 +59,11 @@ const normalizeQuestion = (raw: any): Question | null => {
   return {
     _id: id,
     question,
+    questionHindi: raw.questionHindi,
     options,
+    optionsHindi: Array.isArray(raw.optionsHindi) ? raw.optionsHindi.filter(Boolean).map(String) : [],
     correctAnswer,
+    hint: typeof raw.hint === "string" ? { text: raw.hint } : raw.hint,
     topic: raw.topic,
     subject: raw.subject,
   };
@@ -72,24 +79,37 @@ const GroupQuiz: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, Record<string, string>>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [activeStudentId, setActiveStudentId] = useState("");
+  const [language, setLanguage] = useState(() => localStorage.getItem("appLanguage") || "hi");
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
   const currentQuestion = questions[currentIndex];
+  const activeStudentIndex = students.findIndex((student) => student.studentId === activeStudentId);
+  const activeStudent = activeStudentIndex >= 0 ? students[activeStudentIndex] : null;
 
   useEffect(() => {
     const incomingQuizId = searchParams.get("quizId");
     if (incomingQuizId) setQuizId(incomingQuizId);
   }, [searchParams]);
 
+  useEffect(() => {
+    if (!activeStudentId && students.length > 0) {
+      setActiveStudentId(students[0].studentId);
+    }
+  }, [activeStudentId, students]);
+
   const scores = useMemo(() => {
     return students.map((student, index) => {
       const correct = questions.reduce((sum, question) => {
         return sum + (answers[question._id]?.[student.studentId] === question.correctAnswer ? 1 : 0);
       }, 0);
-      const attempted = questions.reduce((sum, question) => sum + (answers[question._id]?.[student.studentId] ? 1 : 0), 0);
+      const attempted = questions.reduce((sum, question) => {
+        const answer = answers[question._id]?.[student.studentId];
+        return sum + (answer && answer !== SKIPPED_ANSWER ? 1 : 0);
+      }, 0);
       return {
         student,
         color: studentColors[index],
@@ -120,6 +140,7 @@ const GroupQuiz: React.FC = () => {
       setLoading(true);
       const responses = await Promise.all(ids.map((id) => axios.get(`${API_URL}/students/${encodeURIComponent(id)}`)));
       setStudents(responses.map((res) => res.data));
+      setActiveStudentId(responses[0]?.data?.studentId || "");
       setStep("quiz");
     } catch (error) {
       toast({
@@ -204,6 +225,7 @@ const GroupQuiz: React.FC = () => {
       setQuestions(questionDocs);
       setAnswers({});
       setCurrentIndex(0);
+      setActiveStudentId(students[0]?.studentId || "");
       setStartedAt(Date.now());
       setStep("playing");
     } catch (error) {
@@ -213,13 +235,28 @@ const GroupQuiz: React.FC = () => {
     }
   };
 
-  const chooseOption = (studentId: string, option: string) => {
+  const chooseOption = (option: string) => {
     if (!currentQuestion) return;
+    if (!activeStudentId) {
+      toast({ title: "Select a student first", variant: "destructive" });
+      return;
+    }
     setAnswers((prev) => ({
       ...prev,
       [currentQuestion._id]: {
         ...(prev[currentQuestion._id] || {}),
-        [studentId]: option,
+        [activeStudentId]: option,
+      },
+    }));
+  };
+
+  const skipForActiveStudent = () => {
+    if (!currentQuestion || !activeStudentId) return;
+    setAnswers((prev) => ({
+      ...prev,
+      [currentQuestion._id]: {
+        ...(prev[currentQuestion._id] || {}),
+        [activeStudentId]: SKIPPED_ANSWER,
       },
     }));
   };
@@ -274,6 +311,7 @@ const GroupQuiz: React.FC = () => {
     setQuestions([]);
     setAnswers({});
     setCurrentIndex(0);
+    setActiveStudentId("");
     setStartedAt(null);
   };
 
@@ -281,6 +319,32 @@ const GroupQuiz: React.FC = () => {
     students
       .map((student, index) => ({ student, color: studentColors[index] }))
       .filter(({ student }) => answers[currentQuestion?._id || ""]?.[student.studentId] === option);
+
+  const selectedLabel = (selected: string) => {
+    if (!currentQuestion || !selected) return "";
+    if (selected === SKIPPED_ANSWER) return "Skipped";
+    const selectedIndex = currentQuestion.options.findIndex((option) => option === selected);
+    return selectedIndex >= 0 ? displayOptions[selectedIndex] || selected : selected;
+  };
+
+  const switchLanguage = () => {
+    const next = language === "hi" ? "en" : "hi";
+    setLanguage(next);
+    localStorage.setItem("appLanguage", next);
+    window.dispatchEvent(new CustomEvent("appLanguageChanged", { detail: { language: next } }));
+  };
+
+  const isHindi = language === "hi";
+  const questionText = currentQuestion
+    ? isHindi
+      ? currentQuestion.questionHindi || currentQuestion.question
+      : currentQuestion.question
+    : "";
+  const displayOptions =
+    currentQuestion && isHindi && currentQuestion.optionsHindi?.length === currentQuestion.options.length
+      ? currentQuestion.optionsHindi
+      : currentQuestion?.options || [];
+  const selectedByActive = currentQuestion && activeStudentId ? answers[currentQuestion._id]?.[activeStudentId] : "";
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -378,19 +442,41 @@ const GroupQuiz: React.FC = () => {
                         {currentQuestion.topic ? ` · ${currentQuestion.topic}` : ""}
                       </CardDescription>
                     </div>
-                    <Badge variant="outline">MSQ view · one correct answer</Badge>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={switchLanguage} className="gap-1">
+                        <Languages className="h-4 w-4" /> {isHindi ? "English" : "हिंदी"}
+                      </Button>
+                      <Badge variant="outline">MSQ view · one correct answer</Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  <p className="text-lg font-semibold leading-8 text-gray-900">{currentQuestion.question}</p>
+                  <p className="text-lg font-semibold leading-8 text-gray-900">{questionText}</p>
+                  {currentQuestion.hint?.text && (
+                    <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                      <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>{currentQuestion.hint.text}</span>
+                    </div>
+                  )}
                   <div className="space-y-3">
                     {currentQuestion.options.map((option, optionIndex) => {
                       const markers = optionMarkers(option);
+                      const displayOption = displayOptions[optionIndex] || option;
+                      const activeSelected = selectedByActive === option;
                       return (
-                        <div key={`${currentQuestion._id}-${optionIndex}`} className="rounded-lg border bg-white p-4">
-                          <div className="mb-3 flex items-start justify-between gap-3">
+                        <button
+                          key={`${currentQuestion._id}-${optionIndex}`}
+                          type="button"
+                          onClick={() => chooseOption(option)}
+                          className={`w-full rounded-lg border bg-white p-4 text-left transition hover:border-blue-300 hover:bg-blue-50/40 ${
+                            activeSelected && activeStudentIndex >= 0
+                              ? `${studentColors[activeStudentIndex].border} ${studentColors[activeStudentIndex].soft} ring-2 ${studentColors[activeStudentIndex].ring}`
+                              : ""
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
                             <p className="font-medium text-gray-900">
-                              {String.fromCharCode(65 + optionIndex)}. {option}
+                              {String.fromCharCode(65 + optionIndex)}. {displayOption}
                             </p>
                             <div className="flex -space-x-1">
                               {markers.map(({ student, color }) => (
@@ -404,29 +490,7 @@ const GroupQuiz: React.FC = () => {
                               ))}
                             </div>
                           </div>
-                          <div className="grid gap-2 sm:grid-cols-3">
-                            {students.map((student, studentIndex) => {
-                              const color = studentColors[studentIndex];
-                              const selected = answers[currentQuestion._id]?.[student.studentId] === option;
-                              return (
-                                <Button
-                                  key={student.studentId}
-                                  type="button"
-                                  variant={selected ? "default" : "outline"}
-                                  className={
-                                    selected
-                                      ? `${color.bg} hover:opacity-90`
-                                      : `${color.text} border-gray-200 hover:bg-gray-50`
-                                  }
-                                  onClick={() => chooseOption(student.studentId, option)}
-                                >
-                                  {selected && <CheckCircle2 className="mr-2 h-4 w-4" />}
-                                  {student.name}
-                                </Button>
-                              );
-                            })}
-                          </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -452,24 +516,60 @@ const GroupQuiz: React.FC = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Live Marks</CardTitle>
-                  <CardDescription>Selections are scored separately for each student.</CardDescription>
+                  <CardTitle>Student Selector</CardTitle>
+                  <CardDescription>Click a student name first, then click an option on the left.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {scores.map((score) => (
-                    <div key={score.student.studentId} className={`rounded-lg border p-3 ${score.color.soft}`}>
-                      <div className="mb-2 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className={`h-3 w-3 rounded-full ${score.color.bg}`} />
-                          <p className={`font-semibold ${score.color.text}`}>{score.student.name}</p>
-                        </div>
-                        <span className="font-bold text-gray-900">
-                          {score.correct}/{score.total}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500">{score.attempted} answered</p>
+                  <div className="rounded-lg border bg-slate-50 p-3 text-sm text-slate-700">
+                    <p className="font-semibold text-slate-900">Labels</p>
+                    <p className="mt-1">1. Select student</p>
+                    <p>2. Select option</p>
+                    <p>3. Use Skip if the selected student does not want to answer.</p>
+                  </div>
+                  <div className="space-y-2">
+                    {students.map((student, index) => {
+                      const color = studentColors[index];
+                      const active = activeStudentId === student.studentId;
+                      const selected = currentQuestion ? answers[currentQuestion._id]?.[student.studentId] : "";
+                      return (
+                        <button
+                          key={student.studentId}
+                          type="button"
+                          onClick={() => setActiveStudentId(student.studentId)}
+                          className={`w-full rounded-lg border p-3 text-left transition ${
+                            active ? `${color.border} ${color.soft} ring-2 ${color.ring}` : "border-gray-200 bg-white hover:bg-gray-50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={`h-3 w-3 rounded-full ${color.bg}`} />
+                            <p className={`font-semibold ${color.text}`}>{student.name}</p>
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500">{student.studentId}</p>
+                          <p className="mt-2 text-xs font-medium text-gray-700">
+                            {selected ? `Selected: ${selectedLabel(selected)}` : "No answer selected"}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Button type="button" variant="outline" className="w-full gap-2" disabled={!activeStudent} onClick={skipForActiveStudent}>
+                    <SkipForward className="h-4 w-4" />
+                    Skip for {activeStudent?.name || "student"}
+                  </Button>
+                  <div className="rounded-lg border bg-white p-3">
+                    <p className="text-sm font-semibold text-gray-900">Progress</p>
+                    <div className="mt-2 space-y-1">
+                      {students.map((student, index) => {
+                        const answered = questions.filter((question) => answers[question._id]?.[student.studentId] !== undefined).length;
+                        return (
+                          <div key={student.studentId} className="flex items-center justify-between text-xs text-gray-600">
+                            <span className={studentColors[index].text}>{student.name}</span>
+                            <span>{answered}/{questions.length}</span>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
+                  </div>
                 </CardContent>
               </Card>
             </div>
