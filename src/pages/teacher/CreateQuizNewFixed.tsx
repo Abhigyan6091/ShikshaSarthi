@@ -18,6 +18,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 const LETTERS = ['A', 'B', 'C', 'D'];
 
 type SlotType = 'mcq' | 'audio' | 'video' | 'puzzle';
+type QuizMode = 'quiz' | 'group';
 type CountField = 'timeLimit' | 'mcqCount' | 'audioCount' | 'videoCount' | 'puzzleCount';
 type ApiRecord = Record<string, unknown>;
 type McqStep = 'class' | 'subject' | 'topic' | 'questions';
@@ -107,6 +108,7 @@ const emptyCustom = {
 const CreateQuizNewFixed: React.FC = () => {
   const { toast } = useToast();
   const [language, setLanguage] = useState(() => localStorage.getItem('appLanguage') || 'hi');
+  const [quizMode, setQuizMode] = useState<QuizMode>('quiz');
   const [config, setConfig] = useState({
     quizId: '',
     timeLimit: 60,
@@ -146,6 +148,11 @@ const CreateQuizNewFixed: React.FC = () => {
     isHindi ? cleanText(hindi) || cleanText(english) || fallback : cleanText(english) || cleanText(hindi) || fallback;
   const getSecondaryText = (english?: unknown, hindi?: unknown) =>
     isHindi ? cleanText(english) : cleanText(hindi);
+
+  useEffect(() => {
+    if (quizMode !== 'group') return;
+    setConfig((prev) => ({ ...prev, audioCount: 0, videoCount: 0, puzzleCount: 0 }));
+  }, [quizMode]);
 
   useEffect(() => {
     const handleLanguageChange = (event: Event) => {
@@ -502,6 +509,7 @@ const CreateQuizNewFixed: React.FC = () => {
       await axios.post(`${API_URL}/quizzes/create`, {
         quizId: config.quizId.trim(),
         teacherId,
+        mode: quizMode,
         questions: questionIds,
         videoQuestionMetadata,
         timeLimit: config.timeLimit,
@@ -519,9 +527,10 @@ const CreateQuizNewFixed: React.FC = () => {
         startTime: config.startTime,
         endTime: config.endTime,
       });
-      toast({ title: 'Quiz created', description: `${config.quizId} was created successfully.` });
+      toast({ title: quizMode === 'group' ? 'Group quiz created' : 'Quiz created', description: `${config.quizId} was created successfully.` });
       setSlots([]);
       setConfig({ quizId: '', timeLimit: 60, mcqCount: 0, audioCount: 0, videoCount: 0, puzzleCount: 0, startTime: '', endTime: '' });
+      setQuizMode('quiz');
       setAudienceType('global');
       setSelectedClassIds([]);
     } catch (error: unknown) {
@@ -568,6 +577,22 @@ const CreateQuizNewFixed: React.FC = () => {
                   <Label>Quiz ID</Label>
                   <Input placeholder="e.g. science-week-4" value={config.quizId} onChange={(event) => setConfig((prev) => ({ ...prev, quizId: event.target.value }))} />
                 </div>
+                <div className="glass-panel space-y-3 rounded-xl p-3.5">
+                  <Label className="flex items-center gap-1.5"><Users className="h-4 w-4 text-muted-foreground" /> Quiz Mode</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" variant={quizMode === 'quiz' ? 'default' : 'outline'} onClick={() => setQuizMode('quiz')}>
+                      Quiz
+                    </Button>
+                    <Button type="button" variant={quizMode === 'group' ? 'default' : 'outline'} onClick={() => setQuizMode('group')}>
+                      Group Quiz
+                    </Button>
+                  </div>
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    {quizMode === 'group'
+                      ? 'Group quiz runs on one system with three registered students. Only MCQ slots are used and each student answers with a separate color.'
+                      : 'Quiz is attempted individually by each student.'}
+                  </p>
+                </div>
                 <div className="space-y-2">
                   <Label>Time Limit (minutes)</Label>
                   <Input type="number" value={config.timeLimit} onChange={(event) => updateCount('timeLimit', Number(event.target.value))} />
@@ -582,17 +607,20 @@ const CreateQuizNewFixed: React.FC = () => {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="flex items-center gap-1.5 text-xs font-medium text-purple-700"><Headphones className="h-3.5 w-3.5" /> Audio</Label>
-                      <Input type="number" value={config.audioCount} onChange={(event) => updateCount('audioCount', Number(event.target.value))} />
+                      <Input type="number" value={config.audioCount} disabled={quizMode === 'group'} onChange={(event) => updateCount('audioCount', Number(event.target.value))} />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="flex items-center gap-1.5 text-xs font-medium text-orange-700"><Video className="h-3.5 w-3.5" /> Video</Label>
-                      <Input type="number" value={config.videoCount} onChange={(event) => updateCount('videoCount', Number(event.target.value))} />
+                      <Input type="number" value={config.videoCount} disabled={quizMode === 'group'} onChange={(event) => updateCount('videoCount', Number(event.target.value))} />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="flex items-center gap-1.5 text-xs font-medium text-emerald-700"><Puzzle className="h-3.5 w-3.5" /> Puzzle</Label>
-                      <Input type="number" value={config.puzzleCount} onChange={(event) => updateCount('puzzleCount', Number(event.target.value))} />
+                      <Input type="number" value={config.puzzleCount} disabled={quizMode === 'group'} onChange={(event) => updateCount('puzzleCount', Number(event.target.value))} />
                     </div>
                   </div>
+                  {quizMode === 'group' && (
+                    <p className="text-xs text-muted-foreground">Group quiz supports MCQ questions only; they are shown in MSQ-style color selection during play.</p>
+                  )}
                   <div className="glass-pill mt-1 flex items-center justify-between rounded-lg px-3 py-2">
                     <span className="text-sm font-medium text-muted-foreground">Total questions</span>
                     <span className="text-lg font-bold text-gray-900">{totalQuestions}</span>
@@ -645,7 +673,7 @@ const CreateQuizNewFixed: React.FC = () => {
               <CardFooter>
                 <Button onClick={generateSlots} className="w-full gap-2">
                   <Plus className="h-4 w-4" />
-                  Create Slots
+                  Create {quizMode === 'group' ? 'Group Quiz' : 'Quiz'} Slots
                 </Button>
               </CardFooter>
             </Card>
@@ -703,7 +731,7 @@ const CreateQuizNewFixed: React.FC = () => {
                 <CardFooter>
                   <Button onClick={handleCreateQuiz} disabled={saving} className="w-full gap-2">
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    Create Quiz
+                    Create {quizMode === 'group' ? 'Group Quiz' : 'Quiz'}
                   </Button>
                 </CardFooter>
               )}

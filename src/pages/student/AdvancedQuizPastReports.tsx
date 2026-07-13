@@ -15,6 +15,8 @@ interface StudentReport {
   _id: string;
   quizId: string;
   studentId: string;
+  attemptMode?: 'quiz' | 'group';
+  groupAttemptId?: string;
   correct: number;
   incorrect: number;
   unattempted: number;
@@ -282,7 +284,9 @@ const AdvancedQuizPastReports: React.FC = () => {
                 <CardHeader className="pb-1 pt-3 px-3 sm:px-4">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1.5">
                     <div>
-                      <CardTitle className="text-base sm:text-lg mb-1">Quiz: {report.quizId}</CardTitle>
+                      <CardTitle className="text-base sm:text-lg mb-1">
+                        {report.attemptMode === 'group' ? 'Group Quiz' : 'Quiz'}: {report.quizId}
+                      </CardTitle>
                       <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-gray-600">
                         <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                         {formatReportDate(report.createdAt)}
@@ -305,6 +309,11 @@ const AdvancedQuizPastReports: React.FC = () => {
                     <div className="rounded-md bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700">
                       Score: {percentage.toFixed(1)}%
                     </div>
+                    {report.attemptMode === 'group' && (
+                      <div className="rounded-md bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700">
+                        Group Quiz
+                      </div>
+                    )}
                     <div className="rounded-md bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-700 flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       Time: {formatTime(report.timeTaken)}

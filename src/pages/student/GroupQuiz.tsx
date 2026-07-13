@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ interface Question {
 
 interface Quiz {
   quizId: string;
+  mode?: "quiz" | "group";
   questions: Array<string | Question>;
   totalQuestions?: number;
   timeLimit?: number;
@@ -62,18 +63,26 @@ const normalizeQuestion = (raw: any): Question | null => {
 };
 
 const GroupQuiz: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [step, setStep] = useState<Step>("students");
   const [studentIds, setStudentIds] = useState(["", "", ""]);
   const [students, setStudents] = useState<Student[]>([]);
-  const [quizId, setQuizId] = useState("");
+  const [quizId, setQuizId] = useState(() => searchParams.get("quizId") || "");
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, Record<string, string>>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
   const currentQuestion = questions[currentIndex];
+
+  useEffect(() => {
+    const incomingQuizId = searchParams.get("quizId");
+    if (incomingQuizId) setQuizId(incomingQuizId);
+  }, [searchParams]);
 
   const scores = useMemo(() => {
     return students.map((student, index) => {
@@ -153,6 +162,35 @@ const GroupQuiz: React.FC = () => {
       setLoading(true);
       const response = await axios.get(`${API_URL}/quizzes/by-id/${encodeURIComponent(trimmedQuizId)}`);
       const quizData = response.data as Quiz;
+      if ((quizData.mode || "quiz") !== "group") {
+        toast({
+          title: "Not a group quiz",
+          description: "This quiz was created as an individual quiz. Please use Take Quiz.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const alreadySubmitted = await Promise.all(
+        students.map(async (student) => {
+          try {
+            await axios.get(`${API_URL}/reports/student/${encodeURIComponent(student.studentId)}/quiz/${encodeURIComponent(trimmedQuizId)}`);
+            return student.studentId;
+          } catch (error: any) {
+            return error.response?.status === 404 ? null : student.studentId;
+          }
+        })
+      );
+      const submittedStudents = alreadySubmitted.filter(Boolean);
+      if (submittedStudents.length > 0) {
+        toast({
+          title: "Already submitted",
+          description: `This quiz is already completed for: ${submittedStudents.join(", ")}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       const questionDocs = await loadQuestionDocs(quizData.questions || []);
       if (questionDocs.length === 0) {
         toast({
@@ -166,6 +204,7 @@ const GroupQuiz: React.FC = () => {
       setQuestions(questionDocs);
       setAnswers({});
       setCurrentIndex(0);
+      setStartedAt(Date.now());
       setStep("playing");
     } catch (error) {
       toast({ title: "Quiz not found", description: "Please check the quiz ID.", variant: "destructive" });
@@ -185,8 +224,45 @@ const GroupQuiz: React.FC = () => {
     }));
   };
 
-  const finishQuiz = () => {
-    setStep("results");
+  const finishQuiz = async () => {
+    if (!quiz || questions.length === 0) return;
+    try {
+      setSubmitting(true);
+      const answersByStudent = students.reduce<Record<string, Record<string, string>>>((acc, student) => {
+        acc[student.studentId] = questions.reduce<Record<string, string>>((questionAcc, question) => {
+          questionAcc[question._id] = answers[question._id]?.[student.studentId] || "";
+          return questionAcc;
+        }, {});
+        return acc;
+      }, {});
+
+      await axios.post(`${API_URL}/quizzes/submit-group`, {
+        quizId: quiz.quizId,
+        students: students.map((student, index) => ({
+          studentId: student.studentId,
+          name: student.name,
+          color: studentColors[index].bg.replace("bg-", ""),
+        })),
+        questions: questions.map((question) => ({
+          _id: question._id,
+          question: question.question,
+          options: question.options,
+          correctAnswer: question.correctAnswer,
+        })),
+        answersByStudent,
+        timeTaken: startedAt ? Math.max(1, Math.round((Date.now() - startedAt) / 1000)) : 0,
+      });
+      toast({ title: "Group quiz submitted", description: "Marks were saved for all three students." });
+      setStep("results");
+    } catch (error: any) {
+      toast({
+        title: "Could not submit group quiz",
+        description: error.response?.data?.error || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const resetAll = () => {
@@ -198,6 +274,7 @@ const GroupQuiz: React.FC = () => {
     setQuestions([]);
     setAnswers({});
     setCurrentIndex(0);
+    setStartedAt(null);
   };
 
   const optionMarkers = (option: string) =>
@@ -231,7 +308,7 @@ const GroupQuiz: React.FC = () => {
                   <Users className="h-6 w-6 text-edu-purple" />
                   <CardTitle>Register Group Members</CardTitle>
                 </div>
-                <CardDescription>Enter three registered student IDs before starting the quiz.</CardDescription>
+                <CardDescription>Enter three registered student IDs. This group quiz runs on this one system.</CardDescription>
               </CardHeader>
               <form onSubmit={validateStudents}>
                 <CardContent className="grid gap-4 md:grid-cols-3">
@@ -262,7 +339,7 @@ const GroupQuiz: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Enter Quiz ID</CardTitle>
-                <CardDescription>All three students are verified. Now enter the teacher-provided quiz ID.</CardDescription>
+                <CardDescription>All three students are verified. Now enter the teacher-provided group quiz ID.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="mb-6 grid gap-3 md:grid-cols-3">
@@ -365,7 +442,10 @@ const GroupQuiz: React.FC = () => {
                       <ChevronRight className="ml-1 h-4 w-4" />
                     </Button>
                   ) : (
-                    <Button onClick={finishQuiz}>Finish Quiz</Button>
+                    <Button onClick={finishQuiz} disabled={submitting}>
+                      {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Finish Quiz
+                    </Button>
                   )}
                 </CardFooter>
               </Card>

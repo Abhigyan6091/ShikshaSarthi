@@ -71,6 +71,15 @@ import {
 import SubjectIcon from "@/components/SubjectIcon";
 import { getCurrentUser } from "@/lib/session";
 
+interface ActiveQuizNotification {
+  quizId: string;
+  mode?: "quiz" | "group";
+  totalQuestions?: number;
+  timeLimit?: number;
+  startTime?: string;
+  endTime?: string;
+}
+
 const StudentDashboard: React.FC = () => {
   const navigate = useNavigate();
 
@@ -116,6 +125,7 @@ const StudentDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [language, setLanguage] = useState(() => localStorage.getItem("appLanguage") || "hi");
   const [enrolledClassLabel, setEnrolledClassLabel] = useState("");
+  const [activeQuizzes, setActiveQuizzes] = useState<ActiveQuizNotification[]>([]);
 
   useEffect(() => {
     const handleLanguageChange = (event: Event) => {
@@ -163,12 +173,28 @@ const StudentDashboard: React.FC = () => {
     const studentId = currentUser?.studentId;
     if (!studentId) return;
 
-    axios
-      .get(`${API_URL}/classes/student/${studentId}`)
-      .then((classesRes) => {
+    Promise.all([
+      axios.get(`${API_URL}/classes/student/${studentId}`),
+      axios.get(`${API_URL}/reports/student/${studentId}`).catch(() => ({ data: [] })),
+      axios.get(`${API_URL}/quizzes/student/${studentId}/available`).catch(() => ({ data: [] })),
+    ])
+      .then(([classesRes, reportsRes, quizzesRes]) => {
         setEnrolledClassLabel(resolveEnrolledClassLabel(classesRes.data?.classes));
+        const submittedQuizIds = new Set((reportsRes.data || []).map((report: any) => String(report.quizId)));
+        const now = Date.now();
+        const liveQuizzes = (Array.isArray(quizzesRes.data) ? quizzesRes.data : [])
+          .filter((quiz: any) => !submittedQuizIds.has(String(quiz.quizId)))
+          .filter((quiz: any) => {
+            const start = quiz.startTime ? new Date(quiz.startTime).getTime() : 0;
+            const end = quiz.endTime ? new Date(quiz.endTime).getTime() : Number.POSITIVE_INFINITY;
+            const startsOk = !Number.isFinite(start) || start <= now;
+            const endsOk = !Number.isFinite(end) || end >= now;
+            return startsOk && endsOk;
+          })
+          .sort((left: any, right: any) => new Date(left.endTime || 0).getTime() - new Date(right.endTime || 0).getTime());
+        setActiveQuizzes(liveQuizzes);
       })
-      .catch((error) => console.error("Failed to load enrolled class label:", error));
+      .catch((error) => console.error("Failed to load dashboard quiz notices:", error));
   }, []);
 
   const handleStartQuiz = () => {
@@ -408,6 +434,38 @@ const StudentDashboard: React.FC = () => {
               <p className="text-sm text-gray-600">{isHindi ? "तेज access के लिए मुख्य learning tools." : "Main learning tools with quick access."}</p>
             </div>
           </div>
+          {activeQuizzes.length > 0 && (
+            <div className="mb-5 space-y-2">
+              {activeQuizzes.map((quiz) => {
+                const isGroupQuiz = quiz.mode === "group";
+                return (
+                  <div
+                    key={quiz.quizId}
+                    className="glass-card flex flex-col justify-between gap-3 border-0 bg-gradient-to-r from-blue-600/90 to-indigo-600/90 px-5 py-3 text-white shadow-lg sm:flex-row sm:items-center"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="h-5 w-5 shrink-0 text-amber-300" />
+                      <div>
+                        <p className="font-semibold">
+                          {isGroupQuiz ? (isHindi ? "लाइव ग्रुप क्विज़" : "Live group quiz") : (isHindi ? "लाइव क्विज़" : "Live quiz")}: {quiz.quizId}
+                        </p>
+                        <p className="text-xs text-blue-50/90">
+                          {quiz.totalQuestions ? `${quiz.totalQuestions} ${isHindi ? "प्रश्न" : "questions"}` : ""}
+                          {quiz.timeLimit ? ` · ${quiz.timeLimit} ${isHindi ? "मिनट" : "min"}` : ""}
+                          {quiz.endTime ? ` · ${isHindi ? "समाप्त" : "Ends"} ${new Date(quiz.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <Link to={isGroupQuiz ? `/student/group-quiz?quizId=${encodeURIComponent(quiz.quizId)}` : `/student/take-advanced-quiz?quizId=${encodeURIComponent(quiz.quizId)}`}>
+                      <Button size="sm" className="w-full bg-white text-blue-700 hover:bg-blue-50 sm:w-auto">
+                        {isGroupQuiz ? (isHindi ? "ग्रुप शुरू करें" : "Start Group") : (isHindi ? "टेस्ट दें" : "Take Quiz")}
+                      </Button>
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 mb-12">
             <Card className="glass-card group border-0 ring-1 ring-blue-100/60">

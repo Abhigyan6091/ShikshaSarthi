@@ -267,6 +267,7 @@ const MyClasses: React.FC = () => {
                           const isDone = attemptedQuizIds.has(quiz.quizId);
                           const report = reportsByQuizId[quiz.quizId];
                           const quizClosed = isClosed(quiz);
+                          const isGroupQuiz = quiz.mode === 'group';
                           return (
                             <div key={quiz.quizId} className="flex items-center justify-between rounded-xl bg-white/70 p-3">
                               <div className="flex items-center gap-3">
@@ -279,7 +280,7 @@ const MyClasses: React.FC = () => {
                                   <p className="font-medium text-slate-900">{quiz.quizId}</p>
                                   <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
                                     <Badge variant="outline" className="text-[10px]">
-                                      Class quiz
+                                      {isGroupQuiz ? 'Group quiz' : 'Class quiz'}
                                     </Badge>
                                     {quizClosed && (
                                       <Badge variant="outline" className="border-slate-300 bg-slate-50 text-[10px] text-slate-600">
@@ -309,6 +310,12 @@ const MyClasses: React.FC = () => {
                                 <Button size="sm" variant="outline" className="gap-1" disabled>
                                   Closed
                                 </Button>
+                              ) : isGroupQuiz ? (
+                                <Link to={`/student/group-quiz?quizId=${encodeURIComponent(quiz.quizId)}`}>
+                                  <Button size="sm" className="gap-1">
+                                    <PlayCircle className="h-3.5 w-3.5" /> Start Group
+                                  </Button>
+                                </Link>
                               ) : (
                                 <Link to={`/student/take-advanced-quiz?quizId=${encodeURIComponent(quiz.quizId)}`}>
                                   <Button size="sm" className="gap-1">

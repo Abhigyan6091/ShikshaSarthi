@@ -3,6 +3,20 @@ const mongoose = require("mongoose");
 const studentReportSchema = new mongoose.Schema({
   quizId: { type: String, required: true },
   studentId: { type: String, required: true },
+  attemptMode: {
+    type: String,
+    enum: ["quiz", "group"],
+    default: "quiz",
+    index: true,
+  },
+  groupAttemptId: { type: String, index: true },
+  groupMembers: [
+    {
+      studentId: String,
+      name: String,
+      color: String,
+    },
+  ],
   submissionStatus: {
     type: String,
     enum: ["draft", "submitted"],

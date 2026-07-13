@@ -102,6 +102,7 @@ function quizIsAvailableToStudent(quiz, classContext) {
 
 function normalizeQuizPayload(payload) {
   const next = { ...(payload || {}) };
+  next.mode = next.mode === "group" ? "group" : "quiz";
   const requestedAudience = next.audience || {};
   const requestedType = requestedAudience.type === "classes" ? "classes" : "global";
   const classIds = Array.isArray(requestedAudience.classIds)
@@ -1103,6 +1104,138 @@ router.post("/submit-advanced", async (req, res) => {
     });
   } catch (err) {
     console.error("Error submitting quiz:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/submit-group", async (req, res) => {
+  try {
+    const { quizId, students, questions, answersByStudent, timeTaken } = req.body;
+    const normalizedQuizId = String(quizId || "").trim();
+    const groupStudents = Array.isArray(students) ? students : [];
+    const groupQuestions = Array.isArray(questions) ? questions : [];
+    const submittedAnswers = answersByStudent && typeof answersByStudent === "object" ? answersByStudent : {};
+
+    if (!normalizedQuizId) {
+      return res.status(400).json({ error: "Quiz ID is required" });
+    }
+    if (groupStudents.length !== 3) {
+      return res.status(400).json({ error: "Exactly three registered students are required" });
+    }
+    if (groupQuestions.length === 0) {
+      return res.status(400).json({ error: "At least one MCQ question is required" });
+    }
+
+    const quiz = await Quiz.findOne({ quizId: normalizedQuizId });
+    if (!quiz) return res.status(404).json({ error: "Quiz not found" });
+    if ((quiz.mode || "quiz") !== "group") {
+      return res.status(400).json({ error: "This quiz is not configured as a group quiz" });
+    }
+
+    const normalizedStudents = groupStudents.map((student, index) => ({
+      studentId: String(student?.studentId || "").trim(),
+      name: String(student?.name || "").trim(),
+      color: String(student?.color || ["blue", "green", "orange"][index] || "blue"),
+    }));
+    if (normalizedStudents.some((student) => !student.studentId) || new Set(normalizedStudents.map((s) => s.studentId)).size !== 3) {
+      return res.status(400).json({ error: "Three unique student IDs are required" });
+    }
+
+    const studentDocs = await Student.find({ studentId: { $in: normalizedStudents.map((student) => student.studentId) } }).lean();
+    if (studentDocs.length !== 3) {
+      return res.status(404).json({ error: "One or more registered students were not found" });
+    }
+
+    for (const student of normalizedStudents) {
+      const classContext = await getStudentClassContext(student.studentId);
+      if (!quizIsAvailableToStudent(quiz, classContext)) {
+        return res.status(403).json({ error: `Quiz is not assigned to ${student.studentId}` });
+      }
+    }
+
+    const existingReports = await StudentReport.find({
+      quizId: normalizedQuizId,
+      studentId: { $in: normalizedStudents.map((student) => student.studentId) },
+      submissionStatus: { $ne: "draft" },
+    }).lean();
+    if (existingReports.length > 0) {
+      return res.status(400).json({
+        error: "One or more students have already submitted this quiz",
+        submittedStudentIds: existingReports.map((report) => report.studentId),
+      });
+    }
+
+    const groupAttemptId = `${normalizedQuizId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const groupMembers = normalizedStudents.map((student) => ({
+      studentId: student.studentId,
+      name: student.name,
+      color: student.color,
+    }));
+
+    const reports = [];
+    for (const student of normalizedStudents) {
+      let correct = 0;
+      let incorrect = 0;
+      let unattempted = 0;
+
+      const reportAnswers = groupQuestions.map((question) => {
+        const questionId = String(question?._id || question?.questionId || "").trim();
+        const correctAnswer = String(question?.correctAnswer || "").trim();
+        const selectedAnswer = submittedAnswers?.[student.studentId]?.[questionId] || null;
+        const answered = selectedAnswer !== null && selectedAnswer !== undefined && String(selectedAnswer).trim() !== "";
+        const isCorrect = answered && String(selectedAnswer) === correctAnswer;
+
+        if (!answered) unattempted += 1;
+        else if (isCorrect) correct += 1;
+        else incorrect += 1;
+
+        return {
+          questionId,
+          questionType: "mcq",
+          selectedAnswer,
+          isCorrect,
+          correctAnswer,
+          questionText: String(question?.question || ""),
+          options: Array.isArray(question?.options) ? question.options.map(String) : [],
+        };
+      });
+
+      const report = await new StudentReport({
+        quizId: normalizedQuizId,
+        studentId: student.studentId,
+        attemptMode: "group",
+        groupAttemptId,
+        groupMembers,
+        submissionStatus: "submitted",
+        correct,
+        incorrect,
+        unattempted,
+        timeTaken: Number(timeTaken) || 0,
+        answers: reportAnswers,
+      }).save();
+
+      reports.push(report);
+    }
+
+    const attemptedIds = normalizedStudents.map((student) => student.studentId);
+    attemptedIds.forEach((studentId) => {
+      if (!quiz.attemptedBy.includes(studentId)) quiz.attemptedBy.push(studentId);
+    });
+    await quiz.save();
+
+    res.status(201).json({
+      message: "Group quiz submitted successfully",
+      groupAttemptId,
+      reports: reports.map((report) => ({
+        reportId: report._id,
+        studentId: report.studentId,
+        correct: report.correct,
+        incorrect: report.incorrect,
+        unattempted: report.unattempted,
+      })),
+    });
+  } catch (err) {
+    console.error("Error submitting group quiz:", err);
     res.status(500).json({ error: err.message });
   }
 });
