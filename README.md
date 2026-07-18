@@ -1,43 +1,31 @@
-# ShikshaSarthi Platform
+# ShikshaSarthi
 
-## Overview
+ShikshaSarthi is an offline-first school learning platform built for classrooms with
+unreliable internet. Each school runs the full app (frontend, API, and database) on
+its own local server; a small cloud service in AWS hands out app updates, keeps
+backups, and merges data between schools when they choose to sync. Schools never
+depend on the cloud to keep teaching, testing, and grading day to day.
 
-ShikshaSarthi is a comprehensive educational platform designed for NMMS (National Means cum Merit Scholarship) exam preparation. The platform implements a complete role-based system with hierarchical user management.
+## Who uses it
 
-## Project Info
+ShikshaSarthi has four roles, each scoped to what it needs:
 
-**URL**: https://lovable.dev/projects/72247004-dddd-4e96-a82a-7bb4dca9503a
+| Role | Scope | Typical tasks |
+|---|---|---|
+| **Super Admin** | Whole platform | Registers new schools (and their first School Admin login), monitors sync/updates across every school |
+| **School Admin** | One school | Adds/removes Teacher and Student accounts for that school |
+| **Teacher** | Own classes | Creates classes, enrols students, builds quizzes, reviews analytics |
+| **Student** | Own learning | Practises questions, takes adaptive tests and quizzes, reviews results |
 
-## User Roles
+Accounts are created top-down: Super Admin creates a school + its School Admin,
+School Admin creates Teachers and Students, and Teachers enrol existing students
+into the classes they create.
 
-### 🔐 Four-Tier Role System
+## Local school server deployment (recommended)
 
-1. **Super Admin**
-   - Manages all schools, school admins, teachers, and students
-   - Full system access and question bank management
-   - Dashboard: `/superadmin`
-
-2. **School Admin**
-   - Manages teachers and students within their school
-   - School-level administration
-   - Dashboard: `/schooladmin`
-
-3. **Teacher**
-   - Creates and manages classes (Class + Subject)
-   - Manages student enrollment in classes
-   - Creates quizzes and views analytics
-   - Dashboard: `/teacher`
-
-4. **Student**
-   - Practices questions by subject/topic
-   - Attempts quizzes and views reports
-   - Dashboard: `/student`
-
-## Quick Start
-
-## Local School Server Deployment
-
-Phase 1 supports running ShikshaSarthi as an offline-first school LAN server. AWS sync, Tailscale, Gemini, and Cloudinary are not required for this phase. Internet is optional after Docker images and dependencies are installed.
+The school server runs two Docker services — the app (React frontend + Node/Express
+API behind nginx) and MongoDB — and needs internet only for the initial image pull,
+optional cloud sync, and update checks.
 
 ```sh
 cp .env.local-school.example .env
@@ -46,19 +34,21 @@ docker compose up -d --build
 
 Open the app on the server:
 
-```text
+```
 http://localhost:6050
 ```
 
-Teachers and students on the same LAN can open:
+Teachers and students on the same LAN open:
 
-```text
+```
 http://<server-ip>:6050
 ```
 
-In local-school mode, Gemini AI hints and Cloudinary uploads are disabled by default. Uploads, MongoDB data, backups, and audio cache are stored in Docker volumes so restarts do not delete school data.
+Gemini AI hints and Cloudinary uploads are disabled by default in local-school mode.
+Uploads, MongoDB data, backups, and the audio cache live in Docker volumes, so
+restarts never delete school data.
 
-Useful commands:
+Useful operational scripts:
 
 ```sh
 ./scripts/health-check.sh
@@ -67,218 +57,180 @@ Useful commands:
 ./scripts/stop-local-school.sh
 ```
 
-See `docs/LOCAL_SCHOOL_DEPLOYMENT.md` for the full school IT guide and `docs/PHASE_1_RELEASE_CHECKLIST.md` for release testing.
+See [`docs/LOCAL_SCHOOL_DEPLOYMENT.md`](docs/LOCAL_SCHOOL_DEPLOYMENT.md) for the full
+school IT setup guide, and [`docs/ShikshaSarthi_Complete_Guide.pdf`](docs/ShikshaSarthi_Complete_Guide.pdf)
+for a short illustrated guide covering every role plus how sync and updates work.
+
+## How syncing and updates work
+
+- **Sync** is bidirectional. The local server pushes its new records (students, quiz
+  results, classes, etc.) to the AWS cloud and pulls down anything new (e.g. a shared
+  question bank update). It runs automatically on an interval and a Super Admin can
+  also trigger it manually. If the internet is down, the school keeps working
+  normally and syncing simply resumes later.
+- **Updates** are cloud-published but never silent. The app checks AWS for a newer
+  version; a Super Admin reviews and approves the install. Every downloaded update
+  package is checksum-verified before anything is applied, so a broken or partial
+  download is rejected automatically. Updates only replace program files — student
+  data, quiz history, and uploaded media are never touched.
+
+See [`docs/PHASE_3_UPDATE_AND_SYNC.md`](docs/PHASE_3_UPDATE_AND_SYNC.md) for the API-level detail.
+
+## Local development (without Docker)
 
 ### Prerequisites
 
 - Node.js & npm ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
-- MongoDB database
-- Gemini API key (optional; disabled by default in local-school mode)
+- MongoDB (local instance or an Atlas connection string)
+- Gemini API key (optional — only needed for AI-assisted hints)
 
-### Installation
+### Install
 
 ```sh
-# Clone the repository
 git clone <YOUR_GIT_URL>
 cd ShikshaSarthi
 
-# Install frontend dependencies
-npm install
-
-# Install backend dependencies
-cd backend
-npm install
-
-# Set up environment variables
-# Create .env in backend directory with:
-# MONGO_URI=your_mongodb_connection_string
-# PORT=5000
-# GEMINI_API_KEY=your_gemini_api_key
-
-# Create .env in root directory with:
-# VITE_API_URL=/.
+npm install            # frontend deps
+cd backend && npm install && cd ..   # backend deps
 ```
 
-### Running the Application
+Create `backend/.env`:
+
+```env
+MONGO_URI=your_mongodb_connection_string
+PORT=5000
+GEMINI_API_KEY=your_gemini_api_key   # optional
+```
+
+Create `.env` in the repo root:
+
+```env
+VITE_API_URL=/.
+```
+
+### Run
 
 ```sh
-# Start backend server (from backend directory)
+# Backend (from backend/)
 npm start
-# or with nodemon
+# or with auto-reload:
 npx nodemon index.js
 
-# Start frontend dev server (from root directory)
+# Frontend (from repo root)
 npm run dev
 ```
 
-### Initial Setup
+### First login
 
-After starting the backend, create the first super admin:
-
-```sh
-node create-superadmin.js
-```
-
-Default credentials:
-- Username: `admin`
-- Password: `admin123`
-
-⚠️ **Change these credentials after first login!**
+There is no standalone super-admin bootstrap script. The first Super Admin account
+is created either by seeding/importing data (see `backend/scripts/importSchoolSeed.js`)
+or directly via the `SuperAdmin` model/route on a fresh database. Once one Super
+Admin exists, use it to register schools — each registration creates that school's
+first School Admin login in the same step.
 
 ## Features
 
-### 🎓 For Students
-- Subject-wise practice (Math, Science, Social Science, Mental Ability)
-- Vocabulary comprehension exercises
-- Quiz attempts with instant scoring
-- Detailed performance reports
-- Hint system for difficult questions
+### For Students
+- Subject-wise practice (Maths, Science, Social Science, Mental Ability, Vocabulary)
+- Adaptive tests that adjust question difficulty to each answer
+- Class quizzes with instant scoring and unlimited later review
+- Audio, video, puzzle, and Mental Ability Test (MAT) activities
+- Hints on quiz questions
+- Editable profile (name, phone, email, photo) and self-service password change
 
-### 👨‍🏫 For Teachers
-- **Class Management**: Create classes (Class + Subject combinations)
-- **Student Management**: Add/remove students from classes
-- **Quiz Creation**: Design custom quizzes with question bank
-- **Analytics**: View student performance and question difficulty
-- **Custom Questions**: Add your own questions
+### For Teachers
+- Class management: create classes, enrol/remove students
+- Quiz creation: MCQ, audio, video, and puzzle questions from a shared question bank, or custom questions
+- Class-scoped announcements and document sharing
+- Quiz analytics: score distributions, per-question breakdowns, student rankings
+- Per-student history and insight charts (quizzes, adaptive tests, rating trend)
 
-### 🏫 For School Admins
-- Register teachers and students for their school
-- View all teachers in the school
-- Monitor student enrollment by class
-- School-level statistics
+### For School Admins
+- Register and remove teachers and students for their own school
+- View school-level rosters and statistics
+- Manage their own profile
 
-### 👑 For Super Admins
-- Register schools, school admins, teachers, and students
-- System-wide statistics and monitoring
-- View all schools with teacher and student breakdowns
-- Manage question bank
-- Upload bulk questions
+### For Super Admins
+- Register schools and their first School Admin login
+- Create or remove any account directly across any school, if needed
+- Platform-wide statistics across every school
+- Trigger and monitor cloud sync
+- Review, verify, and install app updates
 
-## Technology Stack
+## Technology stack
 
-- **Frontend**: React + TypeScript + Vite
-- **UI Library**: Shadcn/ui with Tailwind CSS
-- **Backend**: Express.js + Node.js
-- **Database**: MongoDB with Mongoose ODM
-- **State Management**: React Context API
-- **Routing**: React Router v6
-- **HTTP Client**: Axios
-- **AI Integration**: Google Gemini API
+- **Frontend**: React + TypeScript + Vite, Shadcn/ui, Tailwind CSS, React Router, Axios, Recharts
+- **Backend**: Express.js + Node.js, Mongoose ODM
+- **Database**: MongoDB (local per school; AWS-mediated sync between schools)
+- **Cloud**: AWS Lambda + API Gateway + S3 + DynamoDB (updates, backups, sync relay — not a live application server)
+- **AI**: Google Gemini API (optional, for question hints)
 
-## Project Structure
+## Project structure
 
 ```
 ShikshaSarthi/
 ├── backend/
-│   ├── models/          # Database models
-│   │   ├── SuperAdmin.js
-│   │   ├── SchoolAdmin.js
-│   │   ├── School.js
-│   │   ├── Teacher.js
-│   │   ├── Student.js
-│   │   ├── Class.js
-│   │   ├── Question.js
-│   │   ├── Quiz.js
-│   │   └── Report.js
-│   ├── routes/          # API routes
-│   │   ├── superadmin.js
-│   │   ├── schooladmin.js
-│   │   ├── class.js
-│   │   ├── teacher.js
-│   │   ├── student.js
-│   │   ├── question.js
-│   │   ├── quiz.js
-│   │   └── report.js
-│   └── index.js         # Backend entry point
+│   ├── models/        # Mongoose schemas (Student, Teacher, SchoolAdmin, SuperAdmin, School, Class, Question, Quiz, ...)
+│   ├── routes/         # Express routes (superadmin, schooladmin, teacher, student, class, question, quiz, sync, aws, update, ...)
+│   ├── sync/            # Local <-> remote sync engine
+│   ├── aws/              # AWS control-plane client (updates, backups, cloud sync)
+│   ├── scripts/           # Seeding, backup/restore, and question-bank import utilities
+│   └── index.js             # Backend entry point
 ├── src/
-│   ├── components/      # Reusable components
-│   │   ├── Header.tsx
-│   │   ├── Footer.tsx
-│   │   └── ui/         # Shadcn components
+│   ├── components/    # Shared UI (Header, Footer, shadcn primitives)
 │   ├── pages/
-│   │   ├── superadmin/ # Super admin pages
-│   │   ├── schooladmin/# School admin pages
-│   │   ├── teacher/    # Teacher pages
-│   │   ├── student/    # Student pages
-│   │   ├── Login.tsx   # Role-based login
-│   │   └── Register.tsx# Role-based registration
-│   └── contexts/       # React contexts
-├── create-superadmin.js # Initial setup script
-├── IMPLEMENTATION_GUIDE.md # Detailed implementation guide
-└── README.md
-
-
-## API Endpoints
-
-### Authentication
-- `POST /superadmin/login` - Super admin login
-- `POST /schooladmin/login` - School admin login
-- `POST /teachers/login` - Teacher login
-- `POST /students/login` - Student login
-
-### Super Admin
-- `POST /superadmin/register/school` - Register school
-- `POST /superadmin/register/schooladmin` - Register school admin
-- `POST /superadmin/register/teacher` - Register teacher
-- `POST /superadmin/register/student` - Register student
-- `GET /superadmin/stats` - Get system statistics
-- `GET /superadmin/schools` - Get all schools
-
-### School Admin
-- `POST /schooladmin/register/teacher` - Register teacher
-- `POST /schooladmin/register/student` - Register student
-- `GET /schooladmin/:username/stats` - Get school stats
-- `GET /schooladmin/:username/teachers` - Get teachers
-- `GET /schooladmin/:username/students` - Get students
-
-### Teacher
-- `POST /teachers/register/student` - Register student
-- `GET /teachers/:teacherId/classes` - Get teacher's classes
-- `POST /classes` - Create new class
-- `POST /classes/:classId/students` - Add student to class
-
-### Questions & Quizzes
-- `GET /questions` - Get all questions
-- `POST /questions` - Create question (with AI hint)
-- `GET /questions/:class/:subject/:topic` - Get questions by topic
-- `POST /quizzes` - Create quiz
-- `GET /quizzes/:id` - Get quiz by ID
-
-## Development
-
-### Project built with Lovable
-
-Visit [Lovable Project](https://lovable.dev/projects/72247004-dddd-4e96-a82a-7bb4dca9503a) to edit via prompts.
-
-### Local Development
-
-```sh
-# Frontend
-npm run dev
-
-# Backend
-cd backend
-npm start
+│   │   ├── superadmin/  # Super Admin dashboard and tools
+│   │   ├── schooladmin/  # School Admin dashboard
+│   │   ├── teacher/       # Teacher dashboard, class/quiz management, analytics
+│   │   └── student/         # Student dashboard, practice, tests, classes
+│   └── contexts/       # React contexts (auth, quiz state)
+├── question_bank/     # Static bilingual question banks used by practice/adaptive tests
+├── docs/                # Deployment guides, release checklists, and the illustrated user guide
+└── scripts/               # Docker/local-school operational scripts
 ```
 
-### Building for Production
+## Key API routes
+
+### Authentication
+- `POST /superadmin/login`
+- `POST /schooladmin/login`
+- `POST /teachers/login`
+- `POST /students/login`
+
+### Account provisioning
+- `POST /superadmin/register/school` — creates a school and its first School Admin
+- `POST /schooladmin/register/teacher`
+- `POST /schooladmin/register/student`
+- `POST /classes` — teacher creates a class
+- `POST /classes/:classId/students` — teacher enrols a student
+
+### Questions & quizzes
+- `GET /questions` — browse the question bank
+- `POST /questions` — add a question
+- `POST /quizzes` — create a quiz
+- `GET /quizzes/:id` — fetch a quiz
+
+### Sync & updates
+- `GET /sync/status`, `POST /sync/run`
+- `GET /api/updates/manifest`
+- superadmin-only routes under `/api/aws/*` and `/api/update/*`
+
+## Building for production
 
 ```sh
 npm run build
 ```
 
-## Deployment
-
-### Frontend
-Simply open [Lovable](https://lovable.dev/projects/72247004-dddd-4e96-a82a-7bb4dca9503a) and click Share → Publish.
-
-### Backend
-The backend is configured for Vercel deployment with `backend/vercel.json`.
+The Docker image (`Dockerfile`) builds this frontend and serves it via nginx
+alongside the Node/Express backend — see the [local school server deployment](#local-school-server-deployment-recommended)
+section above for the supported way to run it.
 
 ## Documentation
 
-- **[IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)** - Detailed implementation guide with workflows and examples
-- **[API Documentation](#api-endpoints)** - Complete API reference above
+- [`docs/LOCAL_SCHOOL_DEPLOYMENT.md`](docs/LOCAL_SCHOOL_DEPLOYMENT.md) — school IT setup guide
+- [`docs/PHASE_3_UPDATE_AND_SYNC.md`](docs/PHASE_3_UPDATE_AND_SYNC.md) — update/sync API reference
+- [`docs/ShikshaSarthi_Complete_Guide.pdf`](docs/ShikshaSarthi_Complete_Guide.pdf) — short illustrated guide for every role
+- [`docs/PHASE_1_RELEASE_CHECKLIST.md`](docs/PHASE_1_RELEASE_CHECKLIST.md), [`docs/PHASE_2_AWS_SETUP.md`](docs/PHASE_2_AWS_SETUP.md), [`docs/PHASE_2_WINDOWS_INSTALLER.md`](docs/PHASE_2_WINDOWS_INSTALLER.md) — release and setup notes
 
 ## Contributing
 
@@ -288,19 +240,10 @@ The backend is configured for Vercel deployment with `backend/vercel.json`.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
-
 ## Support
 
 For issues, questions, or contributions, please open an issue on GitHub.
 
 ---
 
-**Built with ❤️ for NMMS aspirants**
-### Phase 3 Update And Sync
-
-Phase 3 adds guarded update staging/rollback and manual AWS sync export upload.
-
-See [docs/PHASE_3_UPDATE_AND_SYNC.md](docs/PHASE_3_UPDATE_AND_SYNC.md).
+**Built for schools with unreliable internet.**
