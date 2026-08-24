@@ -1,249 +1,240 @@
-# ShikshaSarthi
+# 🎓 ShikshaSarthi
 
-ShikshaSarthi is an offline-first school learning platform built for classrooms with
-unreliable internet. Each school runs the full app (frontend, API, and database) on
-its own local server; a small cloud service in AWS hands out app updates, keeps
-backups, and merges data between schools when they choose to sync. Schools never
-depend on the cloud to keep teaching, testing, and grading day to day.
+<div align="center">
 
-## Who uses it
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20.x-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Express.js](https://img.shields.io/badge/Express.js-Backend-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Database-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 
-ShikshaSarthi has four roles, each scoped to what it needs:
+**An offline-first, resilient school learning and assessment platform engineered for classrooms with intermittent or zero internet connectivity.**
 
-| Role | Scope | Typical tasks |
-|---|---|---|
-| **Super Admin** | Whole platform | Registers new schools (and their first School Admin login), monitors sync/updates across every school |
-| **School Admin** | One school | Adds/removes Teacher and Student accounts for that school |
-| **Teacher** | Own classes | Creates classes, enrols students, builds quizzes, reviews analytics |
-| **Student** | Own learning | Practises questions, takes adaptive tests and quizzes, reviews results |
+[Features](#-key-features) • [Architecture](#-system-architecture) • [Deployment](#-deployment-options) • [Quickstart](#-local-development) • [API Routes](#-key-api-routes) • [Contributing](#-contributing)
 
-Accounts are created top-down: Super Admin creates a school + its School Admin,
-School Admin creates Teachers and Students, and Teachers enrol existing students
-into the classes they create.
-
-## Local school server deployment (recommended)
-
-The school server runs two Docker services — the app (React frontend + Node/Express
-API behind nginx) and MongoDB — and needs internet only for the initial image pull,
-optional cloud sync, and update checks.
-
-```sh
-cp .env.local-school.example .env
-docker compose up -d --build
-```
-
-Open the app on the server:
-
-```
-http://localhost:6050
-```
-
-Teachers and students on the same LAN open:
-
-```
-http://<server-ip>:6050
-```
-
-Gemini AI hints and Cloudinary uploads are disabled by default in local-school mode.
-Uploads, MongoDB data, backups, and the audio cache live in Docker volumes, so
-restarts never delete school data.
-
-Useful operational scripts:
-
-```sh
-./scripts/health-check.sh
-./scripts/backup-local-school.sh
-./scripts/logs-local-school.sh
-./scripts/stop-local-school.sh
-```
-
-See [`docs/LOCAL_SCHOOL_DEPLOYMENT.md`](docs/LOCAL_SCHOOL_DEPLOYMENT.md) for the full
-school IT setup guide, and [`docs/ShikshaSarthi_Complete_Guide.pdf`](docs/ShikshaSarthi_Complete_Guide.pdf)
-for a short illustrated guide covering every role plus how sync and updates work.
-
-## How syncing and updates work
-
-- **Sync** is bidirectional. The local server pushes its new records (students, quiz
-  results, classes, etc.) to the AWS cloud and pulls down anything new (e.g. a shared
-  question bank update). It runs automatically on an interval and a Super Admin can
-  also trigger it manually. If the internet is down, the school keeps working
-  normally and syncing simply resumes later.
-- **Updates** are cloud-published but never silent. The app checks AWS for a newer
-  version; a Super Admin reviews and approves the install. Every downloaded update
-  package is checksum-verified before anything is applied, so a broken or partial
-  download is rejected automatically. Updates only replace program files — student
-  data, quiz history, and uploaded media are never touched.
-
-See [`docs/PHASE_3_UPDATE_AND_SYNC.md`](docs/PHASE_3_UPDATE_AND_SYNC.md) for the API-level detail.
-
-## Local development (without Docker)
-
-### Prerequisites
-
-- Node.js & npm ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
-- MongoDB (local instance or an Atlas connection string)
-- Gemini API key (optional — only needed for AI-assisted hints)
-
-### Install
-
-```sh
-git clone <YOUR_GIT_URL>
-cd ShikshaSarthi
-
-npm install            # frontend deps
-cd backend && npm install && cd ..   # backend deps
-```
-
-Create `backend/.env`:
-
-```env
-MONGO_URI=your_mongodb_connection_string
-PORT=5000
-GEMINI_API_KEY=your_gemini_api_key   # optional
-```
-
-Create `.env` in the repo root:
-
-```env
-VITE_API_URL=/.
-```
-
-### Run
-
-```sh
-# Backend (from backend/)
-npm start
-# or with auto-reload:
-npx nodemon index.js
-
-# Frontend (from repo root)
-npm run dev
-```
-
-### First login
-
-There is no standalone super-admin bootstrap script. The first Super Admin account
-is created either by seeding/importing data (see `backend/scripts/importSchoolSeed.js`)
-or directly via the `SuperAdmin` model/route on a fresh database. Once one Super
-Admin exists, use it to register schools — each registration creates that school's
-first School Admin login in the same step.
-
-## Features
-
-### For Students
-- Subject-wise practice (Maths, Science, Social Science, Mental Ability, Vocabulary)
-- Adaptive tests that adjust question difficulty to each answer
-- Class quizzes with instant scoring and unlimited later review
-- Audio, video, puzzle, and Mental Ability Test (MAT) activities
-- Hints on quiz questions
-- Editable profile (name, phone, email, photo) and self-service password change
-
-### For Teachers
-- Class management: create classes, enrol/remove students
-- Quiz creation: MCQ, audio, video, and puzzle questions from a shared question bank, or custom questions
-- Class-scoped announcements and document sharing
-- Quiz analytics: score distributions, per-question breakdowns, student rankings
-- Per-student history and insight charts (quizzes, adaptive tests, rating trend)
-
-### For School Admins
-- Register and remove teachers and students for their own school
-- View school-level rosters and statistics
-- Manage their own profile
-
-### For Super Admins
-- Register schools and their first School Admin login
-- Create or remove any account directly across any school, if needed
-- Platform-wide statistics across every school
-- Trigger and monitor cloud sync
-- Review, verify, and install app updates
-
-## Technology stack
-
-- **Frontend**: React + TypeScript + Vite, Shadcn/ui, Tailwind CSS, React Router, Axios, Recharts
-- **Backend**: Express.js + Node.js, Mongoose ODM
-- **Database**: MongoDB (local per school; AWS-mediated sync between schools)
-- **Cloud**: AWS Lambda + API Gateway + S3 + DynamoDB (updates, backups, sync relay — not a live application server)
-- **AI**: Google Gemini API (optional, for question hints)
-
-## Project structure
-
-```
-ShikshaSarthi/
-├── backend/
-│   ├── models/        # Mongoose schemas (Student, Teacher, SchoolAdmin, SuperAdmin, School, Class, Question, Quiz, ...)
-│   ├── routes/         # Express routes (superadmin, schooladmin, teacher, student, class, question, quiz, sync, aws, update, ...)
-│   ├── sync/            # Local <-> remote sync engine
-│   ├── aws/              # AWS control-plane client (updates, backups, cloud sync)
-│   ├── scripts/           # Seeding, backup/restore, and question-bank import utilities
-│   └── index.js             # Backend entry point
-├── src/
-│   ├── components/    # Shared UI (Header, Footer, shadcn primitives)
-│   ├── pages/
-│   │   ├── superadmin/  # Super Admin dashboard and tools
-│   │   ├── schooladmin/  # School Admin dashboard
-│   │   ├── teacher/       # Teacher dashboard, class/quiz management, analytics
-│   │   └── student/         # Student dashboard, practice, tests, classes
-│   └── contexts/       # React contexts (auth, quiz state)
-├── question_bank/     # Static bilingual question banks used by practice/adaptive tests
-├── docs/                # Deployment guides, release checklists, and the illustrated user guide
-└── scripts/               # Docker/local-school operational scripts
-```
-
-## Key API routes
-
-### Authentication
-- `POST /superadmin/login`
-- `POST /schooladmin/login`
-- `POST /teachers/login`
-- `POST /students/login`
-
-### Account provisioning
-- `POST /superadmin/register/school` — creates a school and its first School Admin
-- `POST /schooladmin/register/teacher`
-- `POST /schooladmin/register/student`
-- `POST /classes` — teacher creates a class
-- `POST /classes/:classId/students` — teacher enrols a student
-
-### Questions & quizzes
-- `GET /questions` — browse the question bank
-- `POST /questions` — add a question
-- `POST /quizzes` — create a quiz
-- `GET /quizzes/:id` — fetch a quiz
-
-### Sync & updates
-- `GET /sync/status`, `POST /sync/run`
-- `GET /api/updates/manifest`
-- superadmin-only routes under `/api/aws/*` and `/api/update/*`
-
-## Building for production
-
-```sh
-npm run build
-```
-
-The Docker image (`Dockerfile`) builds this frontend and serves it via nginx
-alongside the Node/Express backend — see the [local school server deployment](#local-school-server-deployment-recommended)
-section above for the supported way to run it.
-
-## Documentation
-
-- [`docs/LOCAL_SCHOOL_DEPLOYMENT.md`](docs/LOCAL_SCHOOL_DEPLOYMENT.md) — school IT setup guide
-- [`docs/PHASE_3_UPDATE_AND_SYNC.md`](docs/PHASE_3_UPDATE_AND_SYNC.md) — update/sync API reference
-- [`docs/ShikshaSarthi_Complete_Guide.pdf`](docs/ShikshaSarthi_Complete_Guide.pdf) — short illustrated guide for every role
-- [`docs/PHASE_1_RELEASE_CHECKLIST.md`](docs/PHASE_1_RELEASE_CHECKLIST.md), [`docs/PHASE_2_AWS_SETUP.md`](docs/PHASE_2_AWS_SETUP.md), [`docs/PHASE_2_WINDOWS_INSTALLER.md`](docs/PHASE_2_WINDOWS_INSTALLER.md) — release and setup notes
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## Support
-
-For issues, questions, or contributions, please open an issue on GitHub or Contact me.
+</div>
 
 ---
 
-**Built for schools with unreliable internet.**
+## 📖 Overview
+
+**ShikshaSarthi** solves the digital divide in education by providing a comprehensive learning, testing, and grading platform that operates 100% locally on a school server. 
+
+- ⚡ **Zero Cloud Dependency for Day-to-Day Learning**: Teachers build quizzes, students take adaptive tests, and administrators manage rosters completely on the school LAN.
+- 🔄 **Bidirectional AWS Cloud Sync**: Whenever an internet connection is available, local records sync securely with AWS cloud for multi-school analytics, centralized question bank updates, and automated backups.
+- 📦 **Atomic & Verified Updates**: Cloud updates are checksummed and cryptographically verified before installation, ensuring school data is never touched or corrupted.
+
+---
+
+## 🏛️ System Architecture
+
+```mermaid
+flowchart TB
+    subgraph School_LAN ["🏫 Local School Network (Air-Gapped / Offline)"]
+        direction TB
+        subgraph School_Server ["School Server Instance"]
+            Nginx["Nginx Reverse Proxy\n(:6050 / :6091)"]
+            ReactApp["React 18 + Vite Frontend\n(Shadcn UI / Tailwind CSS)"]
+            NodeAPI["Node.js / Express API\n(:5000)"]
+            LocalDB[("Local MongoDB\n(:27017)")]
+            SyncAgent["Local Sync & Media Manager"]
+
+            Nginx --> ReactApp
+            Nginx --> NodeAPI
+            NodeAPI --> LocalDB
+            NodeAPI --> SyncAgent
+        end
+
+        StudentDevices["📱 Student Tablets / PCs"] -->|Local WiFi / LAN| Nginx
+        TeacherDevices["💻 Teacher Laptops"] -->|Local WiFi / LAN| Nginx
+        AdminDevices["🖥️ Admin Console"] -->|Local WiFi / LAN| Nginx
+    end
+
+    subgraph AWS_Cloud ["☁️ Central AWS Cloud Hub (Optional Sync & Backups)"]
+        CloudAPI["AWS API Gateway + Lambda"]
+        CloudS3["Amazon S3\n(Media & Update Bundles)"]
+        CloudDB[("Amazon DynamoDB\n(Central Store)")]
+
+        CloudAPI --> CloudDB
+        CloudAPI --> CloudS3
+    end
+
+    SyncAgent <-->|Periodic / On-Demand Sync\n(When Internet is Available)| CloudAPI
+```
+
+---
+
+## 👥 Role-Based Access Control
+
+| Role | Scope | Key Capabilities |
+|---|---|---|
+| **Super Admin** | Platform-Wide | Registers schools & initial School Admins, triggers cloud sync, deploys verified app updates. |
+| **School Admin** | School-Level | Enrols/manages teacher and student accounts, monitors school-wide participation and feedback. |
+| **Teacher** | Classroom | Creates classes, generates custom or bank-backed quizzes, monitors real-time quiz analytics and student progress. |
+| **Student** | Learner | Solves interactive quizzes, takes adaptive difficulty assessments, explores multimedia modules (MAT, audio, puzzles, simulations). |
+
+---
+
+## ✨ Key Features
+
+### 🎓 For Students
+- **Adaptive Assessments**: Algorithmic tests that dynamically adjust difficulty based on student performance.
+- **Multimodal Learning**: Mental Ability Tests (MAT), Audio/Video quizzes, interactive science simulation experiments, and puzzle modules (*Gyan Ki Yatra*, *Memory Match*).
+- **Instant Offline Scoring**: Comprehensive report cards and question reviews available immediately without an internet connection.
+
+### 👩‍🏫 For Teachers
+- **Interactive Quiz Builder**: Drag-and-drop quiz creation with rich-text math formulas (KaTeX), audio questions, and video questions.
+- **In-Depth Class Analytics**: Performance distributions, accuracy charts, per-question analysis, and individual student progress tracking.
+- **Classroom Hub**: Digital announcements, student roster administration, and resource sharing.
+
+### 🏢 For School & Super Administrators
+- **Full Operational Autonomy**: Complete platform management behind an institutional firewall.
+- **Seamless Cloud Backup**: Automated single-click snapshots to AWS S3.
+- **Granular Update Control**: Super Admins preview changelogs, inspect checksums, and approve version upgrades safely.
+
+---
+
+## 🚀 Deployment Options
+
+### 🐳 1. Local School Server (Docker - Recommended)
+
+Ideal for production deployments in school labs and server PCs:
+
+```bash
+# Copy local school environment configuration
+cp .env.local-school.example .env
+
+# Launch application stack and MongoDB
+docker compose up -d --build
+```
+
+- **Access locally**: `http://localhost:6050`
+- **Access across school LAN**: `http://<SERVER_IP>:6050`
+
+#### Useful School Management Commands:
+```bash
+./scripts/health-check.sh        # Verify container and database health
+./scripts/backup-local-school.sh # Generate an encrypted offline backup
+./scripts/restart-local-school.sh# Gracefully restart school services
+./scripts/stop-local-school.sh   # Stop local school services
+```
+
+---
+
+### 💻 2. Local Development Setup
+
+#### Prerequisites
+- **Node.js**: v18+ or v20+
+- **MongoDB**: v6+ (Local service or MongoDB Atlas)
+- **Git**
+
+#### Steps
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/Abhigyan6091/ShikshaSarthi.git
+   cd ShikshaSarthi
+   ```
+
+2. **Install Dependencies**:
+   ```bash
+   # Install Frontend dependencies
+   npm install
+
+   # Install Backend dependencies
+   cd backend && npm install && cd ..
+   ```
+
+3. **Configure Environment Variables**:
+   - In `backend/.env`:
+     ```env
+     MONGO_URI=mongodb://127.0.0.1:27017/shikshasarthi
+     PORT=5000
+     JWT_SECRET=your_development_secret_key
+     ```
+   - In root `.env`:
+     ```env
+     VITE_API_URL=http://localhost:5000
+     ```
+
+4. **Run Development Servers**:
+   - **Quick Start (Windows)**: Run `Start.bat` to launch MongoDB, backend, and frontend concurrently.
+   - **Manual Start**:
+     ```bash
+     # Terminal 1: Backend
+     cd backend && npm start
+
+     # Terminal 2: Frontend
+     npm run dev
+     ```
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technologies |
+|---|---|
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS, Shadcn UI, Lucide Icons, Recharts, KaTeX |
+| **Backend API** | Node.js, Express.js, Mongoose ODM, JWT Authentication |
+| **Database** | MongoDB (Edge instance per school) |
+| **Cloud Bridge** | AWS Lambda, Amazon API Gateway, Amazon DynamoDB, Amazon S3 |
+| **Containerization** | Docker, Docker Compose, Nginx |
+
+---
+
+## 📡 Key API Routes
+
+### 🔐 Authentication
+- `POST /superadmin/login` — Super Admin authentication
+- `POST /schooladmin/login` — School Administrator login
+- `POST /teachers/login` — Teacher login
+- `POST /students/login` — Student authentication
+
+### 📚 Classes & Question Banks
+- `GET /questions` — Query centralized or local question banks
+- `POST /questions` — Author new questions
+- `POST /quizzes` — Create targeted assessments
+- `POST /classes` — Provision class rosters
+
+### 🔄 Sync & Maintenance
+- `GET /sync/status` — Inspect current sync health and pending queues
+- `POST /sync/run` — Manually trigger bidirectional cloud sync
+- `GET /api/updates/manifest` — Verify remote version release updates
+
+---
+
+## 📚 Documentation
+
+Detailed documentation is available in the [`docs/`](docs/) directory:
+- [🏫 Local School Deployment Guide](docs/LOCAL_SCHOOL_DEPLOYMENT.md)
+- [🔄 Phase 3 Update & Sync Specification](docs/PHASE_3_UPDATE_AND_SYNC.md)
+- [📋 Phase 1 Release Checklist](docs/PHASE_1_RELEASE_CHECKLIST.md)
+- [☁️ AWS Infrastructure Setup](docs/PHASE_2_AWS_SETUP.md)
+- [🪟 Windows Installer Workflow](docs/PHASE_2_WINDOWS_INSTALLER.md)
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, branching model, and pull request submission process.
+
+---
+
+## 💬 Support & Contact
+
+For issues, questions, bug reports, or contributions, please open an issue on [GitHub Issues](https://github.com/Abhigyan6091/ShikshaSarthi/issues) or contact the maintainers directly.
+
+---
+
+## 🔒 Security
+
+For security vulnerabilities and disclosure instructions, please refer to [SECURITY.md](SECURITY.md).
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
