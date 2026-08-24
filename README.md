@@ -33,13 +33,13 @@
 
 ```mermaid
 flowchart TB
-    subgraph School_LAN ["🏫 Local School Network (Air-Gapped / Offline)"]
+    subgraph School_LAN["🏫 Local School Network (Offline / Air-Gapped)"]
         direction TB
-        subgraph School_Server ["School Server Instance"]
-            Nginx["Nginx Reverse Proxy\n(:6050 / :6091)"]
-            ReactApp["React 18 + Vite Frontend\n(Shadcn UI / Tailwind CSS)"]
-            NodeAPI["Node.js / Express API\n(:5000)"]
-            LocalDB[("Local MongoDB\n(:27017)")]
+        subgraph School_Server["School Server Instance"]
+            Nginx["Nginx Reverse Proxy<br/>(:6050 / :6091)"]
+            ReactApp["React 18 + Vite Frontend<br/>(Shadcn UI / Tailwind CSS)"]
+            NodeAPI["Node.js / Express API<br/>(:5000)"]
+            LocalDB[("Local MongoDB<br/>(:27017)")]
             SyncAgent["Local Sync & Media Manager"]
 
             Nginx --> ReactApp
@@ -48,21 +48,21 @@ flowchart TB
             NodeAPI --> SyncAgent
         end
 
-        StudentDevices["📱 Student Tablets / PCs"] -->|Local WiFi / LAN| Nginx
-        TeacherDevices["💻 Teacher Laptops"] -->|Local WiFi / LAN| Nginx
-        AdminDevices["🖥️ Admin Console"] -->|Local WiFi / LAN| Nginx
+        StudentDevices["📱 Student Devices"] -->|"Local WiFi / LAN"| Nginx
+        TeacherDevices["💻 Teacher Devices"] -->|"Local WiFi / LAN"| Nginx
+        AdminDevices["🖥️ Admin Console"] -->|"Local WiFi / LAN"| Nginx
     end
 
-    subgraph AWS_Cloud ["☁️ Central AWS Cloud Hub (Optional Sync & Backups)"]
+    subgraph AWS_Cloud["☁️ Central AWS Cloud Hub"]
         CloudAPI["AWS API Gateway + Lambda"]
-        CloudS3["Amazon S3\n(Media & Update Bundles)"]
-        CloudDB[("Amazon DynamoDB\n(Central Store)")]
+        CloudS3["Amazon S3<br/>(Media & Update Bundles)"]
+        CloudDB[("Amazon DynamoDB<br/>(Central Store)")]
 
         CloudAPI --> CloudDB
         CloudAPI --> CloudS3
     end
 
-    SyncAgent <-->|Periodic / On-Demand Sync\n(When Internet is Available)| CloudAPI
+    SyncAgent <-->|"Bidirectional Cloud Sync<br/>(When Online)"| CloudAPI
 ```
 
 ---
