@@ -38,6 +38,10 @@ public/videos/
 !.vscode/extensions.json
 .idea
 .DS_Store
+.cph/
+*.prob
+.codex
+bun.lockb
 *.suo
 *.ntvs*
 *.njsproj
