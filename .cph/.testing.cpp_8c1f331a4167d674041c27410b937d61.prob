@@ -1,1 +1,0 @@
-{"name":"Local: testing","url":"d:\\shiksha-sarthi-nmms-prep\\testing.cpp","tests":[{"id":1749964272714,"input":"6\n5 2\n11011\n7 4\n1011011\n6 1\n010000\n4 1\n1111\n8 3\n10110110\n6 4\n111111\n","output":"\n"}],"interactive":false,"memoryLimit":1024,"timeLimit":3000,"srcPath":"d:\\shiksha-sarthi-nmms-prep\\testing.cpp","group":"local","local":true}
