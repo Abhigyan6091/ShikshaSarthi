@@ -242,7 +242,7 @@ section above for the supported way to run it.
 
 ## Support
 
-For issues, questions, or contributions, please open an issue on GitHub.
+For issues, questions, or contributions, please open an issue on GitHub or Contact me.
 
 ---
 
